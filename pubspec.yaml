@@ -1,0 +1,71 @@
+name: askaide
+description: "AskAide — AI-powered practice platform for Indian schools (Flutter replica)."
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Routing
+  go_router: ^14.2.7
+
+  # State management (BLoC)
+  flutter_bloc: ^8.1.6
+  bloc: ^8.1.4
+  equatable: ^2.0.5
+
+  # Dependency injection
+  get_it: ^7.7.0
+
+  # Functional error handling
+  dartz: ^0.10.1
+
+  # Networking
+  dio: ^5.7.0
+  connectivity_plus: ^6.0.5
+
+  # Storage
+  flutter_secure_storage: ^9.2.2
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  shared_preferences: ^2.3.2
+
+  # Models / serialization
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+
+  # UI / design system
+  google_fonts: ^6.2.1
+  lucide_icons_flutter: ^3.1.14
+  fl_chart: ^0.69.0
+  flutter_markdown: ^0.7.4+1
+  flutter_animate: ^4.5.0
+  visibility_detector: ^0.4.0+2
+
+  # PDF / sharing / links
+  pdf: ^3.11.1
+  printing: ^5.13.2
+  url_launcher: ^6.3.1
+
+  # Misc
+  intl: ^0.19.0
+  flutter_dotenv: ^5.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  build_runner: ^2.4.13
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - .env

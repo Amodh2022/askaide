@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AskAide — Quiet Scholar theme & shell</title>
+<style>
+  /* Fonts: Google Fonts CDN is blocked by CSP, so these system stacks stand in
+     for Fraunces (serif), Inter Tight (sans), JetBrains Mono (mono).
+     The real Flutter app loads the actual families via google_fonts. */
+  :root, [data-theme="light"]{
+    --bg-primary:#F4F1EA; --bg-secondary:#EDEAE0; --bg-card:#FBF9F3; --bg-raised:#F0EDE4;
+    --text-primary:#1A1D1A; --text-secondary:#3D4039; --text-muted:#6B6A62;
+    --border:#D9D4C7; --border-subtle:#E3DFD4;
+    --accent:#2E5D4F; --accent-light:#E4EFE8; --accent-secondary:#E8D16A; --danger:#A34A3C;
+    --success:#16a34a;
+    --shadow-card:0 1px 3px rgba(26,29,26,.05), 0 4px 16px rgba(26,29,26,.06);
+    --shadow-float:0 20px 50px rgba(26,29,26,.08);
+  }
+  [data-theme="dark"]{
+    --bg-primary:#14140F; --bg-secondary:#1A1A13; --bg-card:#211F1A; --bg-raised:#2A2823;
+    --text-primary:#F1EEDF; --text-secondary:#C9C6B8; --text-muted:#8F8C7E;
+    --border:#2A2A22; --border-subtle:#232319;
+    --accent:#8FBFA8; --accent-light:#1E2A24; --accent-secondary:#D8B94A; --danger:#D88A7A;
+    --success:#4ADE80;
+    --shadow-card:0 1px 3px rgba(0,0,0,.30), 0 4px 16px rgba(0,0,0,.35);
+    --shadow-float:0 20px 50px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg-primary);color:var(--text-primary);
+    font-family:"Inter Tight",system-ui,-apple-system,sans-serif;
+    transition:background .3s,color .3s;-webkit-font-smoothing:antialiased}
+  .serif{font-family:Fraunces,Georgia,"Times New Roman",serif;letter-spacing:-.02em}
+  .mono{font-family:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    text-transform:uppercase;letter-spacing:.18em;font-size:11px;color:var(--text-muted)}
+  .italic{font-style:italic}
+  .swipe{position:relative;display:inline-block}
+  .swipe::after{content:"";position:absolute;left:-2px;right:-2px;bottom:.08em;height:.42em;
+    background:var(--accent-secondary);opacity:.55;z-index:-1;border-radius:2px;transform:rotate(-.5deg)}
+
+  /* ---- App frame: 240px sidebar + main ---- */
+  .frame{display:flex;min-height:100vh}
+  .sidebar{width:240px;flex:0 0 240px;background:var(--bg-card);
+    border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0}
+  .brand{display:flex;align-items:center;gap:9px;padding:22px 16px 14px}
+  .mark{width:26px;height:26px;border-radius:7px;background:var(--accent);color:#fff;
+    display:grid;place-items:center;font-family:Fraunces,Georgia,serif;font-size:17px;font-weight:600}
+  [data-theme="dark"] .mark{color:#14140F}
+  .brand .name{font-family:Fraunces,Georgia,serif;font-size:19px;font-weight:600}
+  .brand .ai{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.15em;color:var(--accent)}
+
+  .usercard{display:flex;align-items:center;gap:10px;padding:0 16px 14px}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--accent-light);color:var(--accent);
+    display:grid;place-items:center;font-weight:600;font-size:13px}
+  .usercard .uname{font-size:14px;font-weight:600}
+  .chip{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:99px;background:var(--accent-light);
+    color:var(--accent);font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.1em}
+  .divider{height:1px;background:var(--border-subtle);margin:0}
+
+  .nav{flex:1;overflow:auto;padding:8px 0}
+  .group-label{padding:14px 16px 6px;font-family:"JetBrains Mono",monospace;font-size:10px;
+    letter-spacing:.2em;color:var(--text-muted)}
+  .item{display:flex;align-items:center;gap:10px;margin:2px 8px;padding:9px 12px;border-radius:6px;
+    color:var(--text-secondary);font-size:14px;cursor:pointer;transition:background .15s}
+  .item:hover{background:var(--bg-raised)}
+  .item .ico{width:18px;height:18px;flex:0 0 18px;stroke:currentColor;fill:none;stroke-width:2}
+  .item.active{background:var(--accent-light);color:var(--accent);
+    font-family:Fraunces,Georgia,serif;font-weight:600;font-size:15px;letter-spacing:-.01em}
+  .item .dot{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .side-bottom{padding:6px 0 12px}
+
+  .main{flex:1;position:relative;display:flex;flex-direction:column}
+  .content{flex:1;display:grid;place-items:center;padding:48px}
+  .panel{max-width:560px}
+  .panel h1{font-family:Fraunces,Georgia,serif;font-size:48px;line-height:1;font-weight:600;letter-spacing:-.03em}
+  .panel p.lead{margin-top:16px;font-size:17px;line-height:1.55;color:var(--text-secondary)}
+  .card{margin-top:24px;background:var(--bg-card);border:1px solid var(--border-subtle);
+    border-radius:4px;box-shadow:var(--shadow-card);padding:16px;color:var(--text-muted);font-size:15px}
+
+  .toolbar{position:absolute;top:16px;right:20px;display:flex;gap:8px;align-items:center}
+  .iconbtn{width:36px;height:36px;border-radius:99px;border:1px solid var(--border);background:var(--bg-card);
+    color:var(--text-secondary);display:grid;place-items:center;cursor:pointer}
+  .pill{padding:9px 16px;border-radius:99px;background:var(--text-primary);color:var(--bg-primary);
+    font-weight:600;font-size:14px;border:none;cursor:pointer}
+  .pill.ghost{background:transparent;color:var(--text-primary);border:1px solid var(--border)}
+
+  .fab{position:absolute;right:20px;bottom:20px;width:52px;height:52px;border-radius:50%;
+    background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:var(--shadow-float);cursor:pointer}
+  [data-theme="dark"] .fab{color:#14140F}
+
+  /* ---- tokens reference strip ---- */
+  .tokens{border-top:1px solid var(--border);background:var(--bg-secondary);padding:20px 28px}
+  .tokens h3{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.2em;color:var(--text-muted);margin-bottom:14px}
+  .swatches{display:flex;flex-wrap:wrap;gap:10px}
+  .sw{width:96px}
+  .sw .chipc{height:46px;border-radius:6px;border:1px solid var(--border-subtle)}
+  .sw small{display:block;margin-top:5px;font-family:"JetBrains Mono",monospace;font-size:9px;color:var(--text-muted)}
+  .scale{margin-top:18px;display:flex;flex-direction:column;gap:6px}
+</style>
+</head>
+<body>
+<div class="frame">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark serif">a</div>
+      <span class="name">askaide</span><span class="ai">AI</span>
+    </div>
+    <div class="usercard">
+      <div class="avatar">AN</div>
+      <div><div class="uname">Amodh N.</div><span class="chip">STUDENT</span></div>
+    </div>
+    <div class="divider"></div>
+    <nav class="nav">
+      <div class="group-label">LEARN</div>
+      <div class="item active"><svg class="ico" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Study<span class="dot"></span></div>
+      <div class="item"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</div>
+      <div class="item"><svg class="ico" viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>Progress</div>
+      <div class="item"><svg class="ico" viewBox="0 0 24 24"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Quizzes</div>
+      <div class="group-label">ACCOUNT</div>
+      <div class="item"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Profile</div>
+      <div class="item"><svg class="ico" viewBox="0 0 24 24"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/></svg>Refer &amp; Earn</div>
+      <div class="item"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</div>
+    </nav>
+    <div class="divider"></div>
+    <div class="side-bottom">
+      <div class="item" onclick="toggleTheme()"><svg class="ico" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg><span id="themelabel">Dark mode</span></div>
+      <div class="item" style="color:var(--danger)"><svg class="ico" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <section class="main">
+    <div class="toolbar">
+      <button class="iconbtn" onclick="toggleTheme()" title="Toggle theme">◐</button>
+      <button class="pill ghost">Sign in</button>
+      <button class="pill">Try a session →</button>
+    </div>
+    <div class="content">
+      <div class="panel">
+        <div class="mono">— PRACTICE</div>
+        <h1 style="margin-top:10px">Start a <span class="serif italic swipe" style="color:var(--accent)">session.</span></h1>
+        <p class="lead">The core chat-style study flow renders here. This preview shows the
+          live design system &mdash; the fixed 240px sidebar, role-filtered nav with the active
+          item in serif + accent dot, and full light/dark parity from the single
+          <code>AskAideColors</code> ThemeExtension.</p>
+        <div class="card">Theme + routing are live &mdash; toggle dark mode (top-right or the
+          sidebar) and every token swaps from one source of truth.</div>
+      </div>
+    </div>
+    <div class="fab">✦</div>
+  </section>
+</div>
+
+<!-- TOKEN REFERENCE -->
+<div class="tokens">
+  <h3>— QUIET SCHOLAR · COLOR TOKENS (live theme)</h3>
+  <div class="swatches" id="swatches"></div>
+  <div class="scale">
+    <span class="serif" style="font-size:40px;line-height:.95;font-weight:600">Fraunces display 40 <span class="italic" style="color:var(--accent)">italic</span></span>
+    <span style="font-size:17px;color:var(--text-secondary)">Inter Tight body 17 — the next 10 minutes of practice are waiting.</span>
+    <span class="mono">JETBRAINS MONO · SECTION LABEL · WIDE TRACKING</span>
+  </div>
+</div>
+
+<script>
+  const tokens=[["--bg-primary","bg primary"],["--bg-card","bg card"],["--bg-raised","bg raised"],
+    ["--accent","accent"],["--accent-light","accent light"],["--accent-secondary","mustard"],
+    ["--danger","danger"],["--text-primary","text"],["--border","border"]];
+  const wrap=document.getElementById('swatches');
+  wrap.innerHTML=tokens.map(([v,n])=>`<div class="sw"><div class="chipc" style="background:var(${v})"></div><small>${n}</small></div>`).join('');
+  function toggleTheme(){
+    const r=document.documentElement;
+    const next=r.getAttribute('data-theme')==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next);
+    document.getElementById('themelabel').textContent=next==='dark'?'Light mode':'Dark mode';
+  }
+</script>
+</body>
+</html>

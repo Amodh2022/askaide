@@ -1,0 +1,381 @@
+import 'dart:async';
+
+import 'package:equatable/equatable.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/network_info.dart';
+import '../../../../core/usecases/usecase.dart';
+import '../../domain/entities/question.dart';
+import '../../domain/entities/study_config.dart';
+import '../../domain/entities/study_enums.dart';
+import '../../domain/entities/study_session.dart';
+import '../../domain/entities/study_taxonomy.dart';
+import '../../domain/entities/user_answer.dart';
+import '../../domain/repositories/session_repository.dart';
+import '../../domain/usecases/session_usecases.dart';
+
+part 'session_event.dart';
+part 'session_state.dart';
+
+/// Drives the `/study` chat-style practice screen: the config funnel, the
+/// one-question-at-a-time practice loop (batched fetch + batched submit with an
+/// offline queue), and reviewing past sessions.
+class SessionBloc extends Bloc<SessionEvent, SessionState> {
+  SessionBloc({
+    required SessionRepository repository,
+    required GetClasses getClasses,
+    required GetSubjects getSubjects,
+    required GetChapters getChapters,
+    required FetchQuestionBatch fetchQuestionBatch,
+    required SubmitAnswers submitAnswers,
+    required SyncQueuedAnswers syncQueuedAnswers,
+    required SaveSession saveSession,
+    required NetworkInfo networkInfo,
+    int Function()? clock,
+  })  : _repository = repository,
+        _getClasses = getClasses,
+        _getSubjects = getSubjects,
+        _getChapters = getChapters,
+        _fetchQuestionBatch = fetchQuestionBatch,
+        _submitAnswers = submitAnswers,
+        _syncQueuedAnswers = syncQueuedAnswers,
+        _saveSession = saveSession,
+        _networkInfo = networkInfo,
+        _now = clock ?? (() => DateTime.now().millisecondsSinceEpoch),
+        super(const SessionState()) {
+    on<SessionInitialised>(_onInit);
+    on<ClassesRequested>(_onClasses);
+    on<ClassSelected>(_onClassSelected);
+    on<SubjectSelected>(_onSubjectSelected);
+    on<ChapterSelected>(_onChapterSelected);
+    on<QuestionTypeSelected>(_onQuestionType);
+    on<DifficultySelected>(_onDifficulty);
+    on<PracticeStarted>(_onStartPractice);
+    on<AnswerSubmitted>(_onAnswer);
+    on<NextQuestionRequested>(_onNext);
+    on<SessionFinished>(_onFinish);
+    on<ResultModalDismissed>(_onResultDismissed);
+    on<NpsSubmitted>(_onNpsSubmitted);
+    on<NpsDismissed>(_onNpsDismissed);
+    on<SessionReviewOpened>(_onReview);
+    on<SessionDeleted>(_onDelete);
+    on<BackToConfigRequested>(_onBackToConfig);
+    on<ConnectivityChanged>(_onConnectivity);
+  }
+
+  final SessionRepository _repository;
+  final GetClasses _getClasses;
+  final GetSubjects _getSubjects;
+  final GetChapters _getChapters;
+  final FetchQuestionBatch _fetchQuestionBatch;
+  final SubmitAnswers _submitAnswers;
+  final SyncQueuedAnswers _syncQueuedAnswers;
+  final SaveSession _saveSession;
+  final NetworkInfo _networkInfo;
+  final int Function() _now;
+
+  StreamSubscription<bool>? _connSub;
+
+  /// Answers collected since the last batch submit.
+  final List<UserAnswer> _pending = [];
+
+  @override
+  Future<void> close() {
+    _connSub?.cancel();
+    return super.close();
+  }
+
+  Future<void> _onInit(SessionInitialised e, Emitter<SessionState> emit) async {
+    final online = await _networkInfo.isConnected;
+    emit(state.copyWith(
+      history: _repository.getSessionHistory(),
+      isOnline: online,
+    ));
+    _connSub ??= _networkInfo.onConnectivityChanged.listen(
+      (isOnline) => add(ConnectivityChanged(isOnline)),
+    );
+    if (online) add(const ConnectivityChanged(true));
+  }
+
+  Future<void> _onClasses(
+    ClassesRequested e,
+    Emitter<SessionState> emit,
+  ) async {
+    emit(state.copyWith(taxonomyStatus: LoadStatus.loading, clearError: true));
+    final result = await _getClasses(const NoParams());
+    result.fold(
+      (f) => emit(state.copyWith(
+        taxonomyStatus: LoadStatus.failure,
+        errorMessage: f.message,
+      )),
+      (classes) => emit(state.copyWith(
+        taxonomyStatus: LoadStatus.success,
+        classes: classes,
+      )),
+    );
+  }
+
+  Future<void> _onClassSelected(
+    ClassSelected e,
+    Emitter<SessionState> emit,
+  ) async {
+    emit(state.copyWith(
+      config: state.config.copyWith(
+        selectedClass: e.option,
+        clearSubject: true,
+        clearChapter: true,
+      ),
+      subjects: const [],
+      chapters: const [],
+      taxonomyStatus: LoadStatus.loading,
+    ));
+    final result = await _getSubjects(e.option.id);
+    result.fold(
+      (f) => emit(state.copyWith(
+        taxonomyStatus: LoadStatus.failure,
+        errorMessage: f.message,
+      )),
+      (subjects) => emit(state.copyWith(
+        taxonomyStatus: LoadStatus.success,
+        subjects: subjects,
+      )),
+    );
+  }
+
+  Future<void> _onSubjectSelected(
+    SubjectSelected e,
+    Emitter<SessionState> emit,
+  ) async {
+    final classId = state.config.selectedClass?.id ?? '';
+    emit(state.copyWith(
+      config: state.config.copyWith(
+        selectedSubject: e.option,
+        clearChapter: true,
+      ),
+      chapters: const [],
+      taxonomyStatus: LoadStatus.loading,
+    ));
+    final result = await _getChapters(
+      GetChaptersParams(classId: classId, subjectId: e.option.id),
+    );
+    result.fold(
+      (f) => emit(state.copyWith(
+        taxonomyStatus: LoadStatus.failure,
+        errorMessage: f.message,
+      )),
+      (chapters) => emit(state.copyWith(
+        taxonomyStatus: LoadStatus.success,
+        chapters: chapters,
+      )),
+    );
+  }
+
+  void _onChapterSelected(ChapterSelected e, Emitter<SessionState> emit) {
+    emit(state.copyWith(
+      config: state.config.copyWith(selectedChapter: e.option),
+    ));
+  }
+
+  void _onQuestionType(QuestionTypeSelected e, Emitter<SessionState> emit) {
+    emit(state.copyWith(config: state.config.copyWith(questionType: e.type)));
+  }
+
+  void _onDifficulty(DifficultySelected e, Emitter<SessionState> emit) {
+    emit(state.copyWith(
+      config: state.config.copyWith(difficulty: e.difficulty),
+    ));
+  }
+
+  Future<void> _onStartPractice(
+    PracticeStarted e,
+    Emitter<SessionState> emit,
+  ) async {
+    if (!state.config.isComplete) return;
+    final cfg = state.config;
+    final sessionId = 'sess_${_now()}';
+    final session = StudySession(
+      id: sessionId,
+      className: cfg.selectedClass?.name ?? '',
+      subjectName: cfg.selectedSubject?.name ?? '',
+      chapterName: cfg.selectedChapter?.name ?? '',
+      questionType: cfg.questionType,
+      difficulty: cfg.difficulty,
+      startedAtMillis: _now(),
+    );
+    _pending.clear();
+    emit(state.copyWith(
+      panel: SessionPanel.practice,
+      sessionStarted: true,
+      activeSession: session,
+      questions: const [],
+      currentIndex: 0,
+      answers: const {},
+      clearFeedback: true,
+      questionStatus: LoadStatus.loading,
+    ));
+    await _loadBatch(emit);
+  }
+
+  Future<void> _loadBatch(Emitter<SessionState> emit) async {
+    final sessionId = state.activeSession?.id ?? '';
+    final result = await _fetchQuestionBatch(
+      FetchBatchParams(config: state.config, sessionId: sessionId),
+    );
+    result.fold(
+      (f) => emit(state.copyWith(
+        questionStatus: LoadStatus.failure,
+        errorMessage: f.message,
+      )),
+      (batch) => emit(state.copyWith(
+        questionStatus: LoadStatus.success,
+        questions: [...state.questions, ...batch],
+      )),
+    );
+  }
+
+  Future<void> _onAnswer(AnswerSubmitted e, Emitter<SessionState> emit) async {
+    final q = state.currentQuestion;
+    if (q == null || state.hasAnsweredCurrent) return;
+
+    final correct = q.isCorrect(e.answer);
+    final answer = UserAnswer(
+      questionId: q.id,
+      sessionId: state.activeSession?.id ?? '',
+      answer: e.answer,
+      isCorrect: correct,
+      answeredAtMillis: _now(),
+    );
+    _pending.add(answer);
+
+    final answers = Map<String, UserAnswer>.from(state.answers)
+      ..[q.id] = answer;
+
+    emit(state.copyWith(
+      answers: answers,
+      feedback: AnswerFeedback(
+        isCorrect: correct,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+      ),
+    ));
+
+    // Flush answers in batches.
+    if (_pending.length >= AppConstants.answerSubmitBatchSize) {
+      await _flushPending(emit);
+    }
+  }
+
+  Future<void> _flushPending(Emitter<SessionState> emit) async {
+    if (_pending.isEmpty) return;
+    final batch = List<UserAnswer>.from(_pending);
+    _pending.clear();
+    await _submitAnswers(batch);
+    final queued = state.isOnline ? state.queuedCount : state.queuedCount + batch.length;
+    emit(state.copyWith(queuedCount: queued));
+  }
+
+  Future<void> _onNext(
+    NextQuestionRequested e,
+    Emitter<SessionState> emit,
+  ) async {
+    final nextIndex = state.currentIndex + 1;
+    emit(state.copyWith(currentIndex: nextIndex, clearFeedback: true));
+
+    // Prefetch the next batch when nearing the end of the current one.
+    final remaining = state.questions.length - nextIndex;
+    if (remaining <= 1 && state.questionStatus != LoadStatus.loading) {
+      emit(state.copyWith(questionStatus: LoadStatus.loading));
+      await _loadBatch(emit);
+    }
+  }
+
+  Future<void> _onFinish(SessionFinished e, Emitter<SessionState> emit) async {
+    if (state.resultSummary != null) return; // already finishing
+    await _flushPending(emit);
+    final summary = SessionSummary(
+      score: state.correctCount,
+      total: state.answeredCount,
+    );
+    final active = state.activeSession;
+    if (active != null) {
+      final completed = active.copyWith(
+        answers: state.answers.values.toList(),
+        totalQuestions: state.questions.length,
+        completed: true,
+      );
+      await _saveSession(completed);
+      emit(state.copyWith(history: _repository.getSessionHistory()));
+    }
+    // Keep the practice panel mounted; the result modal overlays it. The reset
+    // to the config panel happens once the modal is dismissed.
+    emit(state.copyWith(resultSummary: summary, npsHandled: false));
+  }
+
+  void _onResultDismissed(
+    ResultModalDismissed e,
+    Emitter<SessionState> emit,
+  ) {
+    _pending.clear();
+    emit(state.copyWith(
+      panel: SessionPanel.config,
+      sessionStarted: false,
+      questions: const [],
+      currentIndex: 0,
+      answers: const {},
+      clearFeedback: true,
+      clearResultSummary: true,
+    ));
+  }
+
+  Future<void> _onNpsSubmitted(
+    NpsSubmitted e,
+    Emitter<SessionState> emit,
+  ) async {
+    emit(state.copyWith(npsHandled: true));
+    await _repository.submitNps(
+      userId: e.userId,
+      npsScore: e.score,
+      comment: e.comment,
+    );
+  }
+
+  void _onNpsDismissed(NpsDismissed e, Emitter<SessionState> emit) {
+    emit(state.copyWith(npsHandled: true));
+  }
+
+  void _onReview(SessionReviewOpened e, Emitter<SessionState> emit) {
+    final session = state.history.firstWhere(
+      (s) => s.id == e.sessionId,
+      orElse: () => state.history.isNotEmpty
+          ? state.history.first
+          : throw StateError('No session'),
+    );
+    emit(state.copyWith(panel: SessionPanel.review, reviewSession: session));
+  }
+
+  Future<void> _onDelete(SessionDeleted e, Emitter<SessionState> emit) async {
+    await _repository.deleteSession(e.sessionId);
+    emit(state.copyWith(history: _repository.getSessionHistory()));
+  }
+
+  void _onBackToConfig(BackToConfigRequested e, Emitter<SessionState> emit) {
+    emit(state.copyWith(panel: SessionPanel.config, clearFeedback: true));
+  }
+
+  Future<void> _onConnectivity(
+    ConnectivityChanged e,
+    Emitter<SessionState> emit,
+  ) async {
+    emit(state.copyWith(isOnline: e.isOnline));
+    if (e.isOnline) {
+      final result = await _syncQueuedAnswers(const NoParams());
+      result.fold(
+        (_) {},
+        (synced) {
+          if (synced > 0) emit(state.copyWith(queuedCount: 0));
+        },
+      );
+    }
+  }
+}
