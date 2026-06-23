@@ -10,7 +10,8 @@ enum Difficulty {
         orElse: () => Difficulty.medium,
       );
 
-  String get apiValue => name; // 'easy' | 'medium' | 'hard'
+  // First letter capitalised: 'Easy' | 'Medium' | 'Hard'.
+  String get apiValue => name[0].toUpperCase() + name.substring(1);
   String get label => switch (this) {
         Difficulty.easy => 'Easy',
         Difficulty.medium => 'Medium',
@@ -26,7 +27,9 @@ enum QuestionType {
   static QuestionType fromApi(String? raw) {
     switch (raw?.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '')) {
       case 'fillintheblank':
+      case 'fillintheblanks':
       case 'fillblank':
+      case 'fillblanks':
       case 'fitb':
         return QuestionType.fillInTheBlank;
       case 'mcq':

@@ -20,8 +20,11 @@ class UserModel with _$UserModel {
     String? email,
     String? image,
     String? accountType,
-    @JsonKey(name: 'school') String? schoolId,
+    // Backend has used both `schoolId` and `school`; accept either.
+    @JsonKey(readValue: _readSchoolId) String? schoolId,
     String? className,
+    String? userName,
+    String? grade,
   }) = _UserModel;
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
@@ -36,5 +39,15 @@ class UserModel with _$UserModel {
         accountType: AccountType.fromApi(accountType),
         schoolId: schoolId,
         className: className,
+        userName: userName,
+        grade: grade,
       );
+}
+
+/// Reads the school id from either `schoolId` or the legacy `school` key.
+/// When the value is a populated object, prefer its `_id`.
+Object? _readSchoolId(Map json, String key) {
+  final v = json['schoolId'] ?? json['school'];
+  if (v is Map) return v['_id'] ?? v['id'];
+  return v;
 }

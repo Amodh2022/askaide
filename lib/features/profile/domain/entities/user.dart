@@ -14,6 +14,8 @@ class User extends Equatable {
     this.image,
     this.schoolId,
     this.className,
+    this.userName,
+    this.grade,
   });
 
   final String id;
@@ -24,6 +26,8 @@ class User extends Equatable {
   final AccountType accountType;
   final String? schoolId;
   final String? className;
+  final String? userName;
+  final String? grade;
 
   /// Display name = first + last when present.
   String get name => [firstName, if (lastName != null) lastName].join(' ').trim();
@@ -38,5 +42,5 @@ class User extends Equatable {
 
   @override
   List<Object?> get props =>
-      [id, firstName, lastName, email, image, accountType, schoolId, className];
+      [id, firstName, lastName, email, image, accountType, schoolId, className, userName, grade];
 }

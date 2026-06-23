@@ -64,5 +64,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       _dio.post(Endpoints.changePassword, data: {
         'oldPassword': oldPassword,
         'newPassword': newPassword,
+        // Spec requires confirmPassword; the UI already validates the match
+        // before calling, so mirror newPassword here.
+        'confirmPassword': newPassword,
       });
 }

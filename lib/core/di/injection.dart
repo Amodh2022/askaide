@@ -19,6 +19,7 @@ import '../../features/dashboard/presentation/cubit/progress_cubit.dart';
 import '../../features/quiz/data/quiz_repository.dart';
 import '../../features/quiz/presentation/quiz_cubits.dart';
 import '../../features/quiz/presentation/quiz_teacher_cubits.dart';
+import '../../features/marketing/data/public_stats_feature.dart';
 import '../../features/referral/referral_feature.dart';
 import '../../features/teacher/data/teacher_feature.dart';
 import '../../features/profile/data/datasources/profile_remote_datasource.dart';
@@ -90,7 +91,9 @@ Future<void> configureDependencies(LocalStorageService localStorage) async {
     ..registerFactory<PaperHistoryCubit>(() => PaperHistoryCubit(sl()))
     ..registerFactory<QpGeneratorCubit>(() => QpGeneratorCubit(sl(), sl()))
     ..registerFactory<PublicQpCubit>(() => PublicQpCubit(sl(), sl()))
-    ..registerLazySingleton<AiAssistantRepository>(() => AiAssistantRepository(sl()));
+    ..registerLazySingleton<AiAssistantRepository>(() => AiAssistantRepository(sl()))
+    ..registerLazySingleton<PublicStatsRepository>(() => PublicStatsRepository(sl()))
+    ..registerFactory<PublicStatsCubit>(() => PublicStatsCubit(sl()));
 
   // ---- App-global cubits --------------------------------------------------
   sl.registerLazySingleton<ThemeCubit>(() => ThemeCubit(sl()));

@@ -68,8 +68,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String token,
   ) =>
       _dio.post(Endpoints.resetPassword, data: {
-        'password': password,
-        'confirmPassword': confirmPassword,
         'token': token,
+        'newPassword': password,
+        'confirmPassword': confirmPassword,
       });
 }

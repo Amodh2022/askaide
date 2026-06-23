@@ -43,7 +43,21 @@ extension ResponseX on Response<dynamic> {
     final d = data;
     if (d is Map) {
       for (final k in keys) {
-        if (d[k] is Map) return Map<String, dynamic>.from(d[k] as Map);
+        var v = d[k];
+        if (v is Map) {
+          // Peel extra envelope layers, e.g. { data: { success, data: {...} } },
+          // but only while the child still looks like an envelope so we don't
+          // descend into a real object that happens to carry a `data` field.
+          var depth = 0;
+          while (v is Map &&
+              v.containsKey('success') &&
+              v['data'] is Map &&
+              depth < 5) {
+            v = v['data'];
+            depth++;
+          }
+          return Map<String, dynamic>.from(v as Map);
+        }
       }
       return Map<String, dynamic>.from(d);
     }
@@ -51,43 +65,53 @@ extension ResponseX on Response<dynamic> {
   }
 
   /// Unwraps the most likely list from a response (handles many key aliases).
+  /// Tolerates the backend's double-wrapped envelopes, e.g.
+  /// `{ data: { data: [...] } }`, by descending through nested maps.
   List<dynamic> dataList([List<String> keys = const ['data']]) {
-    final d = data;
-    if (d is List) return d;
-    if (d is Map) {
-      for (final k in [
-        ...keys,
-        'data',
-        'items',
-        'results',
-        'questions',
-        'quizzes',
-        'attempts',
-        'conversations',
-        'messages',
-        'students',
-        'activities',
-        'papers',
-        'children',
-        'links',
-        'weakTopics',
-        'subjectsProgress',
-        'topics',
-        'assignments',
-        'badges',
-      ]) {
-        final v = d[k];
-        if (v is List) return v;
-        // one level of nesting: { data: { quizzes: [...] } }
-        if (v is Map) {
-          for (final k2 in ['quizzes', 'attempts', 'papers', 'items', 'results', 'conversations', 'messages']) {
-            if (v[k2] is List) return v[k2] as List;
-          }
-        }
+    return digList(data, [
+          ...keys,
+          'data',
+          'items',
+          'results',
+          'questions',
+          'quizzes',
+          'attempts',
+          'conversations',
+          'messages',
+          'students',
+          'activities',
+          'papers',
+          'children',
+          'links',
+          'weakTopics',
+          'subjectsProgress',
+          'topics',
+          'assignments',
+          'badges',
+        ]) ??
+        const [];
+  }
+}
+
+/// Recursively finds the first list reachable under any of [keys], descending
+/// through nested envelope maps (bounded depth). The API sometimes wraps a
+/// payload twice (`{ data: { data: [...] } }`), so a single-level unwrap isn't
+/// enough.
+List<dynamic>? digList(dynamic node, List<String> keys, [int depth = 0]) {
+  if (node is List) return node;
+  if (node is Map && depth < 5) {
+    for (final k in keys) {
+      if (node[k] is List) return node[k] as List;
+    }
+    for (final k in keys) {
+      final child = node[k];
+      if (child is Map) {
+        final nested = digList(child, keys, depth + 1);
+        if (nested != null) return nested;
       }
     }
-    return const [];
   }
+  return null;
 }
 
 /// Map helpers tolerant of Mongo `_id`/`id` and string/num coercion.

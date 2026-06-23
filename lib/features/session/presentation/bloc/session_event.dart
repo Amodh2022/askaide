@@ -53,7 +53,14 @@ class DifficultySelected extends SessionEvent {
 
 // --- Practice ---------------------------------------------------------------
 class PracticeStarted extends SessionEvent {
-  const PracticeStarted();
+  const PracticeStarted({this.userId = ''});
+
+  /// Logged-in user's id, needed to create the server-side session whose
+  /// ObjectId the question-batch endpoint requires.
+  final String userId;
+
+  @override
+  List<Object?> get props => [userId];
 }
 
 class AnswerSubmitted extends SessionEvent {

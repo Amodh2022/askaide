@@ -46,8 +46,11 @@ class PaperPreview extends Equatable {
     this.questions = const [],
     this.schoolName = '',
     this.examName = '',
+    this.className = '',
+    this.subjectName = '',
     this.duration = 0,
     this.totalMarks = 0,
+    this.includeAnswerKey = true,
     this.instructions = const [],
   });
   final String id;
@@ -55,26 +58,39 @@ class PaperPreview extends Equatable {
   final List<PaperQuestion> questions;
   final String schoolName;
   final String examName;
+  final String className;
+  final String subjectName;
   final int duration;
   final int totalMarks;
+  final bool includeAnswerKey;
   final List<String> instructions;
 
-  factory PaperPreview.fromJson(Map<dynamic, dynamic> j) => PaperPreview(
-        id: j.str(['_id', 'id']),
-        title: j.str(['title'], 'Question Paper'),
-        questions:
-            j.listAt(['questions']).whereType<Map>().map(PaperQuestion.fromJson).toList(),
-        schoolName: j.str(['schoolName']),
-        examName: j.str(['examName']),
-        duration: j.intval(['duration']),
-        totalMarks: j.intval(['totalMarks']),
-        instructions:
-            j.listAt(['instructions']).map((e) => e.toString()).toList(),
-      );
+  static String _refName(dynamic v) => v is Map ? (v['name']?.toString() ?? '') : '';
+
+  factory PaperPreview.fromJson(Map<dynamic, dynamic> j) {
+    final cfg = j['config'];
+    return PaperPreview(
+      id: j.str(['_id', 'id']),
+      title: j.str(['title'], 'Question Paper'),
+      questions:
+          j.listAt(['questions']).whereType<Map>().map(PaperQuestion.fromJson).toList(),
+      schoolName: j.str(['schoolName']),
+      examName: j.str(['examName']),
+      className: _refName(j['classId']),
+      subjectName: _refName(j['subjectId']),
+      duration: j.intval(['duration']),
+      totalMarks: j.intval(['totalMarks']),
+      includeAnswerKey: cfg is Map ? cfg['includeAnswerKey'] != false : true,
+      instructions:
+          j.listAt(['instructions']).map((e) => e.toString()).toList(),
+    );
+  }
 
   @override
-  List<Object?> get props =>
-      [id, title, questions, schoolName, examName, duration, totalMarks, instructions];
+  List<Object?> get props => [
+        id, title, questions, schoolName, examName, className, subjectName,
+        duration, totalMarks, includeAnswerKey, instructions,
+      ];
 }
 
 class PaperSummary extends Equatable {
@@ -105,10 +121,14 @@ class PaperSummary extends Equatable {
   factory PaperSummary.fromJson(Map<dynamic, dynamic> j) {
     final cfg = j['config'];
     final cfgQ = cfg is Map ? (cfg['totalQuestions'] as num?)?.toInt() : null;
+    final qIds = j['questionIds'];
     return PaperSummary(
       id: j.str(['_id', 'id']),
       title: j.str(['title'], 'Question Paper'),
-      questionCount: cfgQ ?? j.intval(['questionCount', 'numberOfQuestions']),
+      questionCount: cfgQ ??
+          (qIds is List
+              ? qIds.length
+              : j.intval(['questionCount', 'numberOfQuestions'])),
       createdAt: j['createdAt']?.toString(),
       className: _refName(j['classId']),
       subjectName: _refName(j['subjectId']),

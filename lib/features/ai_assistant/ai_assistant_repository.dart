@@ -41,8 +41,69 @@ class AiMessage extends Equatable {
   List<Object?> get props => [role, content];
 }
 
-/// Talks to the AI assistant: single-shot ask, SSE streaming, and the
-/// conversation CRUD endpoints.
+/// A clarification question the AI agent asks before generating content.
+class AiClarification extends Equatable {
+  const AiClarification({required this.id, required this.question, this.options = const []});
+  final String id;
+  final String question;
+  final List<String> options;
+
+  factory AiClarification.fromJson(Map<dynamic, dynamic> j) => AiClarification(
+        id: j.str(['id', 'key', '_id']),
+        question: j.str(['question', 'text', 'label']),
+        options: j.listAt(['options', 'choices']).map((e) => e.toString()).toList(),
+      );
+
+  @override
+  List<Object?> get props => [id, question, options];
+}
+
+/// Result of a teacher content-generation request. Either the agent needs
+/// clarification (carry [sessionId] back via `continueSession`) or it returns
+/// generated [content] addressable by [generationId] (for PDF export).
+class AiGenerationResult extends Equatable {
+  const AiGenerationResult({
+    this.needsClarification = false,
+    this.clarifications = const [],
+    this.message = '',
+    this.content,
+    this.sessionId,
+    this.generationId,
+  });
+
+  final bool needsClarification;
+  final List<AiClarification> clarifications;
+  final String message;
+  final Map<String, dynamic>? content;
+  final String? sessionId;
+  final String? generationId;
+
+  factory AiGenerationResult.fromJson(Map<dynamic, dynamic> j) {
+    final clar = j.listAt(['clarificationQuestions', 'clarifications', 'questions'])
+        .whereType<Map>()
+        .map(AiClarification.fromJson)
+        .toList();
+    final rawContent = j['content'] ?? j['generation'] ?? j['result'];
+    return AiGenerationResult(
+      needsClarification:
+          j.boolean(['needsClarification']) || clar.isNotEmpty,
+      clarifications: clar,
+      message: j.str(['message', 'answer', 'text']),
+      content: rawContent is Map ? Map<String, dynamic>.from(rawContent) : null,
+      sessionId: j.str(['sessionId']).isNotEmpty ? j.str(['sessionId']) : null,
+      generationId: j.str(['generationId', '_id']).isNotEmpty
+          ? j.str(['generationId', '_id'])
+          : null,
+    );
+  }
+
+  @override
+  List<Object?> get props =>
+      [needsClarification, clarifications, message, content, sessionId, generationId];
+}
+
+/// Talks to the AI assistant: single-shot ask, SSE streaming, the
+/// conversation CRUD endpoints, and the teacher content-generation tool.
 class AiAssistantRepository {
   AiAssistantRepository(this._dio);
   final Dio _dio;
@@ -148,5 +209,78 @@ class AiAssistantRepository {
       guardEither(() async {
         await _dio.delete(Endpoints.aiConversation(conversationId));
         return unit;
+      });
+
+  // ---- Teacher content generation -----------------------------------------
+
+  static const _genTimeout = Duration(seconds: 600);
+
+  /// Processes a teacher prompt (e.g. "Create a quiz on Newton's Laws"). The
+  /// agent may return generated content or a set of clarification questions.
+  /// Mirrors React `aiAssistantApi.processRequest`.
+  Future<Either<Failure, AiGenerationResult>> processRequest({
+    required String prompt,
+    Map<String, dynamic>? responses,
+    String? sessionId,
+  }) =>
+      guardEither(() async {
+        final res = await _dio.post(
+          Endpoints.aiProcess,
+          data: {
+            'prompt': prompt,
+            if (responses != null) 'responses': responses,
+            if (sessionId != null) 'sessionId': sessionId,
+          },
+          options: Options(receiveTimeout: _genTimeout, sendTimeout: _genTimeout),
+        );
+        return AiGenerationResult.fromJson(res.dataMap());
+      });
+
+  /// Continues a clarification session with answers. Mirrors React
+  /// `aiAssistantApi.continueSession`.
+  Future<Either<Failure, AiGenerationResult>> continueSession({
+    required String sessionId,
+    required Map<String, dynamic> responses,
+  }) =>
+      guardEither(() async {
+        final res = await _dio.post(
+          Endpoints.aiContinue,
+          data: {'sessionId': sessionId, 'responses': responses},
+          options: Options(receiveTimeout: _genTimeout, sendTimeout: _genTimeout),
+        );
+        return AiGenerationResult.fromJson(res.dataMap());
+      });
+
+  /// Classes the teacher can generate content for.
+  Future<Either<Failure, List<dynamic>>> getTeacherClasses() =>
+      guardEither(() async {
+        final res = await _dio.get(Endpoints.aiClasses);
+        return res.dataList(['classes']);
+      });
+
+  /// Available AI tasks (quiz, paper, assignment, …).
+  Future<Either<Failure, List<dynamic>>> getAvailableTasks() =>
+      guardEither(() async {
+        final res = await _dio.get(Endpoints.aiTasks);
+        return res.dataList(['tasks']);
+      });
+
+  /// AI service health check.
+  Future<Either<Failure, bool>> checkHealth() => guardEither(() async {
+        final res = await _dio.get(Endpoints.aiHealth);
+        final d = res.dataMap();
+        final status = d.str(['status']);
+        return d.boolean(['healthy', 'ok'], status.toLowerCase() == 'ok' ||
+            status.toLowerCase() == 'healthy');
+      });
+
+  /// Downloads a generated artefact as PDF bytes (mirrors React `downloadPDF`).
+  Future<Either<Failure, List<int>>> downloadPdf(String generationId) =>
+      guardEither(() async {
+        final res = await _dio.get<List<int>>(
+          Endpoints.aiExport(generationId),
+          options: Options(responseType: ResponseType.bytes),
+        );
+        return res.data ?? const <int>[];
       });
 }

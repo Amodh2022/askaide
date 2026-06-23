@@ -21,12 +21,23 @@ class TeacherAssignment extends Equatable {
   final String className;
   final int studentCount;
 
-  factory TeacherAssignment.fromJson(Map<dynamic, dynamic> j) => TeacherAssignment(
-        subjectId: j.str(['subjectId', '_id', 'id']),
-        subjectName: j.str(['subjectName', 'name'], 'Subject'),
-        className: j.str(['className', 'class'], ''),
-        studentCount: j.intval(['studentCount', 'students']),
-      );
+  factory TeacherAssignment.fromJson(Map<dynamic, dynamic> j) {
+    // The backend nests classes under `classes:[{className,...}]`; derive a
+    // readable label from the first/joined class names when present.
+    final classes = j.listAt(['classes']).whereType<Map>().toList();
+    final classNames = classes
+        .map((c) => c.str(['className', 'name']))
+        .where((s) => s.isNotEmpty)
+        .toList();
+    return TeacherAssignment(
+      subjectId: j.str(['subjectId', '_id', 'id']),
+      subjectName: j.str(['subjectName', 'name'], 'Subject'),
+      className: classNames.isNotEmpty
+          ? classNames.join(', ')
+          : j.str(['className', 'class'], ''),
+      studentCount: j.intval(['totalStudents', 'studentCount', 'students']),
+    );
+  }
 
   @override
   List<Object?> get props => [subjectId, subjectName, className, studentCount];
@@ -44,12 +55,20 @@ class SubjectDashboard extends Equatable {
   final double avgMastery; // 0..1
   final double avgCoverage; // 0..1
 
-  factory SubjectDashboard.fromJson(Map<dynamic, dynamic> j) => SubjectDashboard(
-        subjectName: j.str(['subjectName', 'name']),
-        studentCount: j.intval(['studentCount']),
-        avgMastery: _frac(j.dbl(['avgMastery', 'mastery'])),
-        avgCoverage: _frac(j.dbl(['avgCoverage', 'coverage'])),
-      );
+  factory SubjectDashboard.fromJson(Map<dynamic, dynamic> j) {
+    // Real shape: { subject:{name}, overview:{totalStudents, avgSubjectMastery,
+    // avgSubjectCoverage, ...} }. Fall back to a flat shape for tolerance.
+    final subject = j['subject'] is Map ? j['subject'] as Map : const {};
+    final o = j['overview'] is Map ? j['overview'] as Map : j;
+    return SubjectDashboard(
+      subjectName: subject.str(['name']).isNotEmpty
+          ? subject.str(['name'])
+          : j.str(['subjectName', 'name']),
+      studentCount: o.intval(['totalStudents', 'studentCount']),
+      avgMastery: _frac(o.dbl(['avgSubjectMastery', 'avgMastery', 'mastery'])),
+      avgCoverage: _frac(o.dbl(['avgSubjectCoverage', 'avgCoverage', 'coverage'])),
+    );
+  }
 
   @override
   List<Object?> get props => [subjectName, studentCount, avgMastery, avgCoverage];
@@ -70,10 +89,11 @@ class StudentRow extends Equatable {
   final String status;
 
   factory StudentRow.fromJson(Map<dynamic, dynamic> j) => StudentRow(
-        id: j.str(['_id', 'id', 'studentId']),
+        id: j.str(['studentId', '_id', 'id']),
         name: j.str(['name', 'studentName'], 'Student'),
-        mastery: _frac(j.dbl(['mastery'])),
-        questionsAttempted: j.intval(['questionsAttempted']),
+        mastery: _frac(j.dbl(['subjectMastery', 'mastery'])),
+        questionsAttempted:
+            j.intval(['chaptersCompleted', 'questionsAttempted']),
         status: j.str(['status'], ''),
       );
 
@@ -89,8 +109,8 @@ class WeakTopicRow extends Equatable {
 
   factory WeakTopicRow.fromJson(Map<dynamic, dynamic> j) => WeakTopicRow(
         name: j.str(['topicName', 'name'], 'Topic'),
-        mastery: _frac(j.dbl(['mastery'])),
-        studentCount: j.intval(['studentCount']),
+        mastery: _frac(j.dbl(['avgMastery', 'mastery'])),
+        studentCount: j.intval(['studentsWeak', 'studentCount']),
       );
 
   @override
@@ -103,11 +123,17 @@ class ActivityItem extends Equatable {
   final String action;
   final String timestamp;
 
-  factory ActivityItem.fromJson(Map<dynamic, dynamic> j) => ActivityItem(
-        studentName: j.str(['studentName', 'name'], 'Student'),
-        action: j.str(['action', 'description'], 'practised'),
-        timestamp: j.str(['timestamp', 'createdAt']),
-      );
+  factory ActivityItem.fromJson(Map<dynamic, dynamic> j) {
+    // Real shape: { type, student:{name}, timestamp, ... }.
+    final student = j['student'] is Map ? j['student'] as Map : const {};
+    final studentName = student.str(['name']);
+    return ActivityItem(
+      studentName:
+          studentName.isNotEmpty ? studentName : j.str(['studentName', 'name'], 'Student'),
+      action: j.str(['type', 'action', 'description'], 'practised'),
+      timestamp: j.str(['timestamp', 'createdAt']),
+    );
+  }
 
   @override
   List<Object?> get props => [studentName, action, timestamp];
@@ -119,22 +145,75 @@ class StudentProgressData extends Equatable {
   final double overallMastery;
   final List<WeakTopicRow> chapters;
 
-  factory StudentProgressData.fromJson(Map<dynamic, dynamic> j) => StudentProgressData(
-        studentName: j.str(['studentName', 'name']),
-        overallMastery: _frac(j.dbl(['overallMastery', 'mastery'])),
-        chapters: j
-            .listAt(['chapterProgress', 'chapters'])
-            .whereType<Map>()
-            .map((m) => WeakTopicRow(
-                  name: m.str(['chapterName', 'name'], 'Chapter'),
-                  mastery: _frac(m.dbl(['mastery'])),
-                  studentCount: m.intval(['questionsAttempted']),
-                ))
-            .toList(),
-      );
+  factory StudentProgressData.fromJson(Map<dynamic, dynamic> j) {
+    // Real shape: { student:{name}, subjectSummary:{overallMastery,...},
+    // chapters:[{name, mastery, coverage, ...}] }.
+    final student = j['student'] is Map ? j['student'] as Map : const {};
+    final summary =
+        j['subjectSummary'] is Map ? j['subjectSummary'] as Map : j;
+    final studentName = student.str(['name']);
+    return StudentProgressData(
+      studentName:
+          studentName.isNotEmpty ? studentName : j.str(['studentName', 'name']),
+      overallMastery: _frac(summary.dbl(['overallMastery', 'mastery'])),
+      chapters: j
+          .listAt(['chapters', 'chapterProgress'])
+          .whereType<Map>()
+          .map((m) => WeakTopicRow(
+                name: m.str(['name', 'chapterName'], 'Chapter'),
+                mastery: _frac(m.dbl(['mastery'])),
+                studentCount: m.intval(['coverage', 'questionsAttempted']),
+              ))
+          .toList(),
+    );
+  }
 
   @override
   List<Object?> get props => [studentName, overallMastery, chapters];
+}
+
+/// Chapter-level analytics for a subject (mirrors React `getChapterAnalytics`).
+class ChapterAnalytics extends Equatable {
+  const ChapterAnalytics({
+    this.chapterName = '',
+    this.avgMastery = 0,
+    this.avgCoverage = 0,
+    this.studentsAttempted = 0,
+    this.topics = const [],
+  });
+  final String chapterName;
+  final double avgMastery; // 0..1
+  final double avgCoverage; // 0..1
+  final int studentsAttempted;
+  final List<WeakTopicRow> topics;
+
+  factory ChapterAnalytics.fromJson(Map<dynamic, dynamic> j) {
+    // Real shape: { chapter:{name}, overview:{classAvgMastery, classAvgCoverage,
+    // totalTopics}, topics:[{name, classAvgMastery, studentsAttempted, ...}] }.
+    final chapter = j['chapter'] is Map ? j['chapter'] as Map : const {};
+    final o = j['overview'] is Map ? j['overview'] as Map : j;
+    return ChapterAnalytics(
+      chapterName: chapter.str(['name']).isNotEmpty
+          ? chapter.str(['name'])
+          : j.str(['chapterName', 'name']),
+      avgMastery: _frac(o.dbl(['classAvgMastery', 'avgMastery', 'mastery'])),
+      avgCoverage: _frac(o.dbl(['classAvgCoverage', 'avgCoverage', 'coverage'])),
+      studentsAttempted: o.intval(['studentsAttempted', 'studentCount']),
+      topics: j
+          .listAt(['topics', 'topicBreakdown'])
+          .whereType<Map>()
+          .map((m) => WeakTopicRow(
+                name: m.str(['name', 'topicName'], 'Topic'),
+                mastery: _frac(m.dbl(['classAvgMastery', 'avgMastery', 'mastery'])),
+                studentCount: m.intval(['studentsAttempted', 'studentsWeak', 'studentCount']),
+              ))
+          .toList(),
+    );
+  }
+
+  @override
+  List<Object?> get props =>
+      [chapterName, avgMastery, avgCoverage, studentsAttempted, topics];
 }
 
 double _frac(double v) => v > 1 ? v / 100 : v;
@@ -164,24 +243,63 @@ class TeacherRepository {
       });
 
   Future<Either<Failure, List<StudentRow>>> students(
-          String teacherId, String subjectId) =>
+          String teacherId, String subjectId,
+          {String? classId,
+          String? sectionId,
+          String? status,
+          String? sortBy,
+          String? order}) =>
       guardEither(() async {
-        final res = await _dio.get(Endpoints.teacherStudentsList(teacherId, subjectId));
+        final res = await _dio.get(
+          Endpoints.teacherStudentsList(teacherId, subjectId),
+          queryParameters: {
+            if (classId != null) 'classId': classId,
+            if (sectionId != null) 'sectionId': sectionId,
+            if (status != null) 'status': status,
+            if (sortBy != null) 'sortBy': sortBy,
+            if (order != null) 'order': order,
+          },
+        );
         return res.dataList(['students']).whereType<Map>().map(StudentRow.fromJson).toList();
       });
 
   Future<Either<Failure, List<WeakTopicRow>>> weakTopics(
-          String teacherId, String subjectId) =>
+          String teacherId, String subjectId,
+          {String? classId, String? sectionId, double? threshold}) =>
       guardEither(() async {
-        final res = await _dio.get(Endpoints.teacherWeakTopics(teacherId, subjectId));
+        final res = await _dio.get(
+          Endpoints.teacherWeakTopics(teacherId, subjectId),
+          queryParameters: {
+            if (classId != null) 'classId': classId,
+            if (sectionId != null) 'sectionId': sectionId,
+            if (threshold != null) 'threshold': threshold,
+          },
+        );
         return res.dataList(['weakTopics']).whereType<Map>().map(WeakTopicRow.fromJson).toList();
       });
 
   Future<Either<Failure, List<ActivityItem>>> activity(
-          String teacherId, String subjectId) =>
+          String teacherId, String subjectId, {int limit = 20}) =>
       guardEither(() async {
-        final res = await _dio.get(Endpoints.teacherActivity(teacherId, subjectId));
+        final res = await _dio.get(
+          Endpoints.teacherActivity(teacherId, subjectId),
+          queryParameters: {'limit': limit},
+        );
         return res.dataList(['activities']).whereType<Map>().map(ActivityItem.fromJson).toList();
+      });
+
+  Future<Either<Failure, ChapterAnalytics>> chapterAnalytics(
+          String teacherId, String subjectId, String chapterId,
+          {String? classId, String? sectionId}) =>
+      guardEither(() async {
+        final res = await _dio.get(
+          Endpoints.teacherChapterAnalytics(teacherId, subjectId, chapterId),
+          queryParameters: {
+            if (classId != null) 'classId': classId,
+            if (sectionId != null) 'sectionId': sectionId,
+          },
+        );
+        return ChapterAnalytics.fromJson(res.dataMap());
       });
 
   Future<Either<Failure, StudentProgressData>> studentProgress(

@@ -12,20 +12,31 @@ class Endpoints {
   static const String resetPassword = '/authenticate/reset-password';
 
   // ---- PROFILE -----------------------------------------------------------
-  static const String getUserDetails = '/profile/getUserDetails';
-  static const String updateDisplayPicture = '/profile/updateDisplayPicture';
-  static const String updateProfile = '/profile/updateProfile';
-  static const String deleteProfile = '/profile/deleteProfile';
-  static const String deleteProfilePhoto = '/profile/deleteProfilePhoto';
-  static const String changePassword = '/auth/changepassword';
+  static const String getUserDetails = '/profile/details';
+  static const String updateDisplayPicture = '/profile/display-picture';
+  static const String updateProfile = '/profile/update';
+  static const String deleteProfile = '/profile/delete';
+  static const String deleteProfilePhoto = '/profile/display-picture';
+  static const String changePassword = '/authenticate/changepassword';
 
   // ---- STUDY -------------------------------------------------------------
   static const String studyConfiguration = '/study/configuration';
   static const String sessions = '/sessions';
-  static const String userAnswers = '/user-answers';
+  static const String userAnswers = '/user-answers/batch';
 
   /// Post-session Net Promoter Score survey (mirrors React `submitNps`).
   static const String sessionFeedbackNps = '/session-feedback/nps';
+  static const String sessionFeedbackReaction = '/session-feedback/reaction';
+  static String npsEligibility(String userId) =>
+      '/session-feedback/nps/check/$userId';
+
+  /// Closes a server-side session (mirrors React `endSession`).
+  static String sessionEnd(String sessionId) => '/sessions/$sessionId/end';
+  static String sessionShare(String sessionId) => '/sessions/$sessionId/share';
+  static String dailyChallengeComplete(String userId) =>
+      '/daily-challenge/$userId/complete';
+  static String streakUseFreeze(String userId) => '/streaks/$userId/use-freeze';
+  static const String badgesCheck = '/badges/check';
 
   static String topics(String classId, String subjectId) =>
       '/topics/class/$classId/subject/$subjectId';
@@ -60,23 +71,28 @@ class Endpoints {
   static const String school = '/school';
   static const String teacher = '/teacher';
   static const String teacherGetAll = '/teacher/get-all';
-  static const String teachersBulk = '/teachers/bulk';
   static const String student = '/student';
   static const String studentGetAll = '/student/get-all';
   static const String studentCreate = '/student/create';
   static const String teacherStudents = '/teacher-students';
+  static const String teacherStudentsBulk = '/teacher-students/bulk';
   static const String classes = '/classes';
   static String subjectsByClass(String classId) => '/subjects/class/$classId';
 
-  // ---- QUIZ --------------------------------------------------------------
-  static const String quizzes = '/quizzes';
-  static String quizAttempt(String quizId) => '/quizzes/$quizId/attempt';
-  static String quizResult(String attemptId) => '/quizzes/result/$attemptId';
-  static const String quizHistory = '/quizzes/history';
+  // Single-record mutations (PUT/DELETE by id).
+  static String schoolById(String id) => '/school/$id';
+  static String teacherById(String id) => '/teacher/$id';
+
+  // ---- SECTIONS ----------------------------------------------------------
+  static const String sections = '/sections';
+  static const String sectionsBulk = '/sections/bulk';
+  static String sectionsBySchool(String schoolId) => '/sections/school/$schoolId';
+  static String sectionsByClass(String schoolId, String classId) =>
+      '/sections/school/$schoolId/class/$classId';
+  static String sectionById(String sectionId) => '/sections/$sectionId';
 
   // ---- QUESTION PAPER ----------------------------------------------------
   static const String questionPaper = '/question-paper';
-  static const String questionPaperPdf = '/question-paper/pdf';
 
   // ---- DASHBOARDS / MISC -------------------------------------------------
   static const String teacherDashboard = '/teacher-dashboard';
@@ -101,7 +117,6 @@ class Endpoints {
   static const String quizStudentAvailable = '/quiz/student/available';
   static const String quizStudentHistory = '/quiz/student/history';
   static String quizStart(String quizId) => '/quiz/$quizId/start';
-  static String quizInProgress(String quizId) => '/quiz/$quizId/in-progress';
   static String quizAttemptAnswer(String attemptId) =>
       '/quiz/attempt/$attemptId/answer';
   static String quizAttemptSubmit(String attemptId) =>
@@ -112,7 +127,6 @@ class Endpoints {
 
   // ---- REFERRAL / GOALS --------------------------------------------------
   static const String referralMyCode = '/referral/my-code';
-  static String referralRedeem(String code) => '/referral/redeem/$code';
   static const String goals = '/goals';
 
   // ---- QUESTION PAPER ----------------------------------------------------
@@ -135,6 +149,9 @@ class Endpoints {
       '/teacher-dashboard/$teacherId/subject/$subjectId/weak-topics';
   static String teacherActivity(String teacherId, String subjectId) =>
       '/teacher-dashboard/$teacherId/subject/$subjectId/activity';
+  static String teacherChapterAnalytics(
+          String teacherId, String subjectId, String chapterId) =>
+      '/teacher-dashboard/$teacherId/subject/$subjectId/chapter/$chapterId/analytics';
   static String teacherStudentProgress(
           String teacherId, String studentId, String subjectId) =>
       '/teacher-dashboard/$teacherId/student/$studentId/subject/$subjectId/progress';
@@ -143,9 +160,27 @@ class Endpoints {
   static const String parentChildren = '/parent-dashboard/children';
   static String parentChildOverview(String childId) =>
       '/parent-dashboard/child/$childId/overview';
+  static String parentChildSubjectProgress(String childId, String subjectId) =>
+      '/parent-dashboard/child/$childId/subject/$subjectId/progress';
+  static String parentChildWeakTopics(String childId, String subjectId) =>
+      '/parent-dashboard/child/$childId/subject/$subjectId/weak-topics';
+  static String parentChildActivity(String childId) =>
+      '/parent-dashboard/child/$childId/activity';
+
+  // ---- PARENT-STUDENT LINKING --------------------------------------------
+  static const String parentStudents = '/parent-students';
+  static const String parentStudentsBulk = '/parent-students/bulk';
+  static String parentStudentUnlink(String studentId) =>
+      '/parent-students/unlink/$studentId';
 
   // ---- AI ASSISTANT ------------------------------------------------------
   static const String aiProcess = '/ai-assistant';
+  static const String aiContinue = '/ai-assistant/continue';
+  static const String aiClasses = '/ai-assistant/classes';
+  static const String aiTasks = '/ai-assistant/tasks';
+  static const String aiHealth = '/ai-assistant/health';
+  static String aiExport(String generationId) =>
+      '/ai-assistant/export/$generationId';
   static const String aiConversations = '/ai-assistant/conversations';
   static String aiConversationMessages(String id) =>
       '/ai-assistant/conversations/$id/messages';

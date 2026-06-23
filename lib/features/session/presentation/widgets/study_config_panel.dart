@@ -154,8 +154,16 @@ class StudyConfigPanel extends StatelessWidget {
                           _StartButton(
                             enabled: cfg.isComplete,
                             loading: state.questionStatus == LoadStatus.loading,
-                            onPressed: () =>
-                                context.read<SessionBloc>().add(const PracticeStarted()),
+                            onPressed: () => context.read<SessionBloc>().add(
+                                  PracticeStarted(
+                                    userId: context
+                                            .read<ProfileCubit>()
+                                            .state
+                                            .user
+                                            ?.id ??
+                                        '',
+                                  ),
+                                ),
                           ),
                         ],
                       ],

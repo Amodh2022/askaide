@@ -28,6 +28,8 @@ class UserAnswer extends Equatable {
         synced: synced ?? this.synced,
       );
 
+  /// Local (Hive) serialization — keeps queue-only fields (`answeredAt`,
+  /// `synced`) used by the offline answer queue.
   Map<String, dynamic> toJson() => {
         'questionId': questionId,
         'sessionId': sessionId,
@@ -35,6 +37,18 @@ class UserAnswer extends Equatable {
         'isCorrect': isCorrect,
         'answeredAt': answeredAtMillis,
         'synced': synced,
+      };
+
+  /// Wire payload for `POST /user-answers/batch`. The backend records the
+  /// chosen answer under `selectedAnswer`/`selectedOption` (the React client
+  /// sends both) — not `answer` — so emit those keys and drop the local-only
+  /// queue fields (`answeredAt`, `synced`).
+  Map<String, dynamic> toWireJson() => {
+        'questionId': questionId,
+        'sessionId': sessionId,
+        'selectedAnswer': answer,
+        'selectedOption': answer,
+        'isCorrect': isCorrect,
       };
 
   factory UserAnswer.fromJson(Map<String, dynamic> json) => UserAnswer(

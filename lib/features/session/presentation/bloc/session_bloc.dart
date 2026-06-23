@@ -193,7 +193,34 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   ) async {
     if (!state.config.isComplete) return;
     final cfg = state.config;
-    final sessionId = 'sess_${_now()}';
+    _pending.clear();
+    // Switch to the practice panel in a loading state while we create the
+    // server-side session and fetch the first batch.
+    emit(state.copyWith(
+      panel: SessionPanel.practice,
+      sessionStarted: true,
+      questions: const [],
+      currentIndex: 0,
+      answers: const {},
+      clearFeedback: true,
+      questionStatus: LoadStatus.loading,
+    ));
+
+    // The question-batch endpoint validates the session id as a MongoDB
+    // ObjectId, so create the session on the backend first and use the id it
+    // returns rather than a locally generated one.
+    final created =
+        await _repository.createSession(config: cfg, userId: e.userId);
+    final sessionId = created.fold((_) => '', (id) => id);
+    if (sessionId.isEmpty) {
+      emit(state.copyWith(
+        questionStatus: LoadStatus.failure,
+        errorMessage:
+            created.fold((f) => f.message, (_) => 'Could not start session'),
+      ));
+      return;
+    }
+
     final session = StudySession(
       id: sessionId,
       className: cfg.selectedClass?.name ?? '',
@@ -203,17 +230,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       difficulty: cfg.difficulty,
       startedAtMillis: _now(),
     );
-    _pending.clear();
-    emit(state.copyWith(
-      panel: SessionPanel.practice,
-      sessionStarted: true,
-      activeSession: session,
-      questions: const [],
-      currentIndex: 0,
-      answers: const {},
-      clearFeedback: true,
-      questionStatus: LoadStatus.loading,
-    ));
+    emit(state.copyWith(activeSession: session));
     await _loadBatch(emit);
   }
 

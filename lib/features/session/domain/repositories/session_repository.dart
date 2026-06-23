@@ -18,6 +18,15 @@ abstract class SessionRepository {
     String subjectId,
   );
 
+  // --- Remote session lifecycle ---
+  /// Creates a server-side study session and returns its MongoDB ObjectId.
+  /// The question-batch endpoint validates the session id as an ObjectId, so a
+  /// real session must be created first. Mirrors React's `studyApi.startSession`.
+  Future<Either<Failure, String>> createSession({
+    required StudyConfig config,
+    required String userId,
+  });
+
   // --- Questions (batched, with AI fallback + retries handled in impl) ---
   Future<Either<Failure, List<Question>>> fetchQuestionBatch({
     required StudyConfig config,
@@ -39,6 +48,37 @@ abstract class SessionRepository {
     required String userId,
     required int npsScore,
     String? comment,
+  });
+
+  /// Closes the server-side session with the final score (React `endSession`).
+  Future<Either<Failure, Unit>> endSession({
+    required String sessionId,
+    required int score,
+    required int totalQuestions,
+  });
+
+  /// Submits an emoji reaction after a session (React `submitSessionReaction`).
+  Future<Either<Failure, Unit>> submitSessionReaction(Map<String, dynamic> data);
+
+  /// Whether the post-session NPS survey should be shown for [userId].
+  Future<Either<Failure, bool>> checkNpsEligibility(String userId);
+
+  /// Completes today's daily challenge with the given answers.
+  Future<Either<Failure, Map<String, dynamic>>> completeDailyChallenge({
+    required String userId,
+    required List<Map<String, dynamic>> answers,
+  });
+
+  /// Spends one streak freeze for [userId].
+  Future<Either<Failure, Unit>> useStreakFreeze(String userId);
+
+  /// Share-card payload for a completed session (null when unavailable).
+  Future<Either<Failure, Map<String, dynamic>?>> getShareCard(String sessionId);
+
+  /// Returns ids of badges newly earned after a session.
+  Future<Either<Failure, List<dynamic>>> checkNewBadges({
+    required String userId,
+    required Map<String, dynamic> sessionData,
   });
 
   // --- Local session history ---

@@ -16,8 +16,9 @@ class AdminRecord extends Equatable {
 
   factory AdminRecord.school(Map<dynamic, dynamic> j) => AdminRecord(
         id: j.str(['_id', 'id']),
-        name: j.str(['name', 'schoolName'], 'School'),
-        subtitle: j.str(['address', 'city']),
+        name: j.str(['schoolName', 'name'], 'School'),
+        // Schools expose `schoolCode` as the secondary label (no address field).
+        subtitle: j.str(['schoolCode', 'address', 'city']),
       );
 
   factory AdminRecord.person(Map<dynamic, dynamic> j) => AdminRecord(
@@ -30,7 +31,8 @@ class AdminRecord extends Equatable {
 
   factory AdminRecord.named(Map<dynamic, dynamic> j) => AdminRecord(
         id: j.str(['_id', 'id']),
-        name: j.str(['name', 'topicName', 'chapterName'], 'Item'),
+        // Sections expose `displayName`; classes/topics use `name`.
+        name: j.str(['displayName', 'name', 'topicName', 'chapterName'], 'Item'),
       );
 
   factory AdminRecord.chapter(Map<dynamic, dynamic> j) {
@@ -43,8 +45,14 @@ class AdminRecord extends Equatable {
   }
 
   factory AdminRecord.link(Map<dynamic, dynamic> j) {
-    final teacher = j['teacher'] is Map ? j['teacher'] as Map : const {};
-    final student = j['student'] is Map ? j['student'] as Map : const {};
+    // Populated link refs come back snake_case (`teacher_id`/`student_id`) with
+    // a single `name`; tolerate the camelCase/first+last shape too.
+    final teacher = j['teacher_id'] is Map
+        ? j['teacher_id'] as Map
+        : (j['teacher'] is Map ? j['teacher'] as Map : const {});
+    final student = j['student_id'] is Map
+        ? j['student_id'] as Map
+        : (j['student'] is Map ? j['student'] as Map : const {});
     String nameOf(Map m, String fallback) {
       final n = [m.str(['firstName']), m.str(['lastName'])].where((s) => s.isNotEmpty).join(' ');
       return n.isEmpty ? m.str(['name', 'email'], fallback) : n;
@@ -88,53 +96,106 @@ class AdminRepository {
         return res.dataList().whereType<Map>().map(AdminRecord.person).toList();
       });
 
-  Future<Either<Failure, Unit>> createSchool(String name, String address) =>
+  Future<Either<Failure, Unit>> createSchool(
+          String name, String code, String address) =>
       guardEither(() async {
-        await _dio.post(Endpoints.school, data: {'name': name, 'address': address});
+        await _dio.post(Endpoints.school, data: {
+          'schoolName': name,
+          if (code.isNotEmpty) 'schoolCode': code,
+          if (address.isNotEmpty) 'schoolAddress': address,
+        });
         return unit;
       });
 
+  /// Creates a teacher. The backend accepts a bulk **array** of teacher
+  /// objects on `POST /teacher` (mirrors React `createTeacher`).
   Future<Either<Failure, Unit>> createTeacher(
-          String firstName, String lastName, String email, String schoolId) =>
+          String name, String email, String password, String phone, String schoolId) =>
       guardEither(() async {
-        await _dio.post(Endpoints.teacher, data: {
-          'firstName': firstName,
-          'lastName': lastName,
-          'email': email,
-          'schoolId': schoolId,
-        });
+        await _dio.post(Endpoints.teacher, data: [
+          {
+            'name': name,
+            'email': email,
+            'password': password,
+            if (phone.isNotEmpty) 'phone': phone,
+            'schoolId': schoolId,
+          }
+        ]);
         return unit;
       });
 
+  /// Creates a student. `POST /student/create` accepts a bulk **array** of
+  /// student objects (mirrors React `createStudent`).
   Future<Either<Failure, Unit>> createStudent(
-          String firstName, String lastName, String email, String schoolId) =>
+          String name, String email, String password, String phone, String schoolId) =>
       guardEither(() async {
-        await _dio.post(Endpoints.studentCreate, data: {
-          'firstName': firstName,
-          'lastName': lastName,
-          'email': email,
-          'schoolId': schoolId,
-        });
+        await _dio.post(Endpoints.studentCreate, data: [
+          {
+            'name': name,
+            'email': email,
+            'password': password,
+            if (phone.isNotEmpty) 'phone': phone,
+            'schoolId': schoolId,
+          }
+        ]);
         return unit;
       });
 
   Future<Either<Failure, List<AdminRecord>>> sections(String schoolId) =>
       guardEither(() async {
-        final res = await _dio.get('/sections/school/$schoolId');
+        final res = await _dio.get(Endpoints.sectionsBySchool(schoolId));
         return res.dataList().whereType<Map>().map(AdminRecord.named).toList();
       });
 
-  Future<Either<Failure, Unit>> createSection(String name, String schoolId) =>
+  Future<Either<Failure, Unit>> createSection(String name, String schoolId,
+          {String? classId, int? maxStrength}) =>
       guardEither(() async {
-        await _dio.post('/sections', data: {'name': name, 'schoolId': schoolId});
+        await _dio.post(Endpoints.sections, data: {
+          'schoolId': schoolId,
+          if (classId != null) 'classId': classId,
+          'name': name,
+          if (maxStrength != null) 'maxStrength': maxStrength,
+        });
+        return unit;
+      });
+
+  Future<Either<Failure, Unit>> bulkCreateSections(Map<String, dynamic> data) =>
+      guardEither(() async {
+        await _dio.post(Endpoints.sectionsBulk, data: data);
+        return unit;
+      });
+
+  Future<Either<Failure, List<AdminRecord>>> sectionsByClass(
+          String schoolId, String classId) =>
+      guardEither(() async {
+        final res = await _dio.get(Endpoints.sectionsByClass(schoolId, classId));
+        return res.dataList().whereType<Map>().map(AdminRecord.named).toList();
+      });
+
+  Future<Either<Failure, AdminRecord>> sectionById(String sectionId) =>
+      guardEither(() async {
+        final res = await _dio.get(Endpoints.sectionById(sectionId));
+        return AdminRecord.named(res.dataMap());
+      });
+
+  Future<Either<Failure, Unit>> updateSection(
+          String sectionId, Map<String, dynamic> data) =>
+      guardEither(() async {
+        await _dio.put(Endpoints.sectionById(sectionId), data: data);
         return unit;
       });
 
   Future<Either<Failure, Unit>> deleteSection(String id) =>
-      guardEither(() async { await _dio.delete('/sections/$id'); return unit; });
+      guardEither(() async { await _dio.delete(Endpoints.sectionById(id)); return unit; });
+
+  Future<Either<Failure, Unit>> updateSchool(String id, Map<String, dynamic> data) =>
+      guardEither(() async { await _dio.put(Endpoints.schoolById(id), data: data); return unit; });
+
+  Future<Either<Failure, Unit>> updateTeacher(String id, Map<String, dynamic> data) =>
+      guardEither(() async { await _dio.put(Endpoints.teacherById(id), data: data); return unit; });
 
   Future<Either<Failure, Unit>> deleteTeacher(String id) =>
-      guardEither(() async { await _dio.delete('/teacher/$id'); return unit; });
+      guardEither(() async { await _dio.delete(Endpoints.teacherById(id)); return unit; });
 
   // ---- Curriculum (Chapters / Topics / Upload) --------------------------
 
@@ -190,17 +251,30 @@ class AdminRepository {
         return res.dataList().whereType<Map>().map(AdminRecord.link).toList();
       });
 
+  /// Bulk-links a teacher to students. The backend expects snake_case link
+  /// objects under `data`, one per student (mirrors React `LinkManagement`):
+  /// `{ data: [{ school_id, teacher_id, student_id, class_id?, section_id?,
+  /// _subject_id? }] }`.
   Future<Either<Failure, Unit>> createTeacherStudentLink(
           {required String schoolId,
           required String teacherId,
           required List<String> studentIds,
-          String? sectionId}) =>
+          String? sectionId,
+          String? classId,
+          String? subjectId}) =>
       guardEither(() async {
-        await _dio.post('${Endpoints.teacherStudents}/bulk', data: {
-          'schoolId': schoolId,
-          'teacherId': teacherId,
-          'studentIds': studentIds,
-          if (sectionId != null) 'sectionId': sectionId,
+        await _dio.post(Endpoints.teacherStudentsBulk, data: {
+          'data': [
+            for (final studentId in studentIds)
+              {
+                'school_id': schoolId,
+                'teacher_id': teacherId,
+                'student_id': studentId,
+                if (classId != null) 'class_id': classId,
+                if (sectionId != null) 'section_id': sectionId,
+                if (subjectId != null) '_subject_id': subjectId,
+              }
+          ],
         });
         return unit;
       });
@@ -283,10 +357,11 @@ class AdminCubit extends Cubit<AdminState> {
     ));
   }
 
-  Future<bool> createSection(String name) async {
+  Future<bool> createSection(String name, {String? classId, int? maxStrength}) async {
     final schoolId = state.selectedSchoolId;
     if (schoolId == null) return false;
-    final r = await _repo.createSection(name, schoolId);
+    final r = await _repo.createSection(name, schoolId,
+        classId: classId, maxStrength: maxStrength);
     if (r.isRight()) { await selectSchool(schoolId); return true; }
     return false;
   }
@@ -303,8 +378,8 @@ class AdminCubit extends Cubit<AdminState> {
     if (schoolId != null) await selectSchool(schoolId);
   }
 
-  Future<bool> createSchool(String name, String address) async {
-    final r = await _repo.createSchool(name, address);
+  Future<bool> createSchool(String name, String code, String address) async {
+    final r = await _repo.createSchool(name, code, address);
     if (r.isRight()) {
       final list = await _repo.schools();
       emit(state.copyWith(schools: list.getOrElse(() => state.schools)));
@@ -313,10 +388,11 @@ class AdminCubit extends Cubit<AdminState> {
     return false;
   }
 
-  Future<bool> createTeacher(String first, String last, String email) async {
+  Future<bool> createTeacher(
+      String name, String email, String password, String phone) async {
     final schoolId = state.selectedSchoolId;
     if (schoolId == null) return false;
-    final r = await _repo.createTeacher(first, last, email, schoolId);
+    final r = await _repo.createTeacher(name, email, password, phone, schoolId);
     if (r.isRight()) {
       await selectSchool(schoolId);
       return true;
@@ -324,10 +400,11 @@ class AdminCubit extends Cubit<AdminState> {
     return false;
   }
 
-  Future<bool> createStudent(String first, String last, String email) async {
+  Future<bool> createStudent(
+      String name, String email, String password, String phone) async {
     final schoolId = state.selectedSchoolId;
     if (schoolId == null) return false;
-    final r = await _repo.createStudent(first, last, email, schoolId);
+    final r = await _repo.createStudent(name, email, password, phone, schoolId);
     if (r.isRight()) {
       await selectSchool(schoolId);
       return true;

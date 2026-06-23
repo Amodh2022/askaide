@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../data/public_stats_feature.dart';
+
+/// Formats a count as a compact "10,000+" style figure.
+String _fmtCount(int n) {
+  if (n <= 0) return '0';
+  final s = n.toString();
+  final buf = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+    buf.write(s[i]);
+  }
+  return '$buf+';
+}
 
 /// `/` — the marketing landing page. Hero ("Do the work, not the watching."),
 /// a live-stats row, primary CTAs, a "why practice beats watching" feature grid,
@@ -16,14 +31,17 @@ class LandingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: const [
-          _Hero(),
-          _TrustStrip(),
-          _Features(),
-          _CtaBand(),
-        ],
+    return BlocProvider<PublicStatsCubit>(
+      create: (_) => sl<PublicStatsCubit>()..load(),
+      child: SingleChildScrollView(
+        child: Column(
+          children: const [
+            _Hero(),
+            _TrustStrip(),
+            _Features(),
+            _CtaBand(),
+          ],
+        ),
       ),
     );
   }
@@ -81,8 +99,27 @@ class _Hero extends StatelessWidget {
                     const SizedBox(width: 6),
                     Text('LIVE', style: AppTypography.mono(c.success, size: 9)),
                   ]),
-                  _Stat(value: '63+', label: 'students learning'),
-                  _Stat(value: '10,000+', label: 'questions answered'),
+                  BlocBuilder<PublicStatsCubit, PublicStatsState>(
+                    builder: (context, s) {
+                      final loaded = s.status == StatsLoad.loaded;
+                      return Wrap(
+                        spacing: 28,
+                        runSpacing: 12,
+                        children: [
+                          _Stat(
+                            value: loaded ? _fmtCount(s.stats.totalStudents) : '63+',
+                            label: 'students learning',
+                          ),
+                          _Stat(
+                            value: loaded
+                                ? _fmtCount(s.stats.totalQuestionsAnswered)
+                                : '10,000+',
+                            label: 'questions answered',
+                          ),
+                        ],
+                      );
+                    },
+                  ),
                   Text('CBSE · ICSE · State',
                       style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 22, fontWeight: FontWeight.w500)),
                 ],

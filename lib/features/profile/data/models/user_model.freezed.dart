@@ -26,10 +26,13 @@ mixin _$UserModel {
   String? get lastName => throw _privateConstructorUsedError;
   String? get email => throw _privateConstructorUsedError;
   String? get image => throw _privateConstructorUsedError;
-  String? get accountType => throw _privateConstructorUsedError;
-  @JsonKey(name: 'school')
+  String? get accountType =>
+      throw _privateConstructorUsedError; // Backend has used both `schoolId` and `school`; accept either.
+  @JsonKey(readValue: _readSchoolId)
   String? get schoolId => throw _privateConstructorUsedError;
   String? get className => throw _privateConstructorUsedError;
+  String? get userName => throw _privateConstructorUsedError;
+  String? get grade => throw _privateConstructorUsedError;
 
   /// Serializes this UserModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -53,8 +56,10 @@ abstract class $UserModelCopyWith<$Res> {
       String? email,
       String? image,
       String? accountType,
-      @JsonKey(name: 'school') String? schoolId,
-      String? className});
+      @JsonKey(readValue: _readSchoolId) String? schoolId,
+      String? className,
+      String? userName,
+      String? grade});
 }
 
 /// @nodoc
@@ -80,6 +85,8 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
     Object? accountType = freezed,
     Object? schoolId = freezed,
     Object? className = freezed,
+    Object? userName = freezed,
+    Object? grade = freezed,
   }) {
     return _then(_value.copyWith(
       id: freezed == id
@@ -114,6 +121,14 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
           ? _value.className
           : className // ignore: cast_nullable_to_non_nullable
               as String?,
+      userName: freezed == userName
+          ? _value.userName
+          : userName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      grade: freezed == grade
+          ? _value.grade
+          : grade // ignore: cast_nullable_to_non_nullable
+              as String?,
     ) as $Val);
   }
 }
@@ -133,8 +148,10 @@ abstract class _$$UserModelImplCopyWith<$Res>
       String? email,
       String? image,
       String? accountType,
-      @JsonKey(name: 'school') String? schoolId,
-      String? className});
+      @JsonKey(readValue: _readSchoolId) String? schoolId,
+      String? className,
+      String? userName,
+      String? grade});
 }
 
 /// @nodoc
@@ -158,6 +175,8 @@ class __$$UserModelImplCopyWithImpl<$Res>
     Object? accountType = freezed,
     Object? schoolId = freezed,
     Object? className = freezed,
+    Object? userName = freezed,
+    Object? grade = freezed,
   }) {
     return _then(_$UserModelImpl(
       id: freezed == id
@@ -192,6 +211,14 @@ class __$$UserModelImplCopyWithImpl<$Res>
           ? _value.className
           : className // ignore: cast_nullable_to_non_nullable
               as String?,
+      userName: freezed == userName
+          ? _value.userName
+          : userName // ignore: cast_nullable_to_non_nullable
+              as String?,
+      grade: freezed == grade
+          ? _value.grade
+          : grade // ignore: cast_nullable_to_non_nullable
+              as String?,
     ));
   }
 }
@@ -206,8 +233,10 @@ class _$UserModelImpl extends _UserModel {
       this.email,
       this.image,
       this.accountType,
-      @JsonKey(name: 'school') this.schoolId,
-      this.className})
+      @JsonKey(readValue: _readSchoolId) this.schoolId,
+      this.className,
+      this.userName,
+      this.grade})
       : super._();
 
   factory _$UserModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -226,15 +255,20 @@ class _$UserModelImpl extends _UserModel {
   final String? image;
   @override
   final String? accountType;
+// Backend has used both `schoolId` and `school`; accept either.
   @override
-  @JsonKey(name: 'school')
+  @JsonKey(readValue: _readSchoolId)
   final String? schoolId;
   @override
   final String? className;
+  @override
+  final String? userName;
+  @override
+  final String? grade;
 
   @override
   String toString() {
-    return 'UserModel(id: $id, firstName: $firstName, lastName: $lastName, email: $email, image: $image, accountType: $accountType, schoolId: $schoolId, className: $className)';
+    return 'UserModel(id: $id, firstName: $firstName, lastName: $lastName, email: $email, image: $image, accountType: $accountType, schoolId: $schoolId, className: $className, userName: $userName, grade: $grade)';
   }
 
   @override
@@ -254,13 +288,16 @@ class _$UserModelImpl extends _UserModel {
             (identical(other.schoolId, schoolId) ||
                 other.schoolId == schoolId) &&
             (identical(other.className, className) ||
-                other.className == className));
+                other.className == className) &&
+            (identical(other.userName, userName) ||
+                other.userName == userName) &&
+            (identical(other.grade, grade) || other.grade == grade));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
   int get hashCode => Object.hash(runtimeType, id, firstName, lastName, email,
-      image, accountType, schoolId, className);
+      image, accountType, schoolId, className, userName, grade);
 
   /// Create a copy of UserModel
   /// with the given fields replaced by the non-null parameter values.
@@ -286,8 +323,10 @@ abstract class _UserModel extends UserModel {
       final String? email,
       final String? image,
       final String? accountType,
-      @JsonKey(name: 'school') final String? schoolId,
-      final String? className}) = _$UserModelImpl;
+      @JsonKey(readValue: _readSchoolId) final String? schoolId,
+      final String? className,
+      final String? userName,
+      final String? grade}) = _$UserModelImpl;
   const _UserModel._() : super._();
 
   factory _UserModel.fromJson(Map<String, dynamic> json) =
@@ -305,12 +344,17 @@ abstract class _UserModel extends UserModel {
   @override
   String? get image;
   @override
-  String? get accountType;
+  String?
+      get accountType; // Backend has used both `schoolId` and `school`; accept either.
   @override
-  @JsonKey(name: 'school')
+  @JsonKey(readValue: _readSchoolId)
   String? get schoolId;
   @override
   String? get className;
+  @override
+  String? get userName;
+  @override
+  String? get grade;
 
   /// Create a copy of UserModel
   /// with the given fields replaced by the non-null parameter values.

@@ -131,30 +131,31 @@ class _AdminViewState extends State<_AdminView> {
         return _ListPanel(
           title: 'Schools',
           select: (s) => s.schools,
-          onAdd: () => _addDialog(['School name', 'Address'], (v) =>
-              context.read<AdminCubit>().createSchool(v[0], v[1])),
+          onAdd: () => _addDialog(['School name', 'School code', 'Address'], (v) =>
+              context.read<AdminCubit>().createSchool(v[0], v[1], v[2])),
         );
       case 'Teachers':
         return _ListPanel(
           title: 'Teachers',
           select: (s) => s.teachers,
-          onAdd: () => _addDialog(['First name', 'Last name', 'Email'], (v) =>
-              context.read<AdminCubit>().createTeacher(v[0], v[1], v[2])),
+          onAdd: () => _addDialog(['Name', 'Email', 'Password', 'Phone'], (v) =>
+              context.read<AdminCubit>().createTeacher(v[0], v[1], v[2], v[3])),
           onDelete: (id) => context.read<AdminCubit>().deleteTeacher(id),
         );
       case 'Students':
         return _ListPanel(
           title: 'Students',
           select: (s) => s.students,
-          onAdd: () => _addDialog(['First name', 'Last name', 'Email'], (v) =>
-              context.read<AdminCubit>().createStudent(v[0], v[1], v[2])),
+          onAdd: () => _addDialog(['Name', 'Email', 'Password', 'Phone'], (v) =>
+              context.read<AdminCubit>().createStudent(v[0], v[1], v[2], v[3])),
         );
       case 'Sections':
         return _ListPanel(
           title: 'Sections',
           select: (s) => s.sections,
-          onAdd: () => _addDialog(['Section name'], (v) =>
-              context.read<AdminCubit>().createSection(v[0])),
+          onAdd: () => _addDialog(['Section name', 'Max strength'], (v) =>
+              context.read<AdminCubit>().createSection(v[0],
+                  maxStrength: int.tryParse(v[1]))),
           onDelete: (id) => context.read<AdminCubit>().deleteSection(id),
         );
       case 'Classes':

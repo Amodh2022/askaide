@@ -72,6 +72,31 @@ class SessionRepositoryImpl implements SessionRepository {
       _guard(() => _remote.getChapters(classId, subjectId));
 
   @override
+  Future<Either<Failure, String>> createSession({
+    required StudyConfig config,
+    required String userId,
+  }) =>
+      _guard(() async {
+        // Field shape mirrors the React frontend's `studyApi.startSession`
+        // config: ids + display names, with a first-letter-capitalised
+        // difficulty (e.g. 'Medium').
+        final id = await _remote.createSession({
+          'userId': userId,
+          'classId': config.selectedClass?.id ?? '',
+          'subject': config.selectedSubject?.name ?? '',
+          'subjectId': config.selectedSubject?.id ?? '',
+          'chapter': config.selectedChapter?.name ?? '',
+          'chapterId': config.selectedChapter?.id ?? '',
+          'questionType': config.questionType.apiValue,
+          'difficulty': config.difficulty.apiValue,
+        });
+        if (id.isEmpty) {
+          throw ServerException('Session created without an id');
+        }
+        return id;
+      });
+
+  @override
   Future<Either<Failure, List<Question>>> fetchQuestionBatch({
     required StudyConfig config,
     required String sessionId,
@@ -110,7 +135,7 @@ class SessionRepositoryImpl implements SessionRepository {
     }
 
     try {
-      await _remote.submitAnswers(answers.map((a) => a.toJson()).toList());
+      await _remote.submitAnswers(answers.map((a) => a.toWireJson()).toList());
       return const Right(unit);
     } catch (_) {
       // Network hiccup mid-submit — fall back to the queue rather than fail.
@@ -126,7 +151,7 @@ class SessionRepositoryImpl implements SessionRepository {
     if (!await _network.isConnected) return const Left(NetworkFailure());
 
     return _guard(() async {
-      await _remote.submitAnswers(queued.map((a) => a.toJson()).toList());
+      await _remote.submitAnswers(queued.map((a) => a.toWireJson()).toList());
       await _local.clearQueuedAnswers(_local.queuedKeys());
       return queued.length;
     });
@@ -146,6 +171,53 @@ class SessionRepositoryImpl implements SessionRepository {
         });
         return unit;
       });
+
+  @override
+  Future<Either<Failure, Unit>> endSession({
+    required String sessionId,
+    required int score,
+    required int totalQuestions,
+  }) =>
+      _guard(() async {
+        await _remote.endSession(sessionId, score, totalQuestions);
+        return unit;
+      });
+
+  @override
+  Future<Either<Failure, Unit>> submitSessionReaction(Map<String, dynamic> data) =>
+      _guard(() async {
+        await _remote.submitReaction(data);
+        return unit;
+      });
+
+  @override
+  Future<Either<Failure, bool>> checkNpsEligibility(String userId) =>
+      _guard(() => _remote.checkNpsEligibility(userId));
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> completeDailyChallenge({
+    required String userId,
+    required List<Map<String, dynamic>> answers,
+  }) =>
+      _guard(() => _remote.completeDailyChallenge(userId, answers));
+
+  @override
+  Future<Either<Failure, Unit>> useStreakFreeze(String userId) =>
+      _guard(() async {
+        await _remote.useStreakFreeze(userId);
+        return unit;
+      });
+
+  @override
+  Future<Either<Failure, Map<String, dynamic>?>> getShareCard(String sessionId) =>
+      _guard(() => _remote.getShareCard(sessionId));
+
+  @override
+  Future<Either<Failure, List<dynamic>>> checkNewBadges({
+    required String userId,
+    required Map<String, dynamic> sessionData,
+  }) =>
+      _guard(() => _remote.checkNewBadges(userId, sessionData));
 
   @override
   List<StudySession> getSessionHistory() => _local.readHistory();
