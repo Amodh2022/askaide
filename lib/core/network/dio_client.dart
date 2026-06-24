@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../constants/app_constants.dart';
 import '../storage/secure_storage_service.dart';
@@ -30,6 +31,22 @@ class DioClient {
       AuthInterceptor(storage),
       ErrorInterceptor(onUnauthorized: onUnauthorized),
     ]);
+
+    // Log every request/response (and errors) to the console in debug builds
+    // only, so headers and bodies never leak in release.
+    if (kDebugMode) {
+      dio.interceptors.add(
+        LogInterceptor(
+          request: true,
+          requestHeader: true,
+          requestBody: true,
+          responseHeader: false,
+          responseBody: true,
+          error: true,
+          logPrint: (object) => debugPrint(object.toString()),
+        ),
+      );
+    }
 
     return dio;
   }

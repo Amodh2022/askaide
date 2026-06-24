@@ -2,7 +2,10 @@ import 'package:dio/dio.dart';
 
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/endpoints.dart';
+import '../../domain/entities/study_enums.dart';
+import '../../domain/entities/study_session.dart';
 import '../../domain/entities/study_taxonomy.dart';
+import '../../domain/entities/user_answer.dart';
 import '../models/question_model.dart';
 
 /// Outcome of a single question-batch request. Mirrors the statuses the React
@@ -32,6 +35,12 @@ abstract class SessionRemoteDataSource {
   Future<void> submitAnswers(List<Map<String, dynamic>> answers);
   Future<String> createSession(Map<String, dynamic> session);
   Future<void> submitNps(Map<String, dynamic> data);
+
+  /// Past sessions for a user (mirrors React `fetchSessionsByUserId`).
+  Future<List<StudySession>> fetchSessionsByUserId(String userId);
+
+  /// Recorded answers for one session (mirrors React `fetchUserAnswersBySession`).
+  Future<List<UserAnswer>> fetchUserAnswersBySession(String sessionId);
 
   /// Closes a session with its final score (mirrors React `endSession`).
   Future<void> endSession(String sessionId, int score, int totalQuestions);
@@ -214,6 +223,78 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
       return Map<String, dynamic>.from(inner);
     }
     return null;
+  }
+
+  @override
+  Future<List<StudySession>> fetchSessionsByUserId(String userId) async {
+    final res = await _dio.get(Endpoints.sessionsByUser(userId));
+    return _list(res)
+        .whereType<Map<String, dynamic>>()
+        .map(_sessionFromServer)
+        .toList();
+  }
+
+  @override
+  Future<List<UserAnswer>> fetchUserAnswersBySession(String sessionId) async {
+    final res = await _dio.get(Endpoints.userAnswersBySession(sessionId));
+    return _list(res)
+        .whereType<Map<String, dynamic>>()
+        .map(_answerFromServer)
+        .toList();
+  }
+
+  /// Maps a server session document to a [StudySession]. The history list does
+  /// not carry per-question answers; those load on demand via
+  /// [fetchUserAnswersBySession]. `score`/`totalquestions` drive the badge.
+  static StudySession _sessionFromServer(Map<String, dynamic> json) {
+    return StudySession(
+      id: (json['_id'] ?? json['id'] ?? '').toString(),
+      className: (json['class'] ?? json['className'] ?? '').toString(),
+      subjectName: (json['subject'] ?? json['subjectName'] ?? '').toString(),
+      chapterName: (json['chapter'] ?? json['chapterName'] ?? '').toString(),
+      questionType:
+          QuestionType.fromApi((json['questionType'] ?? json['type'])?.toString()),
+      difficulty: Difficulty.fromApi(json['difficulty']?.toString()),
+      startedAtMillis: _parseDate(
+          json['createdAt'] ?? json['timestamp'] ?? json['startedAt']),
+      totalQuestions:
+          _toInt(json['totalquestions'] ?? json['totalQuestions']),
+      score: _toInt(json['score']),
+      completed: true,
+    );
+  }
+
+  static int _toInt(dynamic value) =>
+      value is num ? value.toInt() : int.tryParse('$value') ?? 0;
+
+  /// Maps a server user-answer document to a [UserAnswer]. The backend stores
+  /// the chosen value under `selectedAnswer`/`selectedOption`.
+  static UserAnswer _answerFromServer(Map<String, dynamic> json) {
+    final question = json['question'];
+    return UserAnswer(
+      questionId: (json['questionId'] ??
+              (question is Map ? (question['_id'] ?? question['id']) : null) ??
+              '')
+          .toString(),
+      sessionId: (json['sessionId'] ?? '').toString(),
+      answer: (json['selectedAnswer'] ??
+              json['selectedOption'] ??
+              json['answer'] ??
+              '')
+          .toString(),
+      isCorrect: json['isCorrect'] == true,
+      answeredAtMillis: _parseDate(json['createdAt'] ?? json['answeredAt']),
+      synced: true,
+    );
+  }
+
+  /// Accepts an epoch (ms) number or an ISO-8601 string; 0 when unparseable.
+  static int _parseDate(dynamic value) {
+    if (value is num) return value.toInt();
+    if (value is String) {
+      return DateTime.tryParse(value)?.millisecondsSinceEpoch ?? 0;
+    }
+    return 0;
   }
 
   @override

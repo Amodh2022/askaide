@@ -88,6 +88,7 @@ class DailyChallengeInfo extends Equatable {
     required this.totalQuestions,
     required this.score,
     required this.completed,
+    this.completedAt,
   });
   final String topicName;
   final String subjectName;
@@ -95,6 +96,7 @@ class DailyChallengeInfo extends Equatable {
   final int totalQuestions;
   final int score;
   final bool completed;
+  final DateTime? completedAt;
 
   factory DailyChallengeInfo.fromJson(Map<dynamic, dynamic> j) => DailyChallengeInfo(
         topicName: j.str(['topicName'], 'Practice'),
@@ -103,11 +105,12 @@ class DailyChallengeInfo extends Equatable {
         totalQuestions: j.intval(['totalQuestions'], 5),
         score: j.intval(['score']),
         completed: j.boolean(['completed']),
+        completedAt: DateTime.tryParse(j.str(['completedAt'])),
       );
 
   @override
   List<Object?> get props =>
-      [topicName, subjectName, difficulty, totalQuestions, score, completed];
+      [topicName, subjectName, difficulty, totalQuestions, score, completed, completedAt];
 }
 
 /// The user's daily-goal progress.

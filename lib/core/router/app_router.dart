@@ -81,9 +81,12 @@ class AppRouter {
       return RoutePaths.login;
     }
 
-    // Keep signed-in users out of the login/signup screens; land them on the
-    // study flow (mirrors the frontend's post-login redirect to /study).
-    if (authed && isAuthScreen) return RoutePaths.study;
+    // Keep signed-in users out of the login/signup screens AND off the public
+    // landing page (the cold-start initialLocation), landing them straight on
+    // the study flow (mirrors the frontend's post-login redirect to /study).
+    if (authed && (isAuthScreen || RoutePaths.isLanding(location))) {
+      return RoutePaths.study;
+    }
 
     // Role gating (only once the profile/role is known).
     if (authed) {

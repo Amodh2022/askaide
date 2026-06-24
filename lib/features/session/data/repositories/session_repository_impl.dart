@@ -252,6 +252,22 @@ class SessionRepositoryImpl implements SessionRepository {
   List<StudySession> getSessionHistory() => _local.readHistory();
 
   @override
+  Future<Either<Failure, List<StudySession>>> fetchRemoteSessionHistory(
+    String userId,
+  ) =>
+      _guard(() async {
+        final sessions = await _remote.fetchSessionsByUserId(userId);
+        sessions.sort((a, b) => b.startedAtMillis.compareTo(a.startedAtMillis));
+        return sessions;
+      });
+
+  @override
+  Future<Either<Failure, List<UserAnswer>>> fetchSessionAnswers(
+    String sessionId,
+  ) =>
+      _guard(() => _remote.fetchUserAnswersBySession(sessionId));
+
+  @override
   Future<Either<Failure, Unit>> saveSession(StudySession session) =>
       _guard(() async {
         await _local.upsertSession(session);

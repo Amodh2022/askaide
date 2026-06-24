@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../profile/presentation/cubit/profile_cubit.dart';
 import '../bloc/session_bloc.dart';
 import '../widgets/practice_panel.dart';
 import '../widgets/study_config_panel.dart';
@@ -21,11 +22,17 @@ class StudyPage extends StatefulWidget {
 }
 
 class _StudyPageState extends State<StudyPage> {
+  /// The user id we've already loaded server history for, so the profile
+  /// listener doesn't refetch on every emit.
+  String? _historyUserId;
+
   @override
   void initState() {
     super.initState();
     final bloc = context.read<SessionBloc>();
-    bloc.add(const SessionInitialised());
+    final userId = context.read<ProfileCubit>().state.user?.id ?? '';
+    if (userId.isNotEmpty) _historyUserId = userId;
+    bloc.add(SessionInitialised(userId: userId));
     if (bloc.state.classes.isEmpty) bloc.add(const ClassesRequested());
   }
 
@@ -43,9 +50,20 @@ class _StudyPageState extends State<StudyPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return BlocBuilder<SessionBloc, SessionState>(
-      buildWhen: (p, n) => p.panel != n.panel,
-      builder: (context, state) {
+    return BlocListener<ProfileCubit, ProfileState>(
+      // The profile loads asynchronously; once the user id is known, fetch the
+      // server-side session history (once per user).
+      listenWhen: (p, n) => p.user?.id != n.user?.id,
+      listener: (context, profile) {
+        final userId = profile.user?.id ?? '';
+        if (userId.isNotEmpty && userId != _historyUserId) {
+          _historyUserId = userId;
+          context.read<SessionBloc>().add(SessionInitialised(userId: userId));
+        }
+      },
+      child: BlocBuilder<SessionBloc, SessionState>(
+        buildWhen: (p, n) => p.panel != n.panel,
+        builder: (context, state) {
         final mainCard = Container(
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
@@ -108,7 +126,8 @@ class _StudyPageState extends State<StudyPage> {
             ],
           ),
         );
-      },
+        },
+      ),
     );
   }
 }

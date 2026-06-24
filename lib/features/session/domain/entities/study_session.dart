@@ -17,6 +17,7 @@ class StudySession extends Equatable {
     this.answers = const [],
     this.totalQuestions = 0,
     this.completed = false,
+    this.score = 0,
   });
 
   final String id;
@@ -30,8 +31,14 @@ class StudySession extends Equatable {
   final int totalQuestions;
   final bool completed;
 
-  int get correctCount => answers.where((a) => a.isCorrect).length;
-  int get answeredCount => answers.length;
+  /// Final score reported by the server for a past session. Used to show the
+  /// accuracy badge in the history list before per-session answers are loaded.
+  final int score;
+
+  int get correctCount =>
+      answers.isNotEmpty ? answers.where((a) => a.isCorrect).length : score;
+  int get answeredCount =>
+      answers.isNotEmpty ? answers.length : totalQuestions;
   double get accuracy =>
       answeredCount == 0 ? 0 : correctCount / answeredCount;
 
@@ -41,6 +48,7 @@ class StudySession extends Equatable {
     List<UserAnswer>? answers,
     int? totalQuestions,
     bool? completed,
+    int? score,
   }) {
     return StudySession(
       id: id,
@@ -53,6 +61,7 @@ class StudySession extends Equatable {
       answers: answers ?? this.answers,
       totalQuestions: totalQuestions ?? this.totalQuestions,
       completed: completed ?? this.completed,
+      score: score ?? this.score,
     );
   }
 
@@ -66,6 +75,7 @@ class StudySession extends Equatable {
         'startedAt': startedAtMillis,
         'totalQuestions': totalQuestions,
         'completed': completed,
+        'score': score,
         'answers': answers.map((a) => a.toJson()).toList(),
       };
 
@@ -79,6 +89,7 @@ class StudySession extends Equatable {
         startedAtMillis: (json['startedAt'] as num?)?.toInt() ?? 0,
         totalQuestions: (json['totalQuestions'] as num?)?.toInt() ?? 0,
         completed: json['completed'] == true,
+        score: (json['score'] as num?)?.toInt() ?? 0,
         answers: (json['answers'] as List<dynamic>? ?? [])
             .map((e) => UserAnswer.fromJson(e as Map<String, dynamic>))
             .toList(),
@@ -96,5 +107,6 @@ class StudySession extends Equatable {
         answers,
         totalQuestions,
         completed,
+        score,
       ];
 }

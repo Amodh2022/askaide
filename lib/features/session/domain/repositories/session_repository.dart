@@ -81,8 +81,22 @@ abstract class SessionRepository {
     required Map<String, dynamic> sessionData,
   });
 
-  // --- Local session history ---
+  // --- Session history ---
+  /// Locally-cached session history (instant, offline-friendly).
   List<StudySession> getSessionHistory();
+
+  /// Past sessions fetched from the server for [userId] (React
+  /// `fetchSessionsByUserId`). The server is the source of truth for history.
+  Future<Either<Failure, List<StudySession>>> fetchRemoteSessionHistory(
+    String userId,
+  );
+
+  /// Recorded answers for one session, loaded on demand when reviewing
+  /// (React `fetchUserAnswersBySession`).
+  Future<Either<Failure, List<UserAnswer>>> fetchSessionAnswers(
+    String sessionId,
+  );
+
   Future<Either<Failure, Unit>> saveSession(StudySession session);
   Future<Either<Failure, Unit>> deleteSession(String sessionId);
 }

@@ -26,11 +26,21 @@ class DashboardRepository {
         final acc = p['overallAccuracy'] is Map ? p['overallAccuracy'] as Map : const {};
         final today = p['todayStats'] is Map ? p['todayStats'] as Map : const {};
         final lastCh = p['lastStudiedChapter'] is Map ? p['lastStudiedChapter'] as Map : null;
-        final weekly = _parseWeekly(p['weeklyActivity']);
+
+        // The frontend's WeeklyActivityChart prefers `weeklyActivity.dates` but
+        // falls back to computing the 7-day grid from the user's sessions. Fetch
+        // those (best-effort) so we can do the same instead of showing an empty
+        // card when the progress payload lacks weeklyActivity.
+        final sessions = await _maybe(() async {
+              final res = await _dio.get(Endpoints.sessionsByUser(userId));
+              return res.dataList().whereType<Map>().toList();
+            }) ??
+            const <Map>[];
+        final weekly = _buildWeekly(p['weeklyActivity'], sessions);
 
         var data = DashboardData(
           overallMastery: _frac(p.dbl(['overallMastery', 'mastery'])),
-          currentStreak: p.intval(['streakDays', 'currentStreak']),
+          currentStreak: p.intval(['currentStreak', 'streakDays']),
           badges: p.listAt(['badges']).map((e) => e.toString()).toList(),
           subjects: subjects,
           totalCount: acc.intval(['totalCount']),
@@ -47,14 +57,26 @@ class DashboardRepository {
                 ),
         );
 
-        // Streak endpoint is best-effort; ignore failures.
+        // Streak endpoint is the source of truth (the frontend's StreakDisplay
+        // reads it via fetchStreak); best-effort, ignore failures. The payload
+        // is sometimes nested under a `streak` object, so check both levels.
         try {
           final streakRes = await _dio.get(Endpoints.streak(userId));
-          final s = streakRes.dataMap();
+          final outer = streakRes.dataMap();
+          final s = outer['streak'] is Map
+              ? Map<String, dynamic>.from(outer['streak'] as Map)
+              : outer;
+          // Freezes can be a flat count or `streakFreezes: { available }`.
+          final freezesObj = s['streakFreezes'] is Map
+              ? Map<String, dynamic>.from(s['streakFreezes'] as Map)
+              : const {};
           data = data.copyWith(
-            currentStreak: s.intval(['currentStreak'], data.currentStreak),
-            longestStreak: s.intval(['longestStreak']),
-            freezesRemaining: s.intval(['freezesRemaining', 'freezes']),
+            currentStreak:
+                s.intval(['currentStreak', 'streak', 'streakDays'], data.currentStreak),
+            longestStreak: s.intval(['longestStreak', 'bestStreak']),
+            freezesRemaining: freezesObj.isNotEmpty
+                ? freezesObj.intval(['available'])
+                : s.intval(['freezesRemaining', 'freezes']),
             practiceDates: s
                 .listAt(['practiceDates'])
                 .map((e) => DateTime.tryParse(e.toString()))
@@ -80,7 +102,7 @@ class DashboardRepository {
               final res = await _dio.get(Endpoints.leaderboard,
                   queryParameters: {'limit': 10});
               return res
-                  .dataList(['leaderboard', 'entries'])
+                  .dataList(['leaderboard', 'entries', 'rankings', 'users', 'topUsers'])
                   .whereType<Map>()
                   .map((e) => LeaderboardEntry.fromJson(e, userId))
                   .toList();
@@ -99,25 +121,60 @@ class DashboardRepository {
     }
   }
 
-  /// Parses `weeklyActivity.dates[]` into 7 [DayActivity] bars (most recent last).
-  List<DayActivity> _parseWeekly(dynamic raw) {
-    final map = raw is Map ? raw : const {};
-    final dates = map.listAt(['dates']);
-    if (dates.isEmpty) return const [];
+  /// Builds the last-7-days activity grid (oldest → newest), mirroring the
+  /// frontend WeeklyActivityChart: prefer `weeklyActivity.dates[]`, otherwise
+  /// aggregate the user's sessions by day. Always returns 7 bars so the card
+  /// shows the grid (zeros included) rather than an empty state.
+  List<DayActivity> _buildWeekly(dynamic raw, List<Map> sessions) {
     const wk = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final todayStr = DateTime.now().toIso8601String().split('T').first;
-    return dates.whereType<Map>().map((d) {
-      final dateStr = d.str(['date']);
-      final dt = DateTime.tryParse(dateStr);
-      final label = dt != null ? wk[dt.weekday - 1] : '';
+    final map = raw is Map ? raw : const {};
+
+    // Index pre-computed stats by `YYYY-MM-DD` when present.
+    final byDate = <String, Map>{};
+    for (final d in map.listAt(['dates']).whereType<Map>()) {
+      final ds = d.str(['date']);
+      if (ds.isNotEmpty) byDate[ds.split('T').first] = d;
+    }
+
+    // Index session question counts / correct totals by day for the fallback.
+    final sessQ = <String, int>{};
+    final sessCorrect = <String, int>{};
+    for (final s in sessions) {
+      final ds = s.str(['createdAt', 'startTime', 'timestamp']);
+      final key = DateTime.tryParse(ds)?.toLocal();
+      if (key == null) continue;
+      final k = _dayKey(key);
+      sessQ[k] = (sessQ[k] ?? 0) + s.intval(['totalquestions', 'totalQuestions']);
+      sessCorrect[k] = (sessCorrect[k] ?? 0) + s.intval(['score']);
+    }
+
+    final today = DateTime.now();
+    final todayKey = _dayKey(today);
+    return List.generate(7, (i) {
+      final day = today.subtract(Duration(days: 6 - i));
+      final key = _dayKey(day);
+      final stat = byDate[key];
+      int questions;
+      double accuracy;
+      if (stat != null) {
+        questions = stat.intval(['questionsAnswered', 'questions']);
+        accuracy = stat.dbl(['accuracy']);
+      } else {
+        questions = sessQ[key] ?? 0;
+        final correct = sessCorrect[key] ?? 0;
+        accuracy = questions > 0 ? (correct / questions) * 100 : 0;
+      }
       return DayActivity(
-        label: label,
-        questions: d.intval(['questionsAnswered', 'questions']),
-        accuracy: d.dbl(['accuracy']),
-        isToday: dateStr == todayStr,
+        label: wk[day.weekday - 1],
+        questions: questions,
+        accuracy: accuracy,
+        isToday: key == todayKey,
       );
-    }).toList();
+    });
   }
+
+  static String _dayKey(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
   Future<Either<Failure, List<TopicProgressItem>>> loadTopicProgress(
           String userId, String subjectId) =>

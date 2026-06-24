@@ -88,6 +88,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
 
   Future<void> _onInit(SessionInitialised e, Emitter<SessionState> emit) async {
     final online = await _networkInfo.isConnected;
+    // Show the locally-cached history immediately for an instant, offline-safe
+    // first paint.
     emit(state.copyWith(
       history: _repository.getSessionHistory(),
       isOnline: online,
@@ -96,6 +98,16 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       (isOnline) => add(ConnectivityChanged(isOnline)),
     );
     if (online) add(const ConnectivityChanged(true));
+
+    // The server is the source of truth for history (mirrors React's Sidebar
+    // fetchSessionsByUserId). Refresh from it when we have a user and a network.
+    if (online && e.userId.isNotEmpty) {
+      final result = await _repository.fetchRemoteSessionHistory(e.userId);
+      result.fold(
+        (_) {}, // keep the cached history on failure
+        (sessions) => emit(state.copyWith(history: sessions)),
+      );
+    }
   }
 
   Future<void> _onClasses(
@@ -385,19 +397,43 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     emit(state.copyWith(npsHandled: true));
   }
 
-  void _onReview(SessionReviewOpened e, Emitter<SessionState> emit) {
+  Future<void> _onReview(
+    SessionReviewOpened e,
+    Emitter<SessionState> emit,
+  ) async {
     final session = state.history.firstWhere(
       (s) => s.id == e.sessionId,
       orElse: () => state.history.isNotEmpty
           ? state.history.first
           : throw StateError('No session'),
     );
+    // Show the review immediately with whatever answers we have cached.
     emit(state.copyWith(panel: SessionPanel.review, reviewSession: session));
+
+    // Pull the recorded answers from the server on demand (React's
+    // fetchUserAnswersBySession), unless we already have them locally.
+    if (session.answers.isEmpty && state.isOnline) {
+      final result = await _repository.fetchSessionAnswers(session.id);
+      result.fold(
+        (_) {},
+        (answers) {
+          // Guard against the user navigating away while the fetch was in flight.
+          if (state.reviewSession?.id != session.id) return;
+          emit(state.copyWith(
+            reviewSession: session.copyWith(answers: answers),
+          ));
+        },
+      );
+    }
   }
 
   Future<void> _onDelete(SessionDeleted e, Emitter<SessionState> emit) async {
     await _repository.deleteSession(e.sessionId);
-    emit(state.copyWith(history: _repository.getSessionHistory()));
+    // Drop it from the in-memory list rather than re-reading local storage,
+    // which would clobber the server-loaded history with local-only sessions.
+    emit(state.copyWith(
+      history: state.history.where((s) => s.id != e.sessionId).toList(),
+    ));
   }
 
   void _onBackToConfig(BackToConfigRequested e, Emitter<SessionState> emit) {

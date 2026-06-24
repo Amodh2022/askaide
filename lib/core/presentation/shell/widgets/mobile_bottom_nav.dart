@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:native_glass_navbar/native_glass_navbar.dart';
 
 import '../../../../features/profile/domain/entities/account_type.dart';
 import '../../../../features/profile/presentation/cubit/profile_cubit.dart';
@@ -10,6 +12,10 @@ import '../nav_items.dart';
 
 /// Bottom navigation shown on mobile for all non-public routes. Items are the
 /// role-filtered subset flagged `showInBottomNav`.
+///
+/// On iOS this renders the native liquid-glass tab bar
+/// ([NativeGlassNavBar]); every other platform (Android, web, older iOS)
+/// keeps the Material [BottomNavigationBar] design.
 class MobileBottomNav extends StatelessWidget {
   const MobileBottomNav({super.key});
 
@@ -26,6 +32,49 @@ class MobileBottomNav extends StatelessWidget {
     );
     if (index < 0) index = 0;
 
+    final material = _MaterialBottomNav(
+      items: items,
+      index: index,
+      onTap: (i) => context.go(items[i].path),
+    );
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      return NativeGlassNavBar(
+        currentIndex: index,
+        onTap: (i) => context.go(items[i].path),
+        tintColor: c.accent,
+        fallback: material,
+        tabs: [
+          for (final item in items)
+            NativeGlassNavBarItem(
+              label: item.label,
+              symbol: item.sfSymbol ?? 'circle',
+            ),
+        ],
+      );
+    }
+
+    return material;
+  }
+}
+
+/// The Material bottom navigation bar used on Android (and as the iOS
+/// fallback when the native glass bar is unavailable).
+class _MaterialBottomNav extends StatelessWidget {
+  const _MaterialBottomNav({
+    required this.items,
+    required this.index,
+    required this.onTap,
+  });
+
+  final List<NavItem> items;
+  final int index;
+  final ValueChanged<int> onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+
     return Container(
       decoration: BoxDecoration(
         color: c.bgCard,
@@ -35,7 +84,7 @@ class MobileBottomNav extends StatelessWidget {
         top: false,
         child: BottomNavigationBar(
           currentIndex: index,
-          onTap: (i) => context.go(items[i].path),
+          onTap: onTap,
           backgroundColor: Colors.transparent,
           elevation: 0,
           type: BottomNavigationBarType.fixed,

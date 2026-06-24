@@ -56,12 +56,26 @@ class _DashboardView extends StatelessWidget {
     final profile = context.watch<ProfileCubit>().state;
     final firstName = profile.user?.firstName ?? 'Learner';
     final userId = profile.user?.id ?? '';
-    final data = context.watch<DashboardCubit>().state.data;
+    final dashState = context.watch<DashboardCubit>().state;
+    final data = dashState.data;
+    // First load (no data yet): show a loader, mirroring the frontend which
+    // gates the stats/cards behind `!loading`.
+    final loading = dashState.status == DashboardStatus.initial ||
+        dashState.status == DashboardStatus.loading;
     final g = _greeting();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-      child: Center(
+    return BlocListener<ProfileCubit, ProfileState>(
+      // The profile loads asynchronously; the dashboard is first built before
+      // the user id is known, so (re)load stats once it arrives. Mirrors the
+      // frontend Dashboard's `useEffect(..., [userId])`.
+      listenWhen: (p, n) => p.user?.id != n.user?.id,
+      listener: (context, profile) {
+        final id = profile.user?.id ?? '';
+        if (id.isNotEmpty) context.read<DashboardCubit>().load(id);
+      },
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+        child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 880),
           child: Column(
@@ -102,6 +116,12 @@ class _DashboardView extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
+              if (loading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 96),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else ...[
               // ── Continue session banner ──
               if (data.continueSession != null) ...[
                 _ContinueBanner(session: data.continueSession!),
@@ -201,8 +221,10 @@ class _DashboardView extends StatelessWidget {
                 const SizedBox(height: 12),
                 _MasteryChart(data: data),
               ],
+              ],
             ],
           ),
+        ),
         ),
       ),
     );
@@ -453,6 +475,47 @@ class _DailyChallengeCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(
+                          text:
+                              'I just scored ${challenge.score}/${challenge.totalQuestions} '
+                              "on today's Daily Challenge in ${challenge.subjectName}! 🎯 "
+                              'Try AskAide and beat my score!',
+                        ));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Result copied!')),
+                        );
+                      },
+                      icon: const Icon(LucideIcons.share2, size: 15),
+                      label: const Text('Share result'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: c.accent,
+                        side: BorderSide(color: c.border),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  if (challenge.completedAt != null) ...[
+                    const SizedBox(height: 8),
+                    Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.clock, size: 12, color: c.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Completed at ${TimeOfDay.fromDateTime(challenge.completedAt!.toLocal()).format(context)}',
+                            style: AppTypography.bodySmall(c.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),

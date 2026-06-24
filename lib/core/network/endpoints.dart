@@ -105,6 +105,8 @@ class Endpoints {
   static String masterySummary(String userId) =>
       '/topic-progress/mastery-summary/$userId';
   static String sessionsByUser(String userId) => '/sessions/user/$userId';
+  static String userAnswersBySession(String sessionId) =>
+      '/user-answers/session/$sessionId';
   static String badgesFor(String userId) => '/badges/$userId';
   static const String leaderboard = '/leaderboard';
   static const String publicStats = '/stats/public';

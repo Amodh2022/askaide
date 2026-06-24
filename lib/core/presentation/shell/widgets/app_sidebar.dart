@@ -115,7 +115,13 @@ class _NavTile extends StatelessWidget {
         borderRadius: AppRadii.modalR,
         child: InkWell(
           borderRadius: AppRadii.modalR,
-          onTap: () => context.go(item.path),
+          onTap: () {
+            // On mobile the sidebar lives in a Drawer; close it after picking a
+            // destination. No-op on desktop where the rail is persistent.
+            final scaffold = Scaffold.maybeOf(context);
+            if (scaffold?.isDrawerOpen ?? false) scaffold!.closeDrawer();
+            context.go(item.path);
+          },
           child: Padding(
             padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.sm, vertical: 10),

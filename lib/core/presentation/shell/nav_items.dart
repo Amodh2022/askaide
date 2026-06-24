@@ -24,6 +24,7 @@ class NavItem {
     required this.group,
     required this.roles,
     this.showInBottomNav = false,
+    this.sfSymbol,
   });
 
   final String label;
@@ -32,6 +33,10 @@ class NavItem {
   final NavGroup group;
   final Set<AccountType> roles;
   final bool showInBottomNav;
+
+  /// SF Symbol name used by the native iOS glass bottom nav. Only required for
+  /// items with [showInBottomNav]; ignored on other platforms.
+  final String? sfSymbol;
 
   bool visibleTo(AccountType role) => roles.contains(role);
 }
@@ -54,6 +59,7 @@ const List<NavItem> allNavItems = [
     group: NavGroup.learn,
     roles: _all,
     showInBottomNav: true,
+    sfSymbol: 'book',
   ),
   NavItem(
     label: 'Dashboard',
@@ -62,6 +68,7 @@ const List<NavItem> allNavItems = [
     group: NavGroup.learn,
     roles: _all,
     showInBottomNav: true,
+    sfSymbol: 'square.grid.2x2',
   ),
   NavItem(
     label: 'Progress',
@@ -70,6 +77,7 @@ const List<NavItem> allNavItems = [
     group: NavGroup.learn,
     roles: _all,
     showInBottomNav: true,
+    sfSymbol: 'chart.line.uptrend.xyaxis',
   ),
   NavItem(
     label: 'Quizzes',
@@ -78,6 +86,7 @@ const List<NavItem> allNavItems = [
     group: NavGroup.learn,
     roles: {AccountType.student, AccountType.superAdmin},
     showInBottomNav: true,
+    sfSymbol: 'checklist',
   ),
   // MANAGE
   NavItem(

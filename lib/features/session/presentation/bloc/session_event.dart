@@ -7,8 +7,12 @@ sealed class SessionEvent extends Equatable {
 }
 
 /// Load persisted history + wire connectivity-driven sync on screen open.
+/// [userId] (when known) triggers a server fetch of past sessions.
 class SessionInitialised extends SessionEvent {
-  const SessionInitialised();
+  const SessionInitialised({this.userId = ''});
+  final String userId;
+  @override
+  List<Object?> get props => [userId];
 }
 
 // --- Configuration funnel ---------------------------------------------------
