@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
@@ -108,10 +109,7 @@ class _ProgressView extends StatelessWidget {
     final c = context.colors;
     switch (state.status) {
       case ProgressStatus.loading:
-        return const Padding(
-          padding: EdgeInsets.all(48),
-          child: Center(child: CircularProgressIndicator()),
-        );
+        return const SkeletonListLoader(padding: EdgeInsets.all(24));
       case ProgressStatus.empty:
         if (state.classes.isEmpty) {
           return _EmptyCard(

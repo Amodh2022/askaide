@@ -11,7 +11,15 @@ import '../../../theme/app_typography.dart';
 /// Floating AI assistant. Tapping the FAB opens a chat panel that renders
 /// markdown answers, wired to the live `/ai-assistant` endpoint.
 class AiAssistantWidget extends StatefulWidget {
-  const AiAssistantWidget({super.key});
+  const AiAssistantWidget({
+    super.key,
+    this.bottomOffset = AppSpacing.md,
+  });
+
+  /// Distance from the bottom edge for the floating assistant button.
+  /// The mobile authenticated shell passes a larger value so the assistant
+  /// clears the bottom navigation bar on iOS and Android.
+  final double bottomOffset;
 
   @override
   State<AiAssistantWidget> createState() => _AiAssistantWidgetState();
@@ -70,7 +78,8 @@ class _AiAssistantWidgetState extends State<AiAssistantWidget> {
     setState(() {
       if (!added) {
         _messages.add(_ChatMessage(
-            "Sorry — I couldn't reach the assistant just now.", fromUser: false));
+            "Sorry — I couldn't reach the assistant just now.",
+            fromUser: false));
       }
       _sending = false;
     });
@@ -84,7 +93,7 @@ class _AiAssistantWidgetState extends State<AiAssistantWidget> {
         if (_open)
           Positioned(
             right: AppSpacing.md,
-            bottom: 84,
+            bottom: widget.bottomOffset + 68,
             child: _ChatPanel(
               messages: _messages,
               controller: _controller,
@@ -95,7 +104,7 @@ class _AiAssistantWidgetState extends State<AiAssistantWidget> {
           ),
         Positioned(
           right: AppSpacing.md,
-          bottom: AppSpacing.md,
+          bottom: widget.bottomOffset,
           child: FloatingActionButton(
             backgroundColor: c.accent,
             onPressed: () => setState(() => _open = !_open),
@@ -168,10 +177,12 @@ class _ChatPanel extends StatelessWidget {
                       alignment: Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                             color: c.bgRaised, borderRadius: AppRadii.modalR),
-                        child: Text('Thinking…', style: AppTypography.bodyMedium(c.textMuted)),
+                        child: Text('Thinking…',
+                            style: AppTypography.bodyMedium(c.textMuted)),
                       ),
                     );
                   }

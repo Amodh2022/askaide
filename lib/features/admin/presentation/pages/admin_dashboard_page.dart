@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -253,7 +254,7 @@ class _ListPanel extends StatelessWidget {
           child: BlocBuilder<AdminCubit, AdminState>(
             builder: (context, state) {
               if (state.status == ALoad.loading) {
-                return const Center(child: CircularProgressIndicator());
+                return const SkeletonListLoader();
               }
               final items = select(state);
               if (items.isEmpty) {
@@ -477,7 +478,7 @@ class _CurriculumPanelState extends State<_CurriculumPanel> {
                   hint: 'Select above to ${isTopics ? 'browse topics' : 'manage chapters'}.',
                 )
               : _loading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const SkeletonListLoader()
                   : _items.isEmpty
                       ? EmptyState(
                           icon: Icons.inbox_outlined,
@@ -551,7 +552,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
         hint: 'Choose a school above to view its teacher–student relations.',
       );
     }
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) return const SkeletonListLoader();
     if (_links.isEmpty) {
       return const EmptyState(
         icon: Icons.account_tree_outlined,

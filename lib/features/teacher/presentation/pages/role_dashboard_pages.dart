@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../ai_assistant/ai_assistant_repository.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -53,9 +54,7 @@ class _TeacherHomeView extends StatelessWidget {
               BlocBuilder<TeacherHomeCubit, TeacherHomeState>(
                 builder: (context, state) {
                   if (state.status == TLoad.loading) {
-                    return const Padding(
-                        padding: EdgeInsets.all(48),
-                        child: Center(child: CircularProgressIndicator()));
+                    return const SkeletonListLoader(padding: EdgeInsets.all(24));
                   }
                   if (state.assignments.isEmpty) {
                     return Container(
@@ -183,7 +182,7 @@ class _TeacherSubjectViewState extends State<_TeacherSubjectView> {
     return BlocBuilder<TeacherSubjectCubit, TeacherSubjectState>(
       builder: (context, state) {
         if (state.status == TLoad.loading) {
-          return const Center(child: CircularProgressIndicator());
+          return const SkeletonListLoader();
         }
         final d = state.dashboard;
         final students = _applySortFilter(state.students);
@@ -439,9 +438,7 @@ class _ParentView extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   if (state.status == PLoad.loading)
-                    const Padding(
-                        padding: EdgeInsets.all(48),
-                        child: Center(child: CircularProgressIndicator()))
+                    const SkeletonListLoader(padding: EdgeInsets.all(24))
                   else if (state.children.isEmpty)
                     Container(
                       width: double.infinity,
@@ -551,7 +548,7 @@ class _TeacherStudentView extends StatelessWidget {
     return BlocBuilder<TeacherStudentCubit, TeacherStudentState>(
       builder: (context, state) {
         if (state.status == TLoad.loading) {
-          return const Center(child: CircularProgressIndicator());
+          return const SkeletonListLoader();
         }
         final d = state.data;
         return SingleChildScrollView(

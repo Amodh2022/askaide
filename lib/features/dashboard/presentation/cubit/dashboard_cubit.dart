@@ -42,6 +42,7 @@ class DashboardCubit extends Cubit<DashboardState> {
     if (userId.isEmpty) return;
     emit(state.copyWith(status: DashboardStatus.loading));
     final result = await _repository.loadDashboard(userId);
+    if (isClosed) return; // page disposed mid-load; don't emit on a closed cubit
     result.fold(
       (failure) => emit(state.copyWith(
           status: DashboardStatus.error, errorMessage: failure.message)),

@@ -5,10 +5,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../domain/entities/user_answer.dart';
 import '../bloc/session_bloc.dart';
 
-/// Review of a past session: a summary header (accuracy, correct/total) and a
-/// list of recorded answers with correct/incorrect markers. Mirrors UserAnswers.
+/// Review of a past session. Mirrors the React `UserAnswers` view: a summary
+/// header (accuracy, correct/total) followed by a chat-style transcript of each
+/// answered question — the question (with its options and time spent), the
+/// user's answer, and a correct/incorrect feedback bubble carrying the correct
+/// answer and explanation.
 class UserAnswersPanel extends StatelessWidget {
   const UserAnswersPanel({super.key});
 
@@ -47,6 +51,9 @@ class UserAnswersPanel extends StatelessWidget {
                   Text('— SESSION REVIEW', style: AppTypography.sectionLabel(c.accent)),
                   const SizedBox(height: 8),
                   Text(session.title, style: AppTypography.h3(c.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text('${session.answeredCount} questions answered',
+                      style: AppTypography.bodySmall(c.textMuted)),
                   const SizedBox(height: 16),
                   // Summary cards
                   Row(
@@ -59,33 +66,9 @@ class UserAnswersPanel extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  ...session.answers.asMap().entries.map((e) {
-                    final a = e.value;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(14),
-                      decoration: context.cardDecoration(),
-                      child: Row(
-                        children: [
-                          Icon(a.isCorrect ? LucideIcons.circleCheck : LucideIcons.circleX,
-                              size: 18, color: a.isCorrect ? c.success : c.danger),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Question ${e.key + 1}',
-                                    style: AppTypography.bodySmall(c.textMuted).copyWith(fontSize: 11)),
-                                const SizedBox(height: 2),
-                                Text('Your answer: ${a.answer}',
-                                    style: AppTypography.bodyMedium(c.textPrimary)),
-                              ],
-                            ),
-                          ),
-                        ],
+                  ...session.answers.asMap().entries.map(
+                        (e) => _AnswerThread(index: e.key, answer: e.value),
                       ),
-                    );
-                  }),
                 ],
               ),
             ),
@@ -110,6 +93,139 @@ class UserAnswersPanel extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// One question's transcript: the bot's question, the user's answer and the
+/// feedback, rendered as a chat thread.
+class _AnswerThread extends StatelessWidget {
+  const _AnswerThread({required this.index, required this.answer});
+
+  final int index;
+  final UserAnswer answer;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ok = answer.isCorrect;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Bot's question.
+          _Bubble(
+            alignEnd: false,
+            avatar: _avatar(c.accentLight, LucideIcons.bot, c.accent),
+            bubbleColor: c.accent.withValues(alpha: 0.10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  answer.questionText?.isNotEmpty == true
+                      ? answer.questionText!
+                      : 'Question ${index + 1}',
+                  style: AppTypography.bodyMedium(c.textPrimary),
+                ),
+                if (answer.options.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ...answer.options.map(
+                    (o) => Padding(
+                      padding: const EdgeInsets.only(bottom: 2),
+                      child: Text('• $o',
+                          style: AppTypography.bodySmall(c.textMuted)),
+                    ),
+                  ),
+                ],
+                if (answer.timeSpentSeconds != null) ...[
+                  const SizedBox(height: 8),
+                  Text('⏱ ${answer.timeSpentSeconds}s',
+                      style: AppTypography.bodySmall(c.textMuted)
+                          .copyWith(fontSize: 11)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // User's answer.
+          _Bubble(
+            alignEnd: true,
+            avatar: _avatar(c.bgSecondary, LucideIcons.user, c.textMuted),
+            bubbleColor: (ok ? c.success : c.danger).withValues(alpha: 0.15),
+            child: Text(answer.answer, style: AppTypography.bodyMedium(c.textPrimary)),
+          ),
+          const SizedBox(height: 8),
+          // Feedback.
+          _Bubble(
+            alignEnd: false,
+            avatar: _avatar((ok ? c.success : c.danger).withValues(alpha: 0.2),
+                LucideIcons.bot, ok ? c.success : c.danger),
+            bubbleColor: (ok ? c.success : c.danger).withValues(alpha: 0.10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ok
+                      ? '✓ Correct!'
+                      : '✗ Incorrect. The answer is: ${answer.correctAnswer ?? '—'}',
+                  style: AppTypography.bodyMedium(ok ? c.success : c.danger)
+                      .copyWith(fontWeight: FontWeight.w600),
+                ),
+                if (answer.explanation?.isNotEmpty == true) ...[
+                  const SizedBox(height: 4),
+                  Text(answer.explanation!,
+                      style: AppTypography.bodySmall(c.textMuted)),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _avatar(Color bg, IconData icon, Color fg) => Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+        child: Icon(icon, size: 18, color: fg),
+      );
+}
+
+/// A single chat row: an avatar and a coloured bubble, left- or right-aligned.
+class _Bubble extends StatelessWidget {
+  const _Bubble({
+    required this.alignEnd,
+    required this.avatar,
+    required this.bubbleColor,
+    required this.child,
+  });
+
+  final bool alignEnd;
+  final Widget avatar;
+  final Color bubbleColor;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final bubble = Flexible(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: bubbleColor,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: child,
+      ),
+    );
+    final children = alignEnd
+        ? [bubble, const SizedBox(width: 8), avatar]
+        : [avatar, const SizedBox(width: 8), bubble];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: children,
     );
   }
 }

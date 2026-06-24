@@ -268,14 +268,27 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
       value is num ? value.toInt() : int.tryParse('$value') ?? 0;
 
   /// Maps a server user-answer document to a [UserAnswer]. The backend stores
-  /// the chosen value under `selectedAnswer`/`selectedOption`.
+  /// the chosen value under `selectedAnswer`/`selectedOption`, and embeds the
+  /// question document under `questionId` (populated) — or sometimes `question`.
+  /// The React `UserAnswers` view reads `qa.questionId?.x || qa.question?.x`, so
+  /// pull the question text/options/correct answer/explanation from whichever
+  /// of the two is an object, to drive the review transcript.
   static UserAnswer _answerFromServer(Map<String, dynamic> json) {
-    final question = json['question'];
+    final rawQuestionId = json['questionId'];
+    // `questionId` is either a populated question object or a plain id string;
+    // `question` is the legacy embed key. Use whichever is a Map for details.
+    final question = rawQuestionId is Map
+        ? rawQuestionId
+        : (json['question'] is Map ? json['question'] as Map : null);
+
+    final questionIdStr = (rawQuestionId is Map
+            ? (rawQuestionId['_id'] ?? rawQuestionId['id'])
+            : rawQuestionId) ??
+        (question != null ? (question['_id'] ?? question['id']) : null) ??
+        '';
+
     return UserAnswer(
-      questionId: (json['questionId'] ??
-              (question is Map ? (question['_id'] ?? question['id']) : null) ??
-              '')
-          .toString(),
+      questionId: questionIdStr.toString(),
       sessionId: (json['sessionId'] ?? '').toString(),
       answer: (json['selectedAnswer'] ??
               json['selectedOption'] ??
@@ -285,6 +298,19 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
       isCorrect: json['isCorrect'] == true,
       answeredAtMillis: _parseDate(json['createdAt'] ?? json['answeredAt']),
       synced: true,
+      questionText: question == null
+          ? null
+          : (question['questionText'] ?? question['question'])?.toString(),
+      options: question == null
+          ? const []
+          : (question['options'] as List<dynamic>? ?? const [])
+              .map((e) => e.toString())
+              .toList(),
+      correctAnswer: question == null
+          ? null
+          : (question['correctAnswer'] ?? question['answer'])?.toString(),
+      explanation: question?['explanation']?.toString(),
+      timeSpentSeconds: (json['timeSpent'] as num?)?.toInt(),
     );
   }
 

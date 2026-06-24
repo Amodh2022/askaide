@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../profile/presentation/cubit/profile_cubit.dart';
@@ -315,12 +316,20 @@ class _GeneratingIndicatorState extends State<_GeneratingIndicator> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2.5, color: widget.color),
+          Shimmer(
+            child: Column(
+              children: [
+                SkeletonBox(width: double.infinity, height: 88, radius: 10),
+                const SizedBox(height: 12),
+                const SkeletonBox(width: double.infinity, height: 56, radius: 8),
+                const SizedBox(height: 8),
+                const SkeletonBox(width: double.infinity, height: 56, radius: 8),
+                const SizedBox(height: 8),
+                const SkeletonBox(width: double.infinity, height: 56, radius: 8),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: Text(

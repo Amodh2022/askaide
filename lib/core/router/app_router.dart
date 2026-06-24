@@ -106,138 +106,126 @@ class AppRouter {
 
   static List<RouteBase> get _routes => [
         // ---- PUBLIC ----
-        GoRoute(
-            path: RoutePaths.landing, builder: (_, __) => const LandingPage()),
-        GoRoute(
-            path: RoutePaths.login, builder: (_, __) => const LoginPage()),
-        GoRoute(
-            path: RoutePaths.signup, builder: (_, __) => const SignupPage()),
-        GoRoute(
-          path: RoutePaths.verifyEmail,
-          builder: (_, state) =>
-              VerifyEmailPage(signupData: state.extra as SignupData?),
+        _route(RoutePaths.landing, (_, __) => const LandingPage()),
+        _route(RoutePaths.login, (_, __) => const LoginPage()),
+        _route(RoutePaths.signup, (_, __) => const SignupPage()),
+        _route(
+          RoutePaths.verifyEmail,
+          (_, state) => VerifyEmailPage(signupData: state.extra as SignupData?),
         ),
-        GoRoute(
-            path: RoutePaths.forgotPassword,
-            builder: (_, __) => const ForgotPasswordPage()),
-        GoRoute(
-          path: RoutePaths.updatePassword,
-          builder: (_, state) =>
+        _route(RoutePaths.forgotPassword, (_, __) => const ForgotPasswordPage()),
+        _route(
+          RoutePaths.updatePassword,
+          (_, state) =>
               UpdatePasswordPage(token: state.pathParameters['id'] ?? ''),
         ),
-        GoRoute(path: RoutePaths.tryNow, builder: (_, __) => const TryNowPage()),
-        GoRoute(
-            path: RoutePaths.freePaperGenerator,
-            builder: (_, __) => const PublicPaperGeneratorPage()),
-        GoRoute(path: RoutePaths.feedback, builder: (_, __) => const FeedbackPage()),
-        GoRoute(path: RoutePaths.blog, builder: (_, __) => const BlogPage()),
-        GoRoute(
-          path: RoutePaths.blogPost,
-          builder: (_, state) =>
-              BlogPostPage(slug: state.pathParameters['slug'] ?? ''),
+        _route(RoutePaths.tryNow, (_, __) => const TryNowPage()),
+        _route(RoutePaths.freePaperGenerator,
+            (_, __) => const PublicPaperGeneratorPage()),
+        _route(RoutePaths.feedback, (_, __) => const FeedbackPage()),
+        _route(RoutePaths.blog, (_, __) => const BlogPage()),
+        _route(
+          RoutePaths.blogPost,
+          (_, state) => BlogPostPage(slug: state.pathParameters['slug'] ?? ''),
         ),
-        GoRoute(
-            path: RoutePaths.forSchools, builder: (_, __) => const ForSchoolsPage()),
-        GoRoute(
-            path: RoutePaths.privacyPolicy,
-            builder: (_, __) =>
+        _route(RoutePaths.forSchools, (_, __) => const ForSchoolsPage()),
+        _route(
+            RoutePaths.privacyPolicy,
+            (_, __) =>
                 const LegalPage(eyebrow: 'LEGAL', title: 'Privacy policy.')),
-        GoRoute(
-            path: RoutePaths.termsOfService,
-            builder: (_, __) =>
+        _route(
+            RoutePaths.termsOfService,
+            (_, __) =>
                 const LegalPage(eyebrow: 'LEGAL', title: 'Terms of service.')),
-        GoRoute(
-          path: RoutePaths.studentPublic,
-          builder: (_, state) =>
-              StudentPublicProfilePage(userId: state.pathParameters['userId'] ?? ''),
+        _route(
+          RoutePaths.studentPublic,
+          (_, state) => StudentPublicProfilePage(
+              userId: state.pathParameters['userId'] ?? ''),
         ),
-        GoRoute(
-          path: RoutePaths.classSubject,
-          builder: (_, state) => SeoCataloguePage(
-              title: 'Class ${state.pathParameters['classId']} · ${state.pathParameters['subjectId']}'),
+        _route(
+          RoutePaths.classSubject,
+          (_, state) => SeoCataloguePage(
+              title:
+                  'Class ${state.pathParameters['classId']} · ${state.pathParameters['subjectId']}'),
         ),
-        GoRoute(
-          path: RoutePaths.classSubjectChapter,
-          builder: (_, state) => SeoCataloguePage(
+        _route(
+          RoutePaths.classSubjectChapter,
+          (_, state) => SeoCataloguePage(
               isChapter: true,
               title: 'Chapter ${state.pathParameters['chapterId']}'),
         ),
 
         // ---- PROTECTED ----
-        GoRoute(
-            path: RoutePaths.study, builder: (_, __) => const StudyPage()),
-        GoRoute(
-            path: RoutePaths.dashboard, builder: (_, __) => const DashboardPage()),
-        GoRoute(
-            path: RoutePaths.profile, builder: (_, __) => const ProfilePage()),
-        GoRoute(
-            path: RoutePaths.settings, builder: (_, __) => const SettingsPage()),
-        GoRoute(
-            path: RoutePaths.progress, builder: (_, __) => const ProgressPage()),
-        GoRoute(
-            path: RoutePaths.referral, builder: (_, __) => const ReferralPage()),
-        GoRoute(
-            path: RoutePaths.quizzes, builder: (_, __) => const StudentQuizListPage()),
-        GoRoute(
-          path: RoutePaths.quizAttempt,
-          builder: (_, state) => QuizAttemptPage(
+        _route(RoutePaths.study, (_, __) => const StudyPage()),
+        _route(RoutePaths.dashboard, (_, __) => const DashboardPage()),
+        _route(RoutePaths.profile, (_, __) => const ProfilePage()),
+        _route(RoutePaths.settings, (_, __) => const SettingsPage()),
+        _route(RoutePaths.progress, (_, __) => const ProgressPage()),
+        _route(RoutePaths.referral, (_, __) => const ReferralPage()),
+        _route(RoutePaths.quizzes, (_, __) => const StudentQuizListPage()),
+        _route(
+          RoutePaths.quizAttempt,
+          (_, state) => QuizAttemptPage(
             quizId: state.pathParameters['quizId'] ?? '',
             attemptId: state.pathParameters['attemptId'] ?? '',
           ),
         ),
-        GoRoute(
-          path: RoutePaths.quizResult,
-          builder: (_, state) =>
+        _route(
+          RoutePaths.quizResult,
+          (_, state) =>
               QuizResultPage(attemptId: state.pathParameters['attemptId'] ?? ''),
         ),
-        GoRoute(
-            path: RoutePaths.quizHistory, builder: (_, __) => const QuizHistoryPage()),
+        _route(RoutePaths.quizHistory, (_, __) => const QuizHistoryPage()),
 
         // ---- ROLE-GATED ----
-        GoRoute(
-            path: RoutePaths.parent, builder: (_, __) => const ParentDashboardPage()),
-        GoRoute(
-            path: RoutePaths.teacher, builder: (_, __) => const TeacherDashboardPage()),
-        GoRoute(
-          path: '/teacher/subject/:subjectId',
-          builder: (_, state) =>
-              TeacherSubjectPage(subjectId: state.pathParameters['subjectId'] ?? ''),
+        _route(RoutePaths.parent, (_, __) => const ParentDashboardPage()),
+        _route(RoutePaths.teacher, (_, __) => const TeacherDashboardPage()),
+        _route(
+          '/teacher/subject/:subjectId',
+          (_, state) => TeacherSubjectPage(
+              subjectId: state.pathParameters['subjectId'] ?? ''),
         ),
-        GoRoute(
-            path: '/teacher/quizzes', builder: (_, __) => const TeacherQuizListPage()),
-        GoRoute(path: '/teacher/quiz/new', builder: (_, __) => const QuizFormPage()),
-        GoRoute(
-          path: '/teacher/quiz/:quizId/questions',
-          builder: (_, state) =>
-              QuizQuestionManagerPage(quizId: state.pathParameters['quizId'] ?? ''),
+        _route('/teacher/quizzes', (_, __) => const TeacherQuizListPage()),
+        _route('/teacher/quiz/new', (_, __) => const QuizFormPage()),
+        _route(
+          '/teacher/quiz/:quizId/questions',
+          (_, state) => QuizQuestionManagerPage(
+              quizId: state.pathParameters['quizId'] ?? ''),
         ),
-        GoRoute(
-          path: '/teacher/quiz/:quizId/analytics',
-          builder: (_, state) =>
+        _route(
+          '/teacher/quiz/:quizId/analytics',
+          (_, state) =>
               QuizAnalyticsPage(quizId: state.pathParameters['quizId'] ?? ''),
         ),
-        GoRoute(
-          path: '/teacher/subject/:subjectId/student/:studentId',
-          builder: (_, state) => TeacherStudentPage(
+        _route(
+          '/teacher/subject/:subjectId/student/:studentId',
+          (_, state) => TeacherStudentPage(
             subjectId: state.pathParameters['subjectId'] ?? '',
             studentId: state.pathParameters['studentId'] ?? '',
           ),
         ),
-        GoRoute(
-            path: '/teacher/ai-generator',
-            builder: (_, __) => const TeacherAiGeneratorPage()),
-        GoRoute(
-            path: RoutePaths.admin, builder: (_, __) => const AdminDashboardPage()),
-        GoRoute(
-            path: RoutePaths.questionPaper,
-            builder: (_, __) => const QuestionPaperGeneratorPage()),
-        GoRoute(
-          path: RoutePaths.questionPaperPreview,
-          builder: (_, state) =>
-              QuestionPaperPreviewPage(paperId: state.pathParameters['paperId'] ?? ''),
+        _route(
+            '/teacher/ai-generator', (_, __) => const TeacherAiGeneratorPage()),
+        _route(RoutePaths.admin, (_, __) => const AdminDashboardPage()),
+        _route(RoutePaths.questionPaper,
+            (_, __) => const QuestionPaperGeneratorPage()),
+        _route(
+          RoutePaths.questionPaperPreview,
+          (_, state) => QuestionPaperPreviewPage(
+              paperId: state.pathParameters['paperId'] ?? ''),
         ),
-        GoRoute(
-            path: RoutePaths.questionPaperHistory,
-            builder: (_, __) => const QuestionPaperHistoryPage()),
+        _route(RoutePaths.questionPaperHistory,
+            (_, __) => const QuestionPaperHistoryPage()),
       ];
+
+  static GoRoute _route(
+    String path,
+    Widget Function(BuildContext, GoRouterState) builder,
+  ) =>
+      GoRoute(
+        path: path,
+        pageBuilder: (context, state) => NoTransitionPage(
+          child: builder(context, state),
+        ),
+      );
 }

@@ -62,6 +62,11 @@ class _AuthenticatedScaffold extends StatelessWidget {
   const _AuthenticatedScaffold({required this.child});
   final Widget child;
 
+  double _mobileAssistantBottomOffset(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    return bottomInset + kBottomNavigationBarHeight + 16;
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -90,7 +95,7 @@ class _AuthenticatedScaffold extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: c.bgPrimary,
-        title: BrandLogo(size: 24),
+        title: const BrandLogo(size: 24),
         elevation: 0,
       ),
       drawer: const Drawer(child: AppSidebar()),
@@ -98,7 +103,8 @@ class _AuthenticatedScaffold extends StatelessWidget {
       body: Stack(
         children: [
           Positioned.fill(child: child),
-          const AiAssistantWidget(),
+          AiAssistantWidget(
+              bottomOffset: _mobileAssistantBottomOffset(context)),
         ],
       ),
     );

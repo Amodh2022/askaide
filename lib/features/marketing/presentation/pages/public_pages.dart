@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/network/api_helpers.dart';
 import '../../../../core/network/endpoints.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
@@ -547,7 +548,19 @@ class _StudentPublicProfilePageState extends State<StudentPublicProfilePage> {
         padding: const EdgeInsets.all(28),
         decoration: context.cardDecoration(),
         child: _loading
-            ? const Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator())
+            ? const Shimmer(
+                child: Column(
+                  children: [
+                    SkeletonBox(width: 72, height: 72, radius: 36),
+                    SizedBox(height: 16),
+                    SkeletonBox(width: 180, height: 16),
+                    SizedBox(height: 12),
+                    SkeletonBox(width: 240, height: 12),
+                    SizedBox(height: 8),
+                    SkeletonBox(width: 200, height: 12),
+                  ],
+                ),
+              )
             : Column(
                 children: [
                   CircleAvatar(

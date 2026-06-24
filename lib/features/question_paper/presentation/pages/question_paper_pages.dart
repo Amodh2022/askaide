@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
 import '../../../../core/taxonomy/taxonomy_repository.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -895,9 +896,8 @@ class _PreviewViewState extends State<_PreviewView> {
                         Divider(color: c.border),
                         const SizedBox(height: 16),
                         if (state.status == QpLoad.loading)
-                          const Padding(
-                              padding: EdgeInsets.all(24),
-                              child: CircularProgressIndicator())
+                          const SkeletonListLoader(
+                              itemCount: 3, padding: EdgeInsets.all(8))
                         else if (!hasQuestions)
                           const EmptyState(
                             icon: LucideIcons.fileText,
@@ -1165,9 +1165,7 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
               BlocBuilder<PaperHistoryCubit, PaperHistoryState>(
                 builder: (context, state) {
                   if (state.status == QpLoad.loading) {
-                    return const Padding(
-                        padding: EdgeInsets.all(48),
-                        child: Center(child: CircularProgressIndicator()));
+                    return const SkeletonListLoader(padding: EdgeInsets.all(24));
                   }
                   if (state.papers.isEmpty) {
                     return Container(

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
@@ -65,9 +66,7 @@ class _TeacherQuizListView extends StatelessWidget {
               BlocBuilder<TeacherQuizListCubit, TeacherQuizListState>(
                 builder: (context, state) {
                   if (state.status == TqLoad.loading) {
-                    return const Padding(
-                        padding: EdgeInsets.all(48),
-                        child: Center(child: CircularProgressIndicator()));
+                    return const SkeletonListLoader(padding: EdgeInsets.all(24));
                   }
                   if (state.quizzes.isEmpty) {
                     return Container(
@@ -745,18 +744,20 @@ class _ManagedQuestions extends StatelessWidget {
     final state = context.watch<QuizBuilderCubit>().state;
 
     if (state.loadingManaged && state.managed.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        child: Row(children: [
-          SizedBox(
-              width: 16,
-              height: 16,
-              child:
-                  CircularProgressIndicator(strokeWidth: 2, color: c.accent)),
-          const SizedBox(width: 10),
-          Text('Loading quiz questions…',
-              style: AppTypography.bodySmall(c.textMuted)),
-        ]),
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Shimmer(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SkeletonBox(width: 180, height: 14),
+              SizedBox(height: 12),
+              SkeletonBox(width: double.infinity, height: 12),
+              SizedBox(height: 8),
+              SkeletonBox(width: 240, height: 12),
+            ],
+          ),
+        ),
       );
     }
 
@@ -901,9 +902,7 @@ class _QuizAnalyticsView extends StatelessWidget {
                       emphasis: 'analytics.'),
                   const SizedBox(height: 20),
                   if (state.status == TqLoad.loading)
-                    const Padding(
-                        padding: EdgeInsets.all(48),
-                        child: Center(child: CircularProgressIndicator()))
+                    const SkeletonListLoader(itemCount: 3, padding: EdgeInsets.all(8))
                   else ...[
                     Row(
                       children: [

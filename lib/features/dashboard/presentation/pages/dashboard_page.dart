@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
@@ -155,9 +156,8 @@ class _DashboardView extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 if (loading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 96),
-                    child: Center(child: CircularProgressIndicator()),
+                  const SkeletonListLoader(
+                    padding: EdgeInsets.symmetric(vertical: 24),
                   )
                 else ...[
                   // ── Continue session banner ──

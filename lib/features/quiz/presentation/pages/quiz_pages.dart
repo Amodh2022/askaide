@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -21,7 +22,7 @@ class StudentQuizListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<QuizListCubit>(
-      create: (_) => sl<QuizListCubit>()..loadAvailable(),
+      create: (_) => sl<QuizListCubit>()..loadAvailable(page: 1, limit: 12),
       child: const _QuizListView(),
     );
   }
@@ -36,6 +37,19 @@ class _QuizListView extends StatefulWidget {
 class _QuizListViewState extends State<_QuizListView> {
   String _query = '';
   String _statusFilter = ''; // '' | available | in_progress | completed
+
+  void _loadPage(int page) {
+    context.read<QuizListCubit>().loadAvailable(
+          page: page,
+          limit: 12,
+          status: _statusFilter.isEmpty ? null : _statusFilter,
+        );
+  }
+
+  void _setStatusFilter(String value) {
+    setState(() => _statusFilter = value);
+    _loadPage(1);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,13 +71,15 @@ class _QuizListViewState extends State<_QuizListView> {
                       eyebrow: 'QUIZZES',
                       title: 'My',
                       emphasis: 'Quizzes',
-                      subtitle: 'Take quizzes assigned to you and track your progress.',
+                      subtitle:
+                          'Take quizzes assigned to you and track your progress.',
                     ),
                   ),
                   TextButton.icon(
                     onPressed: () => context.go(RoutePaths.quizHistory),
                     icon: Icon(LucideIcons.history, size: 16, color: c.accent),
-                    label: Text('History', style: AppTypography.bodyMedium(c.accent)),
+                    label: Text('History',
+                        style: AppTypography.bodyMedium(c.accent)),
                   ),
                 ],
               ),
@@ -71,22 +87,25 @@ class _QuizListViewState extends State<_QuizListView> {
               BlocBuilder<QuizListCubit, QuizListState>(
                 builder: (context, state) {
                   if (state.status == Load.loading) {
-                    return const Padding(
-                        padding: EdgeInsets.all(48),
-                        child: Center(child: CircularProgressIndicator()));
+                    return const SkeletonListLoader(
+                        padding: EdgeInsets.all(24));
                   }
                   final all = state.available;
                   // Stats mirror StudentQuizList: available / in-progress / completed.
                   final available = all
                       .where((q) => q.status == 'available' && q.canAttempt)
                       .length;
-                  final inProgress = all.where((q) => q.status == 'in_progress').length;
-                  final completed = all.where((q) => q.bestScore != null).length;
+                  final inProgress =
+                      all.where((q) => q.status == 'in_progress').length;
+                  final completed =
+                      all.where((q) => q.bestScore != null).length;
 
                   // Apply status filter + search.
                   var filtered = all;
                   if (_statusFilter.isNotEmpty) {
-                    filtered = filtered.where((q) => q.status == _statusFilter).toList();
+                    filtered = filtered
+                        .where((q) => q.status == _statusFilter)
+                        .toList();
                   }
                   if (_query.isNotEmpty) {
                     final ql = _query.toLowerCase();
@@ -129,8 +148,8 @@ class _QuizListViewState extends State<_QuizListView> {
                           onChanged: (v) => setState(() => _query = v),
                           decoration: InputDecoration(
                             hintText: 'Search quizzes...',
-                            prefixIcon:
-                                Icon(LucideIcons.search, size: 18, color: c.textMuted),
+                            prefixIcon: Icon(LucideIcons.search,
+                                size: 18, color: c.textMuted),
                             isDense: true,
                             filled: true,
                             fillColor: c.bgCard,
@@ -146,7 +165,7 @@ class _QuizListViewState extends State<_QuizListView> {
                         );
                         final filter = _StatusDropdown(
                           value: _statusFilter,
-                          onChanged: (v) => setState(() => _statusFilter = v),
+                          onChanged: _setStatusFilter,
                         );
                         if (cons.maxWidth < 520) {
                           return Column(children: [
@@ -163,11 +182,14 @@ class _QuizListViewState extends State<_QuizListView> {
                       }),
                       const SizedBox(height: 20),
                       if (filtered.isEmpty)
-                        _QuizListEmpty(filtered: _query.isNotEmpty || _statusFilter.isNotEmpty)
+                        _QuizListEmpty(
+                            filtered:
+                                _query.isNotEmpty || _statusFilter.isNotEmpty)
                       else
                         LayoutBuilder(builder: (context, cons) {
-                          final cols =
-                              cons.maxWidth >= 900 ? 3 : (cons.maxWidth >= 600 ? 2 : 1);
+                          final cols = cons.maxWidth >= 900
+                              ? 3
+                              : (cons.maxWidth >= 600 ? 2 : 1);
                           const gap = 16.0;
                           final w = (cons.maxWidth - gap * (cols - 1)) / cols;
                           return Wrap(
@@ -181,6 +203,33 @@ class _QuizListViewState extends State<_QuizListView> {
                             ],
                           );
                         }),
+                      if (state.pagination.pages > 1) ...[
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton(
+                              onPressed: state.pagination.page > 1
+                                  ? () => _loadPage(state.pagination.page - 1)
+                                  : null,
+                              child: const Text('Previous'),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '${state.pagination.page} / ${state.pagination.pages}',
+                              style: AppTypography.bodyMedium(c.textMuted),
+                            ),
+                            const SizedBox(width: 12),
+                            OutlinedButton(
+                              onPressed: state.pagination.page <
+                                      state.pagination.pages
+                                  ? () => _loadPage(state.pagination.page + 1)
+                                  : null,
+                              child: const Text('Next'),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   );
                 },
@@ -217,7 +266,8 @@ class _QuizStat extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: color),
             const SizedBox(height: 8),
-            Text('$value', style: AppTypography.statNumber(c.textPrimary, size: 22)),
+            Text('$value',
+                style: AppTypography.statNumber(c.textPrimary, size: 22)),
             const SizedBox(height: 2),
             Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
           ],
@@ -284,7 +334,10 @@ class _QuizListEmpty extends StatelessWidget {
             child: Icon(LucideIcons.bookOpen, size: 28, color: c.accent),
           ),
           const SizedBox(height: 16),
-          Text(filtered ? 'No quizzes match your filters' : 'Nothing assigned yet',
+          Text(
+              filtered
+                  ? 'No quizzes match your filters'
+                  : 'Nothing assigned yet',
               textAlign: TextAlign.center,
               style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 18)),
           const SizedBox(height: 8),
@@ -342,8 +395,15 @@ class _QuizCard extends StatelessWidget {
     return 'less than 1 hour';
   }
 
+  /// Starts a fresh attempt. The "new" segment is a placeholder — the attempt
+  /// screen calls the resume-or-create `/start` endpoint regardless.
   void _goAttempt(BuildContext context) =>
       context.go('/quiz/${quiz.id}/attempt/new');
+
+  /// Resumes the in-progress attempt, routing to its real id so the URL
+  /// reflects the attempt (mirrors the frontend's handleResume).
+  void _goResume(BuildContext context) =>
+      context.go('/quiz/${quiz.id}/attempt/${quiz.inProgressAttemptId}');
 
   void _viewResult(BuildContext context) {
     if (quiz.lastAttemptId != null) {
@@ -388,14 +448,18 @@ class _QuizCard extends StatelessWidget {
                       child: Text(quiz.title,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 16)),
+                          style: AppTypography.h4(c.textPrimary)
+                              .copyWith(fontSize: 16)),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration:
-                          BoxDecoration(color: badgeBg, borderRadius: BorderRadius.circular(99)),
-                      child: Text(badgeLabel, style: AppTypography.mono(badgeFg, size: 9)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                          color: badgeBg,
+                          borderRadius: BorderRadius.circular(99)),
+                      child: Text(badgeLabel,
+                          style: AppTypography.mono(badgeFg, size: 9)),
                     ),
                   ],
                 ),
@@ -412,10 +476,13 @@ class _QuizCard extends StatelessWidget {
                   spacing: 16,
                   runSpacing: 6,
                   children: [
-                    _miniStat(context, LucideIcons.fileText, '${quiz.totalQuestions} Qs'),
-                    _miniStat(context, LucideIcons.award, '${quiz.totalMarks} marks'),
+                    _miniStat(context, LucideIcons.fileText,
+                        '${quiz.totalQuestions} Qs'),
+                    _miniStat(
+                        context, LucideIcons.award, '${quiz.totalMarks} marks'),
                     if (quiz.timeLimitMinutes != null)
-                      _miniStat(context, LucideIcons.timer, '${quiz.timeLimitMinutes} min'),
+                      _miniStat(context, LucideIcons.timer,
+                          '${quiz.timeLimitMinutes} min'),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -435,7 +502,8 @@ class _QuizCard extends StatelessWidget {
                     context,
                     icon: LucideIcons.calendar,
                     fg: quiz.isExpired ? c.danger : c.warning,
-                    bg: (quiz.isExpired ? c.danger : c.warning).withValues(alpha: 0.08),
+                    bg: (quiz.isExpired ? c.danger : c.warning)
+                        .withValues(alpha: 0.08),
                     text: quiz.isExpired
                         ? 'Deadline passed'
                         : 'Due ${_formatDeadline(quiz.deadlineDate!).toLowerCase()}',
@@ -446,7 +514,8 @@ class _QuizCard extends StatelessWidget {
                     children: [
                       Icon(LucideIcons.circleCheck, size: 13, color: c.accent),
                       const SizedBox(width: 6),
-                      Text('Available now', style: AppTypography.mono(c.accent, size: 11)),
+                      Text('Available now',
+                          style: AppTypography.mono(c.accent, size: 11)),
                     ],
                   ),
                 // Best score panel
@@ -465,7 +534,8 @@ class _QuizCard extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Best Score', style: AppTypography.bodySmall(c.textMuted)),
+                            Text('Best Score',
+                                style: AppTypography.bodySmall(c.textMuted)),
                             Text('${quiz.bestScore}%',
                                 style: AppTypography.mono(c.accent, size: 13)
                                     .copyWith(fontWeight: FontWeight.w700)),
@@ -476,9 +546,12 @@ class _QuizCard extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Attempts', style: AppTypography.bodySmall(c.textMuted)),
-                              Text('${quiz.totalAttempts}/${quiz.allowedAttempts}',
-                                  style: AppTypography.mono(c.textPrimary, size: 11)),
+                              Text('Attempts',
+                                  style: AppTypography.bodySmall(c.textMuted)),
+                              Text(
+                                  '${quiz.totalAttempts}/${quiz.allowedAttempts}',
+                                  style: AppTypography.mono(c.textPrimary,
+                                      size: 11)),
                             ],
                           ),
                         ],
@@ -486,7 +559,8 @@ class _QuizCard extends StatelessWidget {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Icon(LucideIcons.trendingUp, size: 12, color: c.accent),
+                              Icon(LucideIcons.trendingUp,
+                                  size: 12, color: c.accent),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
@@ -510,7 +584,8 @@ class _QuizCard extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.bgPrimary,
               border: Border(top: BorderSide(color: c.border)),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(4)),
             ),
             child: _actions(context),
           ),
@@ -526,7 +601,7 @@ class _QuizCard extends StatelessWidget {
           label: 'Resume Quiz',
           icon: LucideIcons.refreshCw,
           color: c.warning,
-          onTap: () => _goAttempt(context));
+          onTap: () => _goResume(context));
     }
     if (quiz.status == 'completed' && quiz.canAttempt) {
       return Row(
@@ -621,16 +696,21 @@ class _QuizCard extends StatelessWidget {
     final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: c.accentLight, borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(
+          color: c.accentLight, borderRadius: BorderRadius.circular(4)),
       child: Text(text, style: AppTypography.bodySmall(c.accent)),
     );
   }
 
   Widget _banner(BuildContext context,
-      {required IconData icon, required Color fg, required Color bg, required String text}) {
+      {required IconData icon,
+      required Color fg,
+      required Color bg,
+      required String text}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+      decoration:
+          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -643,25 +723,23 @@ class _QuizCard extends StatelessWidget {
   }
 }
 
-/// `/quiz/:quizId/attempt/:attemptId` — the timed quiz-taking screen. When the
-/// attemptId is "new", a fresh attempt is started for the quiz.
+/// `/quiz/:quizId/attempt/:attemptId` — the timed quiz-taking screen. The
+/// attempt is loaded via the resume-or-create `/start` endpoint (see [build]);
+/// the URL's attemptId is informational only.
 class QuizAttemptPage extends StatelessWidget {
-  const QuizAttemptPage({super.key, required this.quizId, required this.attemptId});
+  const QuizAttemptPage(
+      {super.key, required this.quizId, required this.attemptId});
   final String quizId;
   final String attemptId;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<QuizAttemptCubit>(
-      create: (_) {
-        final cubit = sl<QuizAttemptCubit>();
-        if (attemptId == 'new' || attemptId.isEmpty) {
-          cubit.start(quizId);
-        } else {
-          cubit.load(attemptId);
-        }
-        return cubit;
-      },
+      // The `/start` endpoint is resume-or-create: it returns a fresh attempt
+      // for an available quiz, or the existing in-progress attempt (with its
+      // saved answers) when one exists. This mirrors the frontend, which always
+      // calls startQuizAttempt regardless of the URL's attemptId.
+      create: (_) => sl<QuizAttemptCubit>()..start(quizId),
       child: const _QuizAttemptView(),
     );
   }
@@ -694,7 +772,7 @@ class _QuizAttemptView extends StatelessWidget {
       builder: (context, state) {
         final cubit = context.read<QuizAttemptCubit>();
         if (state.status == Load.loading) {
-          return const Center(child: CircularProgressIndicator());
+          return const SkeletonListLoader();
         }
         if (state.status == Load.error || state.attempt == null) {
           return Center(
@@ -718,7 +796,8 @@ class _QuizAttemptView extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: () => _confirmLeave(context),
-                    icon: Icon(LucideIcons.arrowLeft, size: 18, color: c.textMuted),
+                    icon: Icon(LucideIcons.arrowLeft,
+                        size: 18, color: c.textMuted),
                     tooltip: 'Leave',
                   ),
                   Expanded(
@@ -729,29 +808,37 @@ class _QuizAttemptView extends StatelessWidget {
                         Text(state.attempt!.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 16)),
+                            style: AppTypography.h4(c.textPrimary)
+                                .copyWith(fontSize: 16)),
                         Text('Q ${state.index + 1} / ${state.total}',
                             style: AppTypography.mono(c.textMuted, size: 11)),
                       ],
                     ),
                   ),
                   if (deadline != null) ...[
-                    _CountdownTimer(deadline: deadline, onExpire: () {
-                      if (!state.submitting && state.submittedAttemptId == null) {
-                        cubit.submit();
-                      }
-                    }),
+                    _CountdownTimer(
+                        deadline: deadline,
+                        onExpire: () {
+                          if (!state.submitting &&
+                              state.submittedAttemptId == null) {
+                            cubit.submit();
+                          }
+                        }),
                     const SizedBox(width: 10),
                   ],
                   FilledButton.icon(
-                    onPressed: state.submitting ? null : () => _confirmSubmit(context, state),
+                    onPressed: state.submitting
+                        ? null
+                        : () => _confirmSubmit(context, state),
                     icon: const Icon(LucideIcons.send, size: 14),
                     label: const Text('Submit'),
                     style: FilledButton.styleFrom(
                       backgroundColor: c.accent,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4)),
                     ),
                   ),
                 ],
@@ -792,7 +879,8 @@ class _QuizAttemptView extends StatelessWidget {
                   children: [
                     Expanded(child: panel),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
                         color: c.bgCard,
                         border: Border(top: BorderSide(color: c.border)),
@@ -800,14 +888,17 @@ class _QuizAttemptView extends StatelessWidget {
                       child: Row(
                         children: [
                           Text('Question ${state.index + 1} of ${state.total}',
-                              style: AppTypography.mono(c.textPrimary, size: 12)),
+                              style:
+                                  AppTypography.mono(c.textPrimary, size: 12)),
                           const Spacer(),
                           FilledButton(
-                            onPressed: () => _showMobileNavigator(context, cubit, state),
+                            onPressed: () =>
+                                _showMobileNavigator(context, cubit, state),
                             style: FilledButton.styleFrom(
                               backgroundColor: c.accent,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4)),
                             ),
@@ -842,7 +933,8 @@ class _QuizAttemptView extends StatelessWidget {
               child: Text('Cancel', style: AppTypography.button(c.textMuted))),
           FilledButton(
             onPressed: () => Navigator.pop(dctx, true),
-            style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(
+                backgroundColor: c.accent, foregroundColor: Colors.white),
             child: const Text('Leave'),
           ),
         ],
@@ -851,7 +943,8 @@ class _QuizAttemptView extends StatelessWidget {
     if (leave == true && context.mounted) context.go(RoutePaths.quizzes);
   }
 
-  Future<void> _confirmSubmit(BuildContext context, QuizAttemptState state) async {
+  Future<void> _confirmSubmit(
+      BuildContext context, QuizAttemptState state) async {
     final c = context.colors;
     final cubit = context.read<QuizAttemptCubit>();
     final unanswered = state.total - state.answeredCount;
@@ -864,8 +957,10 @@ class _QuizAttemptView extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: c.warningBg, borderRadius: BorderRadius.circular(4)),
-              child: Icon(LucideIcons.triangleAlert, size: 18, color: c.warning),
+              decoration: BoxDecoration(
+                  color: c.warningBg, borderRadius: BorderRadius.circular(4)),
+              child:
+                  Icon(LucideIcons.triangleAlert, size: 18, color: c.warning),
             ),
             const SizedBox(width: 12),
             Text('Submit Quiz?', style: AppTypography.h4(c.textPrimary)),
@@ -900,12 +995,14 @@ class _QuizAttemptView extends StatelessWidget {
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(dctx, false),
-              child: Text('Review Answers', style: AppTypography.button(c.textMuted))),
+              child: Text('Review Answers',
+                  style: AppTypography.button(c.textMuted))),
           FilledButton.icon(
             onPressed: () => Navigator.pop(dctx, true),
             icon: const Icon(LucideIcons.send, size: 14),
             label: const Text('Submit Quiz'),
-            style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
+            style: FilledButton.styleFrom(
+                backgroundColor: c.accent, foregroundColor: Colors.white),
           ),
         ],
       ),
@@ -973,7 +1070,8 @@ class _QuestionPanel extends StatelessWidget {
               children: [
                 // Question header
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   decoration: BoxDecoration(
                     border: Border(bottom: BorderSide(color: c.border)),
                   ),
@@ -998,7 +1096,8 @@ class _QuestionPanel extends StatelessWidget {
                         onTap: cubit.toggleFlag,
                         borderRadius: BorderRadius.circular(4),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: isFlagged ? c.warningBg : Colors.transparent,
                             borderRadius: BorderRadius.circular(4),
@@ -1007,7 +1106,8 @@ class _QuestionPanel extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(LucideIcons.flag,
-                                  size: 14, color: isFlagged ? c.warning : c.textMuted),
+                                  size: 14,
+                                  color: isFlagged ? c.warning : c.textMuted),
                               const SizedBox(width: 6),
                               Text(isFlagged ? 'Marked' : 'Mark for review',
                                   style: AppTypography.bodySmall(
@@ -1041,11 +1141,13 @@ class _QuestionPanel extends StatelessWidget {
                 ),
                 // Footer nav
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   decoration: BoxDecoration(
                     color: c.bgPrimary,
                     border: Border(top: BorderSide(color: c.border)),
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+                    borderRadius:
+                        const BorderRadius.vertical(bottom: Radius.circular(4)),
                   ),
                   child: Row(
                     children: [
@@ -1056,18 +1158,21 @@ class _QuestionPanel extends StatelessWidget {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: c.textPrimary,
                           side: BorderSide(color: c.border),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4)),
                         ),
                       ),
                       const Spacer(),
                       FilledButton.icon(
-                        onPressed: state.index < state.total - 1 ? cubit.next : null,
+                        onPressed:
+                            state.index < state.total - 1 ? cubit.next : null,
                         icon: const Icon(LucideIcons.chevronRight, size: 16),
                         label: const Text('Next'),
                         style: FilledButton.styleFrom(
                           backgroundColor: c.accent,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4)),
                         ),
                       ),
                     ],
@@ -1122,12 +1227,15 @@ class _AttemptOption extends StatelessWidget {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(letter,
-                    style: AppTypography.mono(selected ? Colors.white : c.textMuted, size: 12)),
+                    style: AppTypography.mono(
+                        selected ? Colors.white : c.textMuted,
+                        size: 12)),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(text,
-                    style: AppTypography.bodyMedium(selected ? c.textPrimary : c.textMuted)),
+                    style: AppTypography.bodyMedium(
+                        selected ? c.textPrimary : c.textMuted)),
               ),
               if (selected) ...[
                 const SizedBox(width: 8),
@@ -1216,7 +1324,8 @@ class _QuestionNavigator extends StatelessWidget {
                       child: Container(
                         width: 10,
                         height: 10,
-                        decoration: BoxDecoration(color: c.warning, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                            color: c.warning, shape: BoxShape.circle),
                       ),
                     ),
                 ],
@@ -1265,7 +1374,8 @@ class _QuestionNavigator extends StatelessWidget {
               children: [
                 Text('${state.answeredCount}/${state.total}',
                     style: AppTypography.statNumber(c.textPrimary, size: 22)),
-                Text('ANSWERED', style: AppTypography.mono(c.textMuted, size: 10)),
+                Text('ANSWERED',
+                    style: AppTypography.mono(c.textMuted, size: 10)),
                 if (unanswered > 0) ...[
                   const SizedBox(height: 4),
                   Text('$unanswered unanswered',
@@ -1440,25 +1550,18 @@ class _QuizResultView extends StatelessWidget {
     return BlocBuilder<QuizResultCubit, QuizResultState>(
       builder: (context, state) {
         if (state.status == Load.loading) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 16),
-                Text('Loading results...', style: AppTypography.mono(c.textMuted, size: 12)),
-              ],
-            ),
-          );
+          return const SkeletonListLoader();
         }
         final r = state.result;
         if (r == null) {
           return Center(
-              child: Text('Could not load results', style: AppTypography.bodyMedium(c.danger)));
+              child: Text('Could not load results',
+                  style: AppTypography.bodyMedium(c.danger)));
         }
         final passed = r.passed;
         final scoreColor = passed ? c.accent : c.danger;
-        final incorrect = (r.questions.length - r.correctCount).clamp(0, r.questions.length);
+        final incorrect =
+            (r.questions.length - r.correctCount).clamp(0, r.questions.length);
 
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -1471,21 +1574,27 @@ class _QuizResultView extends StatelessWidget {
                   // Back + header
                   TextButton.icon(
                     onPressed: () => context.go(RoutePaths.quizzes),
-                    icon: Icon(LucideIcons.arrowLeft, size: 16, color: c.textMuted),
-                    label: Text('Back to Quizzes', style: AppTypography.bodyMedium(c.textMuted)),
+                    icon: Icon(LucideIcons.arrowLeft,
+                        size: 16, color: c.textMuted),
+                    label: Text('Back to Quizzes',
+                        style: AppTypography.bodyMedium(c.textMuted)),
                   ),
                   const SizedBox(height: 4),
-                  Text('QUIZ RESULTS', style: AppTypography.sectionLabel(c.textMuted)),
+                  Text('QUIZ RESULTS',
+                      style: AppTypography.sectionLabel(c.textMuted)),
                   const SizedBox(height: 6),
-                  Text(r.quizTitle, style: AppTypography.h2(c.textPrimary).copyWith(fontSize: 26)),
+                  Text(r.quizTitle,
+                      style: AppTypography.h2(c.textPrimary)
+                          .copyWith(fontSize: 26)),
                   const SizedBox(height: 20),
 
                   // Score card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
-                    decoration:
-                        BoxDecoration(color: scoreColor, borderRadius: BorderRadius.circular(4)),
+                    decoration: BoxDecoration(
+                        color: scoreColor,
+                        borderRadius: BorderRadius.circular(4)),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1495,31 +1604,39 @@ class _QuizResultView extends StatelessWidget {
                             children: [
                               Row(
                                 children: [
-                                  Icon(passed ? LucideIcons.trophy : LucideIcons.circleAlert,
-                                      size: 18, color: Colors.white),
+                                  Icon(
+                                      passed
+                                          ? LucideIcons.trophy
+                                          : LucideIcons.circleAlert,
+                                      size: 18,
+                                      color: Colors.white),
                                   const SizedBox(width: 8),
                                   Flexible(
                                     child: Text(
                                       passed
                                           ? 'Congratulations! You Passed!'
                                           : 'Keep Trying!',
-                                      style: AppTypography.bodyMedium(Colors.white),
+                                      style: AppTypography.bodyMedium(
+                                          Colors.white),
                                     ),
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 12),
                               Text('${r.percentage.round()}%',
-                                  style: AppTypography.statNumber(Colors.white, size: 52)),
+                                  style: AppTypography.statNumber(Colors.white,
+                                      size: 52)),
                               const SizedBox(height: 4),
                               Text('${r.score} / ${r.totalMarks} marks',
-                                  style: AppTypography.mono(Colors.white70, size: 13)),
+                                  style: AppTypography.mono(Colors.white70,
+                                      size: 13)),
                             ],
                           ),
                         ),
                         const SizedBox(width: 12),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(4),
@@ -1528,10 +1645,12 @@ class _QuizResultView extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text('PASSING SCORE',
-                                  style: AppTypography.mono(Colors.white70, size: 10)),
+                                  style: AppTypography.mono(Colors.white70,
+                                      size: 10)),
                               const SizedBox(height: 4),
                               Text('${r.passingPercentage.round()}%',
-                                  style: AppTypography.statNumber(Colors.white, size: 22)),
+                                  style: AppTypography.statNumber(Colors.white,
+                                      size: 22)),
                             ],
                           ),
                         ),
@@ -1546,10 +1665,30 @@ class _QuizResultView extends StatelessWidget {
                     const gap = 12.0;
                     final w = (cons.maxWidth - gap * (cols - 1)) / cols;
                     final stats = [
-                      (icon: LucideIcons.circleCheck, color: c.accent, label: 'CORRECT', value: '${r.correctCount}'),
-                      (icon: LucideIcons.circleX, color: c.danger, label: 'INCORRECT', value: '$incorrect'),
-                      (icon: LucideIcons.fileText, color: c.textMuted, label: 'QUESTIONS', value: '${r.questions.length}'),
-                      (icon: LucideIcons.clock, color: c.textMuted, label: 'TIME SPENT', value: _formatTime(r.timeSpent)),
+                      (
+                        icon: LucideIcons.circleCheck,
+                        color: c.accent,
+                        label: 'CORRECT',
+                        value: '${r.correctCount}'
+                      ),
+                      (
+                        icon: LucideIcons.circleX,
+                        color: c.danger,
+                        label: 'INCORRECT',
+                        value: '$incorrect'
+                      ),
+                      (
+                        icon: LucideIcons.fileText,
+                        color: c.textMuted,
+                        label: 'QUESTIONS',
+                        value: '${r.questions.length}'
+                      ),
+                      (
+                        icon: LucideIcons.clock,
+                        color: c.textMuted,
+                        label: 'TIME SPENT',
+                        value: _formatTime(r.timeSpent)
+                      ),
                     ];
                     return Wrap(
                       spacing: gap,
@@ -1559,7 +1698,10 @@ class _QuizResultView extends StatelessWidget {
                           SizedBox(
                             width: w,
                             child: _ResultStat(
-                                icon: s.icon, color: s.color, value: s.value, label: s.label),
+                                icon: s.icon,
+                                color: s.color,
+                                value: s.value,
+                                label: s.label),
                           ),
                       ],
                     );
@@ -1575,16 +1717,20 @@ class _QuizResultView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 18, vertical: 14),
                             decoration: BoxDecoration(
-                              border: Border(bottom: BorderSide(color: c.border)),
+                              border:
+                                  Border(bottom: BorderSide(color: c.border)),
                             ),
                             child: Row(
                               children: [
-                                Icon(LucideIcons.bookOpen, size: 18, color: c.accent),
+                                Icon(LucideIcons.bookOpen,
+                                    size: 18, color: c.accent),
                                 const SizedBox(width: 8),
                                 Text('Question Review',
-                                    style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 16)),
+                                    style: AppTypography.h4(c.textPrimary)
+                                        .copyWith(fontSize: 16)),
                               ],
                             ),
                           ),
@@ -1614,20 +1760,25 @@ class _QuizResultView extends StatelessWidget {
                           style: OutlinedButton.styleFrom(
                             foregroundColor: c.textPrimary,
                             side: BorderSide(color: c.border),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4)),
                           ),
                         ),
                         if (r.canRetry && r.quizId.isNotEmpty)
                           FilledButton.icon(
-                            onPressed: () => context.go('/quiz/${r.quizId}/attempt/new'),
+                            onPressed: () =>
+                                context.go('/quiz/${r.quizId}/attempt/new'),
                             icon: const Icon(LucideIcons.refreshCw, size: 16),
                             label: const Text('Try Again'),
                             style: FilledButton.styleFrom(
                               backgroundColor: c.accent,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 24, vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4)),
                             ),
                           ),
                       ],
@@ -1645,7 +1796,8 @@ class _QuizResultView extends StatelessWidget {
 
 /// A collapsible reviewed-question row in the result screen.
 class _ReviewTile extends StatefulWidget {
-  const _ReviewTile({required this.index, required this.q, this.isLast = false});
+  const _ReviewTile(
+      {required this.index, required this.q, this.isLast = false});
   final int index;
   final QuizReviewQuestion q;
   final bool isLast;
@@ -1663,9 +1815,8 @@ class _ReviewTileState extends State<_ReviewTile> {
     final correct = q.isCorrect;
     return Container(
       decoration: BoxDecoration(
-        border: widget.isLast
-            ? null
-            : Border(bottom: BorderSide(color: c.border)),
+        border:
+            widget.isLast ? null : Border(bottom: BorderSide(color: c.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1682,37 +1833,51 @@ class _ReviewTileState extends State<_ReviewTile> {
                     height: 28,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: correct ? c.accentLight : c.danger.withValues(alpha: 0.1),
+                      color: correct
+                          ? c.accentLight
+                          : c.danger.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text('${widget.index + 1}',
-                        style: AppTypography.mono(correct ? c.accent : c.danger, size: 12)),
+                        style: AppTypography.mono(correct ? c.accent : c.danger,
+                            size: 12)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(q.text, style: AppTypography.bodyMedium(c.textPrimary)),
+                        Text(q.text,
+                            style: AppTypography.bodyMedium(c.textPrimary)),
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            Icon(correct ? LucideIcons.circleCheck : LucideIcons.circleX,
-                                size: 13, color: correct ? c.accent : c.danger),
+                            Icon(
+                                correct
+                                    ? LucideIcons.circleCheck
+                                    : LucideIcons.circleX,
+                                size: 13,
+                                color: correct ? c.accent : c.danger),
                             const SizedBox(width: 4),
                             Text(correct ? 'Correct' : 'Incorrect',
-                                style: AppTypography.bodySmall(correct ? c.accent : c.danger)),
+                                style: AppTypography.bodySmall(
+                                    correct ? c.accent : c.danger)),
                             const SizedBox(width: 10),
                             Text('${q.marksObtained}/${q.marks} marks',
-                                style: AppTypography.mono(c.textMuted, size: 11)),
+                                style:
+                                    AppTypography.mono(c.textMuted, size: 11)),
                           ],
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(_expanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
-                      size: 16, color: c.textMuted),
+                  Icon(
+                      _expanded
+                          ? LucideIcons.chevronUp
+                          : LucideIcons.chevronDown,
+                      size: 16,
+                      color: c.textMuted),
                 ],
               ),
             ),
@@ -1725,7 +1890,8 @@ class _ReviewTileState extends State<_ReviewTile> {
                 children: [
                   _answerBox(context,
                       label: 'YOUR ANSWER',
-                      text: q.userAnswer.isEmpty ? 'Not answered' : q.userAnswer,
+                      text:
+                          q.userAnswer.isEmpty ? 'Not answered' : q.userAnswer,
                       fg: correct ? c.accent : c.danger,
                       bg: c.bgPrimary,
                       border: c.border),
@@ -1776,7 +1942,9 @@ class _ReviewTileState extends State<_ReviewTile> {
         children: [
           Text(label, style: AppTypography.mono(labelColor ?? fg, size: 10)),
           const SizedBox(height: 4),
-          Text(text, style: AppTypography.bodySmall(fg).copyWith(fontWeight: FontWeight.w500)),
+          Text(text,
+              style: AppTypography.bodySmall(fg)
+                  .copyWith(fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -1822,7 +1990,7 @@ class QuizHistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<QuizListCubit>(
-      create: (_) => sl<QuizListCubit>()..loadHistory(),
+      create: (_) => sl<QuizListCubit>()..loadHistory(page: 1, limit: 10),
       child: const _QuizHistoryView(),
     );
   }
@@ -1836,13 +2004,28 @@ class _QuizHistoryView extends StatefulWidget {
 
 class _QuizHistoryViewState extends State<_QuizHistoryView> {
   String _query = '';
-  int _page = 1;
-  static const _perPage = 10;
+
+  void _loadPage(int page) {
+    context.read<QuizListCubit>().loadHistory(page: page, limit: 10);
+  }
 
   String _fmtDate(String? iso) {
     final d = DateTime.tryParse(iso ?? '');
     if (d == null) return '—';
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     final hh = d.hour.toString().padLeft(2, '0');
     final mm = d.minute.toString().padLeft(2, '0');
     return '${months[d.month - 1]} ${d.day}, ${d.year} · $hh:$mm';
@@ -1864,20 +2047,20 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
               TextButton.icon(
                 onPressed: () => context.go(RoutePaths.quizzes),
                 icon: Icon(LucideIcons.arrowLeft, size: 16, color: c.textMuted),
-                label: Text('Back to Quizzes', style: AppTypography.bodyMedium(c.textMuted)),
+                label: Text('Back to Quizzes',
+                    style: AppTypography.bodyMedium(c.textMuted)),
               ),
               const SizedBox(height: 8),
-              const PageHeader(eyebrow: 'QUIZZES', title: 'Attempt', emphasis: 'history.'),
+              const PageHeader(
+                  eyebrow: 'QUIZZES', title: 'Attempt', emphasis: 'history.'),
               const SizedBox(height: 20),
               // Search
               TextField(
-                onChanged: (v) => setState(() {
-                  _query = v;
-                  _page = 1;
-                }),
+                onChanged: (v) => setState(() => _query = v),
                 decoration: InputDecoration(
                   hintText: 'Search by quiz title...',
-                  prefixIcon: Icon(LucideIcons.search, size: 18, color: c.textMuted),
+                  prefixIcon:
+                      Icon(LucideIcons.search, size: 18, color: c.textMuted),
                   filled: true,
                   fillColor: c.bgSecondary,
                   border: OutlineInputBorder(
@@ -1894,12 +2077,13 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
               BlocBuilder<QuizListCubit, QuizListState>(
                 builder: (context, state) {
                   if (state.status == Load.loading) {
-                    return const Padding(
-                        padding: EdgeInsets.all(48),
-                        child: Center(child: CircularProgressIndicator()));
+                    return const SkeletonListLoader(
+                        padding: EdgeInsets.all(24));
                   }
                   final filtered = state.history
-                      .where((h) => h.quizTitle.toLowerCase().contains(_query.toLowerCase()))
+                      .where((h) => h.quizTitle
+                          .toLowerCase()
+                          .contains(_query.toLowerCase()))
                       .toList();
                   if (filtered.isEmpty) {
                     return Container(
@@ -1914,31 +2098,35 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                       ),
                     );
                   }
-                  final pages = (filtered.length / _perPage).ceil();
-                  final page = _page.clamp(1, pages);
-                  final slice = filtered.skip((page - 1) * _perPage).take(_perPage).toList();
                   return Column(
                     children: [
-                      for (final h in slice) _HistoryCard(
-                        item: h,
-                        date: _fmtDate(h.submittedAt),
-                        time: _fmtTime(h.timeSpent),
-                      ),
-                      if (pages > 1) ...[
+                      for (final h in filtered)
+                        _HistoryCard(
+                          item: h,
+                          date: _fmtDate(h.submittedAt),
+                          time: _fmtTime(h.timeSpent),
+                        ),
+                      if (state.pagination.pages > 1) ...[
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             OutlinedButton(
-                              onPressed: page > 1 ? () => setState(() => _page = page - 1) : null,
+                              onPressed: state.pagination.page > 1
+                                  ? () => _loadPage(state.pagination.page - 1)
+                                  : null,
                               child: const Text('Previous'),
                             ),
                             const SizedBox(width: 12),
-                            Text('Page $page of $pages',
+                            Text(
+                                '${state.pagination.page} / ${state.pagination.pages}',
                                 style: AppTypography.bodyMedium(c.textMuted)),
                             const SizedBox(width: 12),
                             OutlinedButton(
-                              onPressed: page < pages ? () => setState(() => _page = page + 1) : null,
+                              onPressed: state.pagination.page <
+                                      state.pagination.pages
+                                  ? () => _loadPage(state.pagination.page + 1)
+                                  : null,
                               child: const Text('Next'),
                             ),
                           ],
@@ -1957,7 +2145,8 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
 }
 
 class _HistoryCard extends StatelessWidget {
-  const _HistoryCard({required this.item, required this.date, required this.time});
+  const _HistoryCard(
+      {required this.item, required this.date, required this.time});
   final QuizHistoryItem item;
   final String date;
   final String time;
@@ -2002,14 +2191,17 @@ class _HistoryCard extends StatelessWidget {
                       spacing: 12,
                       children: [
                         Row(mainAxisSize: MainAxisSize.min, children: [
-                          Icon(LucideIcons.calendar, size: 13, color: c.textMuted),
+                          Icon(LucideIcons.calendar,
+                              size: 13, color: c.textMuted),
                           const SizedBox(width: 4),
-                          Text(date, style: AppTypography.bodySmall(c.textMuted)),
+                          Text(date,
+                              style: AppTypography.bodySmall(c.textMuted)),
                         ]),
                         Row(mainAxisSize: MainAxisSize.min, children: [
                           Icon(LucideIcons.clock, size: 13, color: c.textMuted),
                           const SizedBox(width: 4),
-                          Text(time, style: AppTypography.bodySmall(c.textMuted)),
+                          Text(time,
+                              style: AppTypography.bodySmall(c.textMuted)),
                         ]),
                       ],
                     ),

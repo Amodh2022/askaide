@@ -10,6 +10,11 @@ class UserAnswer extends Equatable {
     required this.isCorrect,
     required this.answeredAtMillis,
     this.synced = false,
+    this.questionText,
+    this.options = const [],
+    this.correctAnswer,
+    this.explanation,
+    this.timeSpentSeconds,
   });
 
   final String questionId;
@@ -19,6 +24,18 @@ class UserAnswer extends Equatable {
   final int answeredAtMillis;
   final bool synced;
 
+  /// Question detail loaded for the session-review transcript (mirrors the
+  /// React `UserAnswers` view, which renders the question, its options, the
+  /// correct answer and the explanation alongside the user's answer). These are
+  /// populated only when fetched from the server's `user-answers/session/:id`
+  /// endpoint, which embeds the question document; they stay empty for the
+  /// local offline queue, which only needs the keys in [toWireJson].
+  final String? questionText;
+  final List<String> options;
+  final String? correctAnswer;
+  final String? explanation;
+  final int? timeSpentSeconds;
+
   UserAnswer copyWith({bool? synced}) => UserAnswer(
         questionId: questionId,
         sessionId: sessionId,
@@ -26,6 +43,11 @@ class UserAnswer extends Equatable {
         isCorrect: isCorrect,
         answeredAtMillis: answeredAtMillis,
         synced: synced ?? this.synced,
+        questionText: questionText,
+        options: options,
+        correctAnswer: correctAnswer,
+        explanation: explanation,
+        timeSpentSeconds: timeSpentSeconds,
       );
 
   /// Local (Hive) serialization — keeps queue-only fields (`answeredAt`,
@@ -61,6 +83,17 @@ class UserAnswer extends Equatable {
       );
 
   @override
-  List<Object?> get props =>
-      [questionId, sessionId, answer, isCorrect, answeredAtMillis, synced];
+  List<Object?> get props => [
+        questionId,
+        sessionId,
+        answer,
+        isCorrect,
+        answeredAtMillis,
+        synced,
+        questionText,
+        options,
+        correctAnswer,
+        explanation,
+        timeSpentSeconds,
+      ];
 }

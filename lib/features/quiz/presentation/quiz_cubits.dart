@@ -14,49 +14,81 @@ class QuizListState extends Equatable {
     this.status = Load.initial,
     this.available = const [],
     this.history = const [],
+    this.pagination = const QuizPagination(),
     this.error,
   });
   final Load status;
   final List<QuizSummary> available;
   final List<QuizHistoryItem> history;
+  final QuizPagination pagination;
   final String? error;
 
   QuizListState copyWith({
     Load? status,
     List<QuizSummary>? available,
     List<QuizHistoryItem>? history,
+    QuizPagination? pagination,
     String? error,
   }) =>
       QuizListState(
         status: status ?? this.status,
         available: available ?? this.available,
         history: history ?? this.history,
+        pagination: pagination ?? this.pagination,
         error: error,
       );
 
   @override
-  List<Object?> get props => [status, available, history, error];
+  List<Object?> get props => [status, available, history, pagination, error];
 }
 
 class QuizListCubit extends Cubit<QuizListState> {
   QuizListCubit(this._repo) : super(const QuizListState());
   final QuizRepository _repo;
 
-  Future<void> loadAvailable() async {
+  Future<void> loadAvailable({
+    int page = 1,
+    int limit = 12,
+    String? status,
+    String? subjectId,
+  }) async {
     emit(state.copyWith(status: Load.loading));
-    final r = await _repo.available();
+    final r = await _repo.available(
+      page: page,
+      limit: limit,
+      status: status,
+      subjectId: subjectId,
+    );
     r.fold(
       (f) => emit(state.copyWith(status: Load.error, error: f.message)),
-      (list) => emit(state.copyWith(status: Load.loaded, available: list)),
+      (pageData) => emit(state.copyWith(
+        status: Load.loaded,
+        available: pageData.items,
+        pagination: pageData.pagination,
+        error: null,
+      )),
     );
   }
 
-  Future<void> loadHistory() async {
+  Future<void> loadHistory({
+    int page = 1,
+    int limit = 10,
+    String? subjectId,
+  }) async {
     emit(state.copyWith(status: Load.loading));
-    final r = await _repo.history();
+    final r = await _repo.history(
+      page: page,
+      limit: limit,
+      subjectId: subjectId,
+    );
     r.fold(
       (f) => emit(state.copyWith(status: Load.error, error: f.message)),
-      (list) => emit(state.copyWith(status: Load.loaded, history: list)),
+      (pageData) => emit(state.copyWith(
+        status: Load.loaded,
+        history: pageData.items,
+        pagination: pageData.pagination,
+        error: null,
+      )),
     );
   }
 }
@@ -115,21 +147,36 @@ class QuizAttemptState extends Equatable {
       );
 
   @override
-  List<Object?> get props =>
-      [status, attempt, index, answers, flagged, submitting, submittedAttemptId, error];
+  List<Object?> get props => [
+        status,
+        attempt,
+        index,
+        answers,
+        flagged,
+        submitting,
+        submittedAttemptId,
+        error
+      ];
 }
 
 class QuizAttemptCubit extends Cubit<QuizAttemptState> {
   QuizAttemptCubit(this._repo) : super(const QuizAttemptState());
   final QuizRepository _repo;
 
-  /// Starts a fresh attempt for a quiz.
+  /// When the current question was first shown — the anchor for the per-answer
+  /// `timeSpent` we report, reset on every navigation (mirrors the frontend's
+  /// `questionStartTime` ref).
+  DateTime _questionEnteredAt = DateTime.now();
+
+  /// Starts (or resumes) an attempt for a quiz. The `/start` endpoint is
+  /// resume-or-create: for an in-progress attempt it returns the same attempt
+  /// with its previously-saved answers, which we hydrate into [state.answers].
   Future<void> start(String quizId) async {
     emit(state.copyWith(status: Load.loading));
     final r = await _repo.start(quizId);
     r.fold(
       (f) => emit(state.copyWith(status: Load.error, error: f.message)),
-      (a) => emit(state.copyWith(status: Load.loaded, attempt: a)),
+      (a) => _onAttemptLoaded(a),
     );
   }
 
@@ -139,8 +186,19 @@ class QuizAttemptCubit extends Cubit<QuizAttemptState> {
     final r = await _repo.getAttempt(attemptId);
     r.fold(
       (f) => emit(state.copyWith(status: Load.error, error: f.message)),
-      (a) => emit(state.copyWith(status: Load.loaded, attempt: a)),
+      (a) => _onAttemptLoaded(a),
     );
+  }
+
+  /// Shared post-load: restore any previously-saved answers and reset the
+  /// per-question timer (mirrors the frontend's `setAnswers(savedAnswers)`).
+  void _onAttemptLoaded(QuizAttempt a) {
+    _questionEnteredAt = DateTime.now();
+    emit(state.copyWith(
+      status: Load.loaded,
+      attempt: a,
+      answers: Map<String, String>.from(a.savedAnswers),
+    ));
   }
 
   void select(String answer) {
@@ -148,16 +206,24 @@ class QuizAttemptCubit extends Cubit<QuizAttemptState> {
     if (q == null) return;
     final next = Map<String, String>.from(state.answers)..[q.id] = answer;
     emit(state.copyWith(answers: next));
-    // Fire-and-forget per-question save (mirrors the frontend autosave).
+    // Fire-and-forget per-question save (mirrors the frontend autosave),
+    // reporting the seconds spent on this question since it was shown.
     final attemptId = state.attempt?.attemptId;
     if (attemptId != null) {
+      final timeSpent = DateTime.now()
+          .difference(_questionEnteredAt)
+          .inSeconds
+          .clamp(0, 1 << 31);
       _repo.answer(attemptId,
-          quizQuestionId: q.id, selectedAnswer: answer, timeSpent: 0);
+          quizQuestionId: q.id, selectedAnswer: answer, timeSpent: timeSpent);
     }
   }
 
   void goTo(int i) {
-    if (i >= 0 && i < state.total) emit(state.copyWith(index: i));
+    if (i >= 0 && i < state.total) {
+      _questionEnteredAt = DateTime.now();
+      emit(state.copyWith(index: i));
+    }
   }
 
   void next() => goTo(state.index + 1);
@@ -179,7 +245,8 @@ class QuizAttemptCubit extends Cubit<QuizAttemptState> {
     final r = await _repo.submit(attemptId);
     r.fold(
       (f) => emit(state.copyWith(submitting: false, error: f.message)),
-      (_) => emit(state.copyWith(submitting: false, submittedAttemptId: attemptId)),
+      (_) => emit(
+          state.copyWith(submitting: false, submittedAttemptId: attemptId)),
     );
   }
 }
@@ -195,7 +262,9 @@ class QuizResultState extends Equatable {
 
   QuizResultState copyWith({Load? status, QuizResult? result, String? error}) =>
       QuizResultState(
-          status: status ?? this.status, result: result ?? this.result, error: error);
+          status: status ?? this.status,
+          result: result ?? this.result,
+          error: error);
 
   @override
   List<Object?> get props => [status, result, error];

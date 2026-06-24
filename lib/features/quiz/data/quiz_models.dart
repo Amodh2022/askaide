@@ -2,6 +2,61 @@ import 'package:equatable/equatable.dart';
 
 import '../../../core/network/api_helpers.dart';
 
+/// Shared pagination metadata returned by the quiz list endpoints.
+class QuizPagination extends Equatable {
+  const QuizPagination({
+    this.page = 1,
+    this.limit = 12,
+    this.total = 0,
+    this.pages = 1,
+  });
+
+  final int page;
+  final int limit;
+  final int total;
+  final int pages;
+
+  factory QuizPagination.fromJson(Map<dynamic, dynamic> j) {
+    final page = j.intval(['page'], 1);
+    final limit = j.intval(['limit'], 12);
+    final total = j.intval(['total']);
+    final pagesRaw = j.intval(['pages']);
+    final pages = pagesRaw > 0
+        ? pagesRaw
+        : (total > 0 && limit > 0 ? (total / limit).ceil() : 1);
+    return QuizPagination(
+      page: page > 0 ? page : 1,
+      limit: limit > 0 ? limit : 12,
+      total: total,
+      pages: pages > 0 ? pages : 1,
+    );
+  }
+
+  QuizPagination copyWith({
+    int? page,
+    int? limit,
+    int? total,
+    int? pages,
+  }) =>
+      QuizPagination(
+        page: page ?? this.page,
+        limit: limit ?? this.limit,
+        total: total ?? this.total,
+        pages: pages ?? this.pages,
+      );
+
+  @override
+  List<Object?> get props => [page, limit, total, pages];
+}
+
+/// A paginated list of quiz entities.
+class QuizPage<T> {
+  const QuizPage({required this.items, required this.pagination});
+
+  final List<T> items;
+  final QuizPagination pagination;
+}
+
 /// A quiz as shown in the student's available/assigned list.
 ///
 /// The backend attaches an `attemptInfo` object that drives the row's state:
@@ -57,7 +112,8 @@ class QuizSummary extends Equatable {
       inProgressAttemptId != null && inProgressAttemptId!.isNotEmpty;
 
   /// The deadline parsed to a [DateTime], or null when absent/unparseable.
-  DateTime? get deadlineDate => deadline == null ? null : DateTime.tryParse(deadline!);
+  DateTime? get deadlineDate =>
+      deadline == null ? null : DateTime.tryParse(deadline!);
 
   factory QuizSummary.fromJson(Map<dynamic, dynamic> j) {
     final info = j['attemptInfo'] is Map ? j['attemptInfo'] as Map : const {};
@@ -69,7 +125,8 @@ class QuizSummary extends Equatable {
         ? inProgress.str(['_id', 'id'])
         : (inProgress?.toString() ?? '');
     final hasInProgress = inProgressId.isNotEmpty;
-    final bestScore = info['bestScore'] is num ? (info['bestScore'] as num).toInt() : null;
+    final bestScore =
+        info['bestScore'] is num ? (info['bestScore'] as num).toInt() : null;
     final isExpired = j.boolean(['isExpired']);
     // Status precedence mirrors the frontend StudentQuizList.getStatus():
     // in-progress → completed (has a best score) → expired → available.
@@ -111,10 +168,23 @@ class QuizSummary extends Equatable {
 
   @override
   List<Object?> get props => [
-        id, title, description, totalQuestions, totalMarks, status,
-        subjectName, className, timeLimitMinutes, allowedAttempts, deadline,
-        inProgressAttemptId, lastAttemptId, bestScore, totalAttempts,
-        canAttempt, isExpired,
+        id,
+        title,
+        description,
+        totalQuestions,
+        totalMarks,
+        status,
+        subjectName,
+        className,
+        timeLimitMinutes,
+        allowedAttempts,
+        deadline,
+        inProgressAttemptId,
+        lastAttemptId,
+        bestScore,
+        totalAttempts,
+        canAttempt,
+        isExpired,
       ];
 }
 
@@ -135,7 +205,8 @@ class QuizQuestion extends Equatable {
   factory QuizQuestion.fromJson(Map<dynamic, dynamic> j) {
     // Custom (teacher-authored) questions nest their content under
     // `customQuestion` — fall back to it when the top-level fields are absent.
-    final custom = j['customQuestion'] is Map ? j['customQuestion'] as Map : const {};
+    final custom =
+        j['customQuestion'] is Map ? j['customQuestion'] as Map : const {};
     var text = j.str(['questionText', 'text', 'question']);
     if (text.isEmpty) text = custom.str(['questionText', 'text']);
     var options = j.listAt(['options']).map((e) => e.toString()).toList();
@@ -187,12 +258,16 @@ class QuizAttempt extends Equatable {
       : null;
 
   factory QuizAttempt.fromJson(Map<dynamic, dynamic> j) {
-    final quiz = j['quiz'] is Map ? j['quiz'] as Map : const <dynamic, dynamic>{};
-    final attempt = j['attempt'] is Map ? j['attempt'] as Map : const <dynamic, dynamic>{};
-    final settings =
-        quiz['settings'] is Map ? quiz['settings'] as Map : const <dynamic, dynamic>{};
+    final quiz =
+        j['quiz'] is Map ? j['quiz'] as Map : const <dynamic, dynamic>{};
+    final attempt =
+        j['attempt'] is Map ? j['attempt'] as Map : const <dynamic, dynamic>{};
+    final settings = quiz['settings'] is Map
+        ? quiz['settings'] as Map
+        : const <dynamic, dynamic>{};
     final tlRaw = settings['timeLimit'] ?? quiz['timeLimit'] ?? j['timeLimit'];
-    final timeLimit = tlRaw is num ? tlRaw.toInt() : int.tryParse('${tlRaw ?? ''}');
+    final timeLimit =
+        tlRaw is num ? tlRaw.toInt() : int.tryParse('${tlRaw ?? ''}');
     final startedRaw = (attempt['startedAt'] ?? j['startedAt'])?.toString();
     // Restore previously-saved answers when resuming.
     final saved = <String, String>{};
@@ -205,15 +280,19 @@ class QuizAttempt extends Equatable {
       if (qid.isNotEmpty && ans.isNotEmpty) saved[qid] = ans;
     }
     return QuizAttempt(
-      attemptId: (attempt['_id'] ?? j['_id'] ?? j['attemptId'] ?? j['id'] ?? '').toString(),
+      attemptId: (attempt['_id'] ?? j['_id'] ?? j['attemptId'] ?? j['id'] ?? '')
+          .toString(),
       quizId: j.str(['quizId']).isNotEmpty
           ? j.str(['quizId'])
           : quiz.str(['_id', 'id']),
       title: j.str(['title', 'quizTitle']).isNotEmpty
           ? j.str(['title', 'quizTitle'])
           : quiz.str(['title'], 'Quiz'),
-      questions:
-          j.listAt(['questions']).whereType<Map>().map(QuizQuestion.fromJson).toList(),
+      questions: j
+          .listAt(['questions'])
+          .whereType<Map>()
+          .map(QuizQuestion.fromJson)
+          .toList(),
       timeLimitMinutes: (timeLimit != null && timeLimit > 0) ? timeLimit : null,
       startedAt: startedRaw != null ? DateTime.tryParse(startedRaw) : null,
       savedAnswers: saved,
@@ -221,8 +300,15 @@ class QuizAttempt extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [attemptId, quizId, title, questions, timeLimitMinutes, startedAt, savedAnswers];
+  List<Object?> get props => [
+        attemptId,
+        quizId,
+        title,
+        questions,
+        timeLimitMinutes,
+        startedAt,
+        savedAnswers
+      ];
 }
 
 /// A reviewed question in the result view.
@@ -247,7 +333,8 @@ class QuizReviewQuestion extends Equatable {
   final int marks; // total marks for the question
   final int marksObtained; // marks the student scored
 
-  factory QuizReviewQuestion.fromJson(Map<dynamic, dynamic> j) => QuizReviewQuestion(
+  factory QuizReviewQuestion.fromJson(Map<dynamic, dynamic> j) =>
+      QuizReviewQuestion(
         text: j.str(['questionText', 'text']),
         options: j.listAt(['options']).map((e) => e.toString()).toList(),
         userAnswer: j.str(['selectedAnswer', 'userAnswer']),
@@ -259,8 +346,16 @@ class QuizReviewQuestion extends Equatable {
       );
 
   @override
-  List<Object?> get props =>
-      [text, options, userAnswer, correctAnswer, isCorrect, explanation, marks, marksObtained];
+  List<Object?> get props => [
+        text,
+        options,
+        userAnswer,
+        correctAnswer,
+        isCorrect,
+        explanation,
+        marks,
+        marksObtained
+      ];
 }
 
 /// The graded result of an attempt.
@@ -303,10 +398,13 @@ class QuizResult extends Equatable {
 
   factory QuizResult.fromJson(Map<dynamic, dynamic> j) {
     final attempt = j['attempt'] is Map ? j['attempt'] as Map : j;
-    final quiz = j['quiz'] is Map ? j['quiz'] as Map : const <dynamic, dynamic>{};
-    final quizSettings =
-        quiz['settings'] is Map ? quiz['settings'] as Map : const <dynamic, dynamic>{};
-    final review = j.listAt(['questionDetails', 'questions'])
+    final quiz =
+        j['quiz'] is Map ? j['quiz'] as Map : const <dynamic, dynamic>{};
+    final quizSettings = quiz['settings'] is Map
+        ? quiz['settings'] as Map
+        : const <dynamic, dynamic>{};
+    final review = j
+        .listAt(['questionDetails', 'questions'])
         .whereType<Map>()
         .map(QuizReviewQuestion.fromJson)
         .toList();
@@ -319,9 +417,8 @@ class QuizResult extends Equatable {
     return QuizResult(
       score: score,
       totalMarks: totalMarks,
-      percentage: pct > 0
-          ? pct
-          : (totalMarks > 0 ? (score / totalMarks) * 100 : 0),
+      percentage:
+          pct > 0 ? pct : (totalMarks > 0 ? (score / totalMarks) * 100 : 0),
       passed: attempt.boolean(['passed']),
       correctCount: attempt.intval(['totalCorrectAnswers']) > 0
           ? attempt.intval(['totalCorrectAnswers'])
@@ -338,8 +435,18 @@ class QuizResult extends Equatable {
 
   @override
   List<Object?> get props => [
-        score, totalMarks, percentage, passed, correctCount, timeSpent,
-        questions, quizId, quizTitle, passingPercentage, showAnswers, canRetry,
+        score,
+        totalMarks,
+        percentage,
+        passed,
+        correctCount,
+        timeSpent,
+        questions,
+        quizId,
+        quizTitle,
+        passingPercentage,
+        showAnswers,
+        canRetry,
       ];
 }
 
@@ -365,11 +472,15 @@ class QuizHistoryItem extends Equatable {
   final double passingPercentage;
   final String? submittedAt;
 
-  bool get isPassed => percentage >= (passingPercentage > 0 ? passingPercentage : 50);
+  bool get isPassed =>
+      percentage >= (passingPercentage > 0 ? passingPercentage : 50);
 
   factory QuizHistoryItem.fromJson(Map<dynamic, dynamic> j) => QuizHistoryItem(
         attemptId: j.str(['_id', 'attemptId', 'id']),
-        quizTitle: j.str(['quizTitle', 'title'], 'Quiz'),
+        quizTitle: j.str(
+          ['quizTitle', 'title'],
+          j['quiz'] is Map ? (j['quiz'] as Map).str(['title'], 'Quiz') : 'Quiz',
+        ),
         score: j.intval(['score']),
         totalMarks: j.intval(['totalMarks']),
         percentage: j.dbl(['percentage']),
@@ -379,8 +490,16 @@ class QuizHistoryItem extends Equatable {
       );
 
   @override
-  List<Object?> get props =>
-      [attemptId, quizTitle, score, totalMarks, percentage, timeSpent, passingPercentage, submittedAt];
+  List<Object?> get props => [
+        attemptId,
+        quizTitle,
+        score,
+        totalMarks,
+        percentage,
+        timeSpent,
+        passingPercentage,
+        submittedAt
+      ];
 }
 
 // ---- Teacher quiz management ----------------------------------------------
@@ -428,7 +547,8 @@ class QuizManagedQuestion extends Equatable {
 
   factory QuizManagedQuestion.fromJson(Map<dynamic, dynamic> j) {
     // Content lives on the populated `questionId` ref, or `customQuestion`.
-    final custom = j['customQuestion'] is Map ? j['customQuestion'] as Map : const {};
+    final custom =
+        j['customQuestion'] is Map ? j['customQuestion'] as Map : const {};
     final ref = j['questionId'] is Map ? j['questionId'] as Map : const {};
     final src = custom.isNotEmpty ? custom : ref;
     return QuizManagedQuestion(
@@ -490,7 +610,8 @@ class QuizQuestionStat extends Equatable {
   final int avgTimeSpent; // seconds
   final int marks;
 
-  factory QuizQuestionStat.fromJson(Map<dynamic, dynamic> j) => QuizQuestionStat(
+  factory QuizQuestionStat.fromJson(Map<dynamic, dynamic> j) =>
+      QuizQuestionStat(
         questionId: j.str(['questionId', '_id', 'id']),
         order: j.intval(['order']),
         questionText: j.str(['questionText', 'text']),
@@ -501,8 +622,15 @@ class QuizQuestionStat extends Equatable {
       );
 
   @override
-  List<Object?> get props =>
-      [questionId, order, questionText, correctPercentage, totalAttempts, avgTimeSpent, marks];
+  List<Object?> get props => [
+        questionId,
+        order,
+        questionText,
+        correctPercentage,
+        totalAttempts,
+        avgTimeSpent,
+        marks
+      ];
 }
 
 /// A student entry in the top-performers / struggling lists.
@@ -522,7 +650,8 @@ class QuizStudentStat extends Equatable {
   final int timeSpent; // seconds
 
   factory QuizStudentStat.fromJson(Map<dynamic, dynamic> j) {
-    final student = j['student'] is Map ? j['student'] as Map : const <dynamic, dynamic>{};
+    final student =
+        j['student'] is Map ? j['student'] as Map : const <dynamic, dynamic>{};
     return QuizStudentStat(
       studentId: student.str(['_id', 'id'], j.str(['studentId', '_id'])),
       name: student.str(['name'], j.str(['name'], 'Unknown')),
@@ -565,13 +694,16 @@ class QuizAnalyticsData extends Equatable {
 
   factory QuizAnalyticsData.fromJson(Map<dynamic, dynamic> j) {
     final overview = j['overview'] is Map ? j['overview'] as Map : j;
-    final quiz = j['quiz'] is Map ? j['quiz'] as Map : const <dynamic, dynamic>{};
+    final quiz =
+        j['quiz'] is Map ? j['quiz'] as Map : const <dynamic, dynamic>{};
     return QuizAnalyticsData(
-      totalAttempts: overview.intval(['totalAttempts', 'attempts', 'completedAttempts']),
+      totalAttempts:
+          overview.intval(['totalAttempts', 'attempts', 'completedAttempts']),
       avgScore: overview.dbl(['avgScore', 'averageScore']),
       passRate: overview.dbl(['passRate', 'passPercentage']),
       totalStudentsAssigned: overview.intval(['totalStudentsAssigned']),
-      completedAttempts: overview.intval(['completedAttempts', 'totalAttempts']),
+      completedAttempts:
+          overview.intval(['completedAttempts', 'totalAttempts']),
       inProgressAttempts: overview.intval(['inProgressAttempts']),
       avgTimeSpent: overview.intval(['avgTimeSpent']),
       totalMarks: quiz.intval(['totalMarks']),
@@ -580,8 +712,11 @@ class QuizAnalyticsData extends Equatable {
           .whereType<Map>()
           .map(QuizQuestionStat.fromJson)
           .toList(),
-      topPerformers:
-          j.listAt(['topPerformers']).whereType<Map>().map(QuizStudentStat.fromJson).toList(),
+      topPerformers: j
+          .listAt(['topPerformers'])
+          .whereType<Map>()
+          .map(QuizStudentStat.fromJson)
+          .toList(),
       strugglingStudents: j
           .listAt(['strugglingStudents'])
           .whereType<Map>()
