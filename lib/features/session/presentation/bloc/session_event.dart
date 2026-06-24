@@ -75,7 +75,13 @@ class NextQuestionRequested extends SessionEvent {
 }
 
 class SessionFinished extends SessionEvent {
-  const SessionFinished();
+  const SessionFinished({this.userId = ''});
+
+  /// Used to ask the server whether the post-session NPS survey is due.
+  final String userId;
+
+  @override
+  List<Object?> get props => [userId];
 }
 
 /// Dismisses the end-of-session result modal and returns to the config panel.

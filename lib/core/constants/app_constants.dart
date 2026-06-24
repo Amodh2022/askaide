@@ -35,6 +35,24 @@ class AppConstants {
 
   // Batch sizes for the study flow
   static const int questionBatchSize = 5;
-  static const int answerSubmitBatchSize = 5;
+
+  /// Answers are flushed to the server in batches of this size (mirrors the
+  /// frontend's `BATCH_SIZE = 10` in QuestionPractice).
+  static const int answerSubmitBatchSize = 10;
+
+  /// How many times we retry a `failed` generation response before giving up
+  /// (frontend `useQuestionPolling`: 3 attempts).
   static const int batchRetryLimit = 3;
+
+  /// While the server is still AI-generating a batch (`generating`/empty-success
+  /// response) we poll up to this many times before surfacing an error. With
+  /// [questionGeneratingPollInterval] this is ~60s of waiting, matching the
+  /// frontend's 20-attempt polling loop.
+  static const int questionGeneratingPollLimit = 20;
+
+  /// Delay between polls while a batch is still generating.
+  static const Duration questionGeneratingPollInterval = Duration(seconds: 3);
+
+  /// Delay before retrying after a `failed` generation response.
+  static const Duration questionFailedRetryDelay = Duration(seconds: 3);
 }

@@ -55,6 +55,7 @@ class SessionState extends Equatable {
     this.errorMessage,
     this.resultSummary,
     this.npsHandled = false,
+    this.npsEligible = false,
   });
 
   final SessionPanel panel;
@@ -88,6 +89,10 @@ class SessionState extends Equatable {
   /// Whether the post-session NPS survey has already been shown/handled this
   /// session — prevents showing it more than once.
   final bool npsHandled;
+
+  /// Whether the server says this user is due an NPS survey (set from
+  /// `checkNpsEligibility` when a session ends). The survey only shows when true.
+  final bool npsEligible;
 
   Question? get currentQuestion =>
       currentIndex >= 0 && currentIndex < questions.length
@@ -140,6 +145,7 @@ class SessionState extends Equatable {
     SessionSummary? resultSummary,
     bool clearResultSummary = false,
     bool? npsHandled,
+    bool? npsEligible,
   }) {
     return SessionState(
       panel: panel ?? this.panel,
@@ -163,6 +169,7 @@ class SessionState extends Equatable {
       resultSummary:
           clearResultSummary ? null : (resultSummary ?? this.resultSummary),
       npsHandled: npsHandled ?? this.npsHandled,
+      npsEligible: npsEligible ?? this.npsEligible,
     );
   }
 
@@ -188,5 +195,6 @@ class SessionState extends Equatable {
         errorMessage,
         resultSummary,
         npsHandled,
+        npsEligible,
       ];
 }

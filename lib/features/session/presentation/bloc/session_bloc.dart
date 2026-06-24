@@ -309,13 +309,24 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
 
   Future<void> _onFinish(SessionFinished e, Emitter<SessionState> emit) async {
     if (state.resultSummary != null) return; // already finishing
+    // Flush any answers collected since the last batch (mirrors React's
+    // submitUserAnswers before endSession).
     await _flushPending(emit);
-    final summary = SessionSummary(
-      score: state.correctCount,
-      total: state.answeredCount,
-    );
+
+    final score = state.correctCount;
+    final total = state.answeredCount;
+    final summary = SessionSummary(score: score, total: total);
+
+    // Close the server-side session with its final score (React `endSession`).
+    // Best-effort: a failure here must not block the result modal.
     final active = state.activeSession;
     if (active != null) {
+      await _repository.endSession(
+        sessionId: active.id,
+        score: score,
+        totalQuestions: total,
+      );
+
       final completed = active.copyWith(
         answers: state.answers.values.toList(),
         totalQuestions: state.questions.length,
@@ -324,9 +335,22 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       await _saveSession(completed);
       emit(state.copyWith(history: _repository.getSessionHistory()));
     }
+
+    // Ask the server whether this user is due an NPS survey (React checks this
+    // in the background right after ending the session).
+    var npsEligible = false;
+    if (e.userId.isNotEmpty) {
+      final result = await _repository.checkNpsEligibility(e.userId);
+      npsEligible = result.fold((_) => false, (eligible) => eligible);
+    }
+
     // Keep the practice panel mounted; the result modal overlays it. The reset
     // to the config panel happens once the modal is dismissed.
-    emit(state.copyWith(resultSummary: summary, npsHandled: false));
+    emit(state.copyWith(
+      resultSummary: summary,
+      npsHandled: false,
+      npsEligible: npsEligible,
+    ));
   }
 
   void _onResultDismissed(

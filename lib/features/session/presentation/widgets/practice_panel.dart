@@ -70,8 +70,9 @@ class _PracticePanelState extends State<PracticePanel> {
     await showSessionResultModal(context, summary);
     if (!mounted) return;
 
-    // 2) Post-session NPS survey (shown at most once per session).
-    if (!bloc.state.npsHandled) {
+    // 2) Post-session NPS survey — only when the server says the user is due
+    //    one (mirrors React's checkNpsEligibility gate) and not already shown.
+    if (bloc.state.npsEligible && !bloc.state.npsHandled) {
       final result = await showNpsSurvey(context);
       if (!mounted) return;
       if (result == null) {
@@ -149,8 +150,16 @@ class _PracticePanelState extends State<PracticePanel> {
                         style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             minimumSize: const Size(0, 36)),
-                        onPressed: () =>
-                            context.read<SessionBloc>().add(const SessionFinished()),
+                        onPressed: () => context.read<SessionBloc>().add(
+                              SessionFinished(
+                                userId: context
+                                        .read<ProfileCubit>()
+                                        .state
+                                        .user
+                                        ?.id ??
+                                    '',
+                              ),
+                            ),
                         child: Text('End', style: AppTypography.bodySmall(c.danger)),
                       ),
                     ],
@@ -160,7 +169,7 @@ class _PracticePanelState extends State<PracticePanel> {
             ),
             Expanded(
               child: state.questionStatus == LoadStatus.loading && q == null
-                  ? const Center(child: CircularProgressIndicator())
+                  ? _GeneratingIndicator(color: c.accent, textColor: c.textMuted)
                   : q == null
                       ? Center(
                           child: Text('No questions available.',
@@ -251,6 +260,67 @@ class _StreakBadge extends StatelessWidget {
         child: Text(message,
             style: AppTypography.bodySmall(color)
                 .copyWith(fontSize: 11, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+}
+
+/// Shown while the server AI-generates the next batch. Cycles through status
+/// messages like the frontend's TypewriterLoop in QuestionPractice.
+class _GeneratingIndicator extends StatefulWidget {
+  const _GeneratingIndicator({required this.color, required this.textColor});
+  final Color color;
+  final Color textColor;
+
+  @override
+  State<_GeneratingIndicator> createState() => _GeneratingIndicatorState();
+}
+
+class _GeneratingIndicatorState extends State<_GeneratingIndicator> {
+  static const _messages = [
+    'Analyzing your performance…',
+    'Calibrating difficulty…',
+    'Crafting new questions…',
+    'Finalizing your adaptation…',
+  ];
+  int _i = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 2200), (_) {
+      if (mounted) setState(() => _i = (_i + 1) % _messages.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: widget.color),
+          ),
+          const SizedBox(height: 16),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: Text(
+              _messages[_i],
+              key: ValueKey(_i),
+              style: AppTypography.bodyMedium(widget.textColor),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -949,7 +949,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
             children: [
               pw.Expanded(
                 child: pw.Text('Q$displayNo. ${q.text}',
-                    style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                    style:  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
               ),
               pw.Text('[$m Mark${m > 1 ? 's' : ''}]',
                   style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
@@ -982,12 +982,12 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         if (preview.schoolName.isNotEmpty)
           pw.Center(
             child: pw.Text(preview.schoolName.toUpperCase(),
-                style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                style:  pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           ),
         pw.Center(
           child: pw.Text(
               preview.examName.isNotEmpty ? preview.examName : preview.title,
-              style: const pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+              style:  pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
         ),
         pw.SizedBox(height: 4),
         pw.Center(
@@ -1002,7 +1002,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         pw.Divider(),
         if (preview.instructions.isNotEmpty) ...[
           pw.Text('General Instructions:',
-              style: const pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              style:  pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 2),
           for (var i = 0; i < preview.instructions.length; i++)
             pw.Text('${i + 1}. ${preview.instructions[i]}',
@@ -1012,14 +1012,14 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         if (hasSections) ...[
           if (mcqs.isNotEmpty) ...[
             pw.Text('Section A — Multiple Choice Questions',
-                style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                style:  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
             for (var i = 0; i < mcqs.length; i++) questionBlock(i + 1, mcqs[i]),
           ],
           if (fills.isNotEmpty) ...[
             pw.SizedBox(height: 6),
             pw.Text('Section B — Fill in the Blanks',
-                style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                style:  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
             for (var i = 0; i < fills.length; i++)
               questionBlock(mcqs.length + i + 1, fills[i], showOptions: false),
@@ -1030,7 +1030,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
           pw.SizedBox(height: 16),
           pw.Divider(),
           pw.Text('Answer Key',
-              style: const pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+              style:  pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
           for (var i = 0; i < ordered.length; i++)
             if (ordered[i].correctAnswer.isNotEmpty)

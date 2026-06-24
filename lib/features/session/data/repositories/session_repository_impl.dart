@@ -103,25 +103,54 @@ class SessionRepositoryImpl implements SessionRepository {
   }) {
     final chapterId = config.selectedChapter?.id ?? '';
     return _guard(() async {
-      Object? lastError;
-      // Retry to ride out empty responses while the server's AI fallback
-      // generates fresh questions.
-      for (var attempt = 0; attempt < AppConstants.batchRetryLimit; attempt++) {
+      // Mirrors the frontend's `useQuestionPolling`: while the server is still
+      // AI-generating a batch we poll (~3s apart, up to ~60s); a `failed`
+      // generation is retried a few times; a request timeout is treated as
+      // "generation is taking long" and we keep waiting rather than erroring.
+      var generatingPolls = 0;
+      var failedRetries = 0;
+      while (true) {
+        QuestionBatchResult result;
         try {
-          final models = await _remote.fetchQuestionBatch(
+          result = await _remote.fetchQuestionBatch(
             chapterId: chapterId,
             type: config.questionType.apiValue,
             difficulty: config.difficulty.apiValue,
             sessionId: sessionId,
           );
-          final questions = models.map((m) => m.toEntity()).toList();
-          if (questions.isNotEmpty) return questions;
-        } catch (e) {
-          lastError = e;
+        } on DioException catch (e) {
+          final timedOut = e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.type == DioExceptionType.sendTimeout;
+          if (timedOut && generatingPolls < AppConstants.questionGeneratingPollLimit) {
+            generatingPolls++;
+            await Future<void>.delayed(AppConstants.questionFailedRetryDelay);
+            continue;
+          }
+          rethrow;
+        }
+
+        switch (result.status) {
+          case QuestionBatchStatus.ready:
+            return result.questions.map((m) => m.toEntity()).toList();
+          case QuestionBatchStatus.generating:
+            if (generatingPolls >= AppConstants.questionGeneratingPollLimit) {
+              throw ServerException(
+                  'Questions are still being generated. Please try again in a moment.');
+            }
+            generatingPolls++;
+            await Future<void>.delayed(AppConstants.questionGeneratingPollInterval);
+            continue;
+          case QuestionBatchStatus.failed:
+            if (failedRetries >= AppConstants.batchRetryLimit) {
+              throw ServerException(
+                  'Unable to generate more questions right now. Please try again later.');
+            }
+            failedRetries++;
+            await Future<void>.delayed(AppConstants.questionFailedRetryDelay);
+            continue;
         }
       }
-      if (lastError is Exception) throw lastError;
-      throw ServerException('No questions available after retries');
     });
   }
 

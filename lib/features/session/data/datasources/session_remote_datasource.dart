@@ -5,11 +5,25 @@ import '../../../../core/network/endpoints.dart';
 import '../../domain/entities/study_taxonomy.dart';
 import '../models/question_model.dart';
 
+/// Outcome of a single question-batch request. Mirrors the statuses the React
+/// `useQuestionPolling` hook reacts to: a ready batch, the server still
+/// AI-generating (poll again), or a failed generation (retry a few times).
+enum QuestionBatchStatus { ready, generating, failed }
+
+class QuestionBatchResult {
+  const QuestionBatchResult(this.status, this.questions);
+  const QuestionBatchResult.generating() : this(QuestionBatchStatus.generating, const []);
+  const QuestionBatchResult.failed() : this(QuestionBatchStatus.failed, const []);
+
+  final QuestionBatchStatus status;
+  final List<QuestionModel> questions;
+}
+
 abstract class SessionRemoteDataSource {
   Future<List<ClassOption>> getClasses();
   Future<List<SubjectOption>> getSubjects(String classId);
   Future<List<ChapterOption>> getChapters(String classId, String subjectId);
-  Future<List<QuestionModel>> fetchQuestionBatch({
+  Future<QuestionBatchResult> fetchQuestionBatch({
     required String chapterId,
     required String type,
     required String difficulty,
@@ -118,7 +132,7 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
   }
 
   @override
-  Future<List<QuestionModel>> fetchQuestionBatch({
+  Future<QuestionBatchResult> fetchQuestionBatch({
     required String chapterId,
     required String type,
     required String difficulty,
@@ -132,7 +146,15 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
         sessionId: sessionId,
       ),
     );
-    return _list(res)
+
+    // The server signals an in-flight AI generation with a `status` field
+    // (possibly inside the `{ data: ... }` envelope) instead of a question list.
+    final status = _statusOf(res.data);
+    if (status == 'generating') return const QuestionBatchResult.generating();
+    if (status == 'failed') return const QuestionBatchResult.failed();
+
+    final list = _digList(res.data, const ['data', 'questions', 'results', 'items']);
+    final questions = (list ?? const [])
         .whereType<Map<String, dynamic>>()
         .map((m) => QuestionModel.fromJson({
               ...m,
@@ -142,6 +164,25 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
                 'type': m['questionType'],
             }))
         .toList();
+
+    // An empty list with a 2xx (often "Questions batch fetched successfully")
+    // means the bank is still being generated — treat it as `generating` so the
+    // repository keeps polling, mirroring the frontend's empty-success branch.
+    if (questions.isEmpty) return const QuestionBatchResult.generating();
+    return QuestionBatchResult(QuestionBatchStatus.ready, questions);
+  }
+
+  /// Reads a `status` string from the body or its `data` envelope, if present.
+  static String? _statusOf(dynamic body) {
+    if (body is Map) {
+      final s = body['status'];
+      if (s is String) return s;
+      final inner = body['data'];
+      if (inner is Map && inner['status'] is String) {
+        return inner['status'] as String;
+      }
+    }
+    return null;
   }
 
   @override
