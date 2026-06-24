@@ -320,7 +320,9 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   }
 
   Future<void> _onFinish(SessionFinished e, Emitter<SessionState> emit) async {
-    if (state.resultSummary != null) return; // already finishing
+    if (state.resultSummary != null || state.finishing) return; // already finishing
+    // Surface the loader on the End button for the duration of the close calls.
+    emit(state.copyWith(finishing: true));
     // Flush any answers collected since the last batch (mirrors React's
     // submitUserAnswers before endSession).
     await _flushPending(emit);
@@ -362,6 +364,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       resultSummary: summary,
       npsHandled: false,
       npsEligible: npsEligible,
+      finishing: false,
     ));
   }
 
@@ -373,11 +376,17 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     emit(state.copyWith(
       panel: SessionPanel.config,
       sessionStarted: false,
+      // Reset the config funnel to its default state so the first screen starts
+      // fresh (back to step 1) rather than retaining the last session's picks.
+      config: const StudyConfig(),
+      subjects: const [],
+      chapters: const [],
       questions: const [],
       currentIndex: 0,
       answers: const {},
       clearFeedback: true,
       clearResultSummary: true,
+      finishing: false,
     ));
   }
 

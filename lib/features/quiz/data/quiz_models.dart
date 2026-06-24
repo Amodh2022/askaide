@@ -16,6 +16,10 @@ class QuizSummary extends Equatable {
     required this.totalQuestions,
     required this.totalMarks,
     required this.status,
+    this.subjectName = 'Subject',
+    this.className = 'Class',
+    this.timeLimitMinutes,
+    this.allowedAttempts = 1,
     this.deadline,
     this.inProgressAttemptId,
     this.lastAttemptId,
@@ -31,6 +35,14 @@ class QuizSummary extends Equatable {
   final int totalQuestions;
   final int totalMarks;
   final String status; // available | in_progress | completed | expired
+  final String subjectName;
+  final String className;
+
+  /// Quiz time limit in minutes (`settings.timeLimit`); null = untimed.
+  final int? timeLimitMinutes;
+
+  /// Max attempts allowed (`settings.allowedAttempts`); defaults to 1.
+  final int allowedAttempts;
   final String? deadline;
 
   /// Attempt id to resume, when one is in progress (null = none).
@@ -44,43 +56,63 @@ class QuizSummary extends Equatable {
   bool get hasInProgress =>
       inProgressAttemptId != null && inProgressAttemptId!.isNotEmpty;
 
+  /// The deadline parsed to a [DateTime], or null when absent/unparseable.
+  DateTime? get deadlineDate => deadline == null ? null : DateTime.tryParse(deadline!);
+
   factory QuizSummary.fromJson(Map<dynamic, dynamic> j) {
     final info = j['attemptInfo'] is Map ? j['attemptInfo'] as Map : const {};
     final settings = j['settings'] is Map ? j['settings'] as Map : const {};
+    final subjectRef = j['subjectId'] is Map ? j['subjectId'] as Map : const {};
+    final classRef = j['classId'] is Map ? j['classId'] as Map : const {};
     final inProgress = info['inProgressAttempt'];
     final inProgressId = inProgress is Map
         ? inProgress.str(['_id', 'id'])
         : (inProgress?.toString() ?? '');
     final hasInProgress = inProgressId.isNotEmpty;
-    // Derive a status when the backend doesn't send one explicitly.
-    final explicit = j.str(['status']);
-    final derived = j.boolean(['isExpired'])
-        ? 'expired'
-        : hasInProgress
-            ? 'in_progress'
-            : (info.intval(['totalAttempts']) > 0 ? 'completed' : 'available');
+    final bestScore = info['bestScore'] is num ? (info['bestScore'] as num).toInt() : null;
+    final isExpired = j.boolean(['isExpired']);
+    // Status precedence mirrors the frontend StudentQuizList.getStatus():
+    // in-progress → completed (has a best score) → expired → available.
+    final status = hasInProgress
+        ? 'in_progress'
+        : bestScore != null
+            ? 'completed'
+            : isExpired
+                ? 'expired'
+                : 'available';
+    final tl = settings['timeLimit'] ?? j['timeLimit'];
+    final timeLimit = tl is num ? tl.toInt() : int.tryParse('${tl ?? ''}');
     return QuizSummary(
       id: j.str(['_id', 'id', 'quizId']),
       title: j.str(['title'], 'Untitled quiz'),
       description: j.str(['description']),
       totalQuestions: j.intval(['totalQuestions', 'questionCount']),
       totalMarks: j.intval(['totalMarks']),
-      status: explicit.isNotEmpty ? explicit : derived,
+      status: status,
+      subjectName: subjectRef.str(['name']).isNotEmpty
+          ? subjectRef.str(['name'])
+          : j.str(['subjectName'], 'Subject'),
+      className: classRef.str(['name']).isNotEmpty
+          ? classRef.str(['name'])
+          : j.str(['className'], 'Class'),
+      timeLimitMinutes: (timeLimit != null && timeLimit > 0) ? timeLimit : null,
+      allowedAttempts: settings.intval(['allowedAttempts'], 1),
       deadline: (settings['deadline'] ?? j['deadline'])?.toString(),
       inProgressAttemptId: hasInProgress ? inProgressId : null,
       lastAttemptId: info.str(['lastAttemptId']).isNotEmpty
           ? info.str(['lastAttemptId'])
           : null,
-      bestScore: info['bestScore'] is num ? (info['bestScore'] as num).toInt() : null,
+      bestScore: bestScore,
       totalAttempts: info.intval(['totalAttempts']),
       canAttempt: info.boolean(['canAttempt'], true),
-      isExpired: j.boolean(['isExpired']),
+      isExpired: isExpired,
     );
   }
 
   @override
   List<Object?> get props => [
-        id, title, description, totalQuestions, totalMarks, status, deadline,
+        id, title, description, totalQuestions, totalMarks, status,
+        subjectName, className, timeLimitMinutes, allowedAttempts, deadline,
         inProgressAttemptId, lastAttemptId, bestScore, totalAttempts,
         canAttempt, isExpired,
       ];
@@ -203,6 +235,7 @@ class QuizReviewQuestion extends Equatable {
     required this.isCorrect,
     required this.explanation,
     required this.marks,
+    required this.marksObtained,
   });
 
   final String text;
@@ -211,7 +244,8 @@ class QuizReviewQuestion extends Equatable {
   final String correctAnswer;
   final bool isCorrect;
   final String explanation;
-  final int marks;
+  final int marks; // total marks for the question
+  final int marksObtained; // marks the student scored
 
   factory QuizReviewQuestion.fromJson(Map<dynamic, dynamic> j) => QuizReviewQuestion(
         text: j.str(['questionText', 'text']),
@@ -220,12 +254,13 @@ class QuizReviewQuestion extends Equatable {
         correctAnswer: j.str(['correctAnswer']),
         isCorrect: j.boolean(['isCorrect']),
         explanation: j.str(['explanation']),
-        marks: j.intval(['marksObtained', 'marks'], 1),
+        marks: j.intval(['marks'], 1),
+        marksObtained: j.intval(['marksObtained']),
       );
 
   @override
   List<Object?> get props =>
-      [text, options, userAnswer, correctAnswer, isCorrect, explanation, marks];
+      [text, options, userAnswer, correctAnswer, isCorrect, explanation, marks, marksObtained];
 }
 
 /// The graded result of an attempt.
@@ -243,6 +278,11 @@ class QuizResult extends Equatable {
     required this.correctCount,
     required this.timeSpent,
     required this.questions,
+    this.quizId = '',
+    this.quizTitle = 'Your Results',
+    this.passingPercentage = 50,
+    this.showAnswers = true,
+    this.canRetry = false,
   });
 
   final int score;
@@ -252,6 +292,11 @@ class QuizResult extends Equatable {
   final int correctCount;
   final int timeSpent; // seconds
   final List<QuizReviewQuestion> questions;
+  final String quizId;
+  final String quizTitle;
+  final double passingPercentage; // 0..100
+  final bool showAnswers;
+  final bool canRetry;
 
   /// Human-readable status used by the result screen.
   String get passStatus => passed ? 'PASS' : 'FAIL';
@@ -259,6 +304,8 @@ class QuizResult extends Equatable {
   factory QuizResult.fromJson(Map<dynamic, dynamic> j) {
     final attempt = j['attempt'] is Map ? j['attempt'] as Map : j;
     final quiz = j['quiz'] is Map ? j['quiz'] as Map : const <dynamic, dynamic>{};
+    final quizSettings =
+        quiz['settings'] is Map ? quiz['settings'] as Map : const <dynamic, dynamic>{};
     final review = j.listAt(['questionDetails', 'questions'])
         .whereType<Map>()
         .map(QuizReviewQuestion.fromJson)
@@ -268,6 +315,7 @@ class QuizResult extends Equatable {
         ? attempt.intval(['totalMarks'])
         : quiz.intval(['totalMarks']);
     final pct = attempt.dbl(['percentage']);
+    final passingPct = quizSettings.dbl(['passingPercentage']);
     return QuizResult(
       score: score,
       totalMarks: totalMarks,
@@ -280,12 +328,19 @@ class QuizResult extends Equatable {
           : review.where((q) => q.isCorrect).length,
       timeSpent: attempt.intval(['timeSpent']),
       questions: review,
+      quizId: quiz.str(['_id', 'id']),
+      quizTitle: quiz.str(['title'], 'Your Results'),
+      passingPercentage: passingPct > 0 ? passingPct : 50,
+      showAnswers: j['showAnswers'] != null ? j.boolean(['showAnswers']) : true,
+      canRetry: attempt.boolean(['canRetry']),
     );
   }
 
   @override
-  List<Object?> get props =>
-      [score, totalMarks, percentage, passed, correctCount, timeSpent, questions];
+  List<Object?> get props => [
+        score, totalMarks, percentage, passed, correctCount, timeSpent,
+        questions, quizId, quizTitle, passingPercentage, showAnswers, canRetry,
+      ];
 }
 
 /// A row in the student's quiz attempt history.

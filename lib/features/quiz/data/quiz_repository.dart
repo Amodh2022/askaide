@@ -12,12 +12,14 @@ class QuizRepository {
   final Dio _dio;
 
   Future<Either<Failure, List<QuizSummary>>> available() => guardEither(() async {
-        final res = await _dio.get(Endpoints.quizStudentAvailable);
+        final res = await _dio.get(Endpoints.quizStudentAvailable,
+            queryParameters: {'page': 1, 'limit': 100});
         return res.dataList(['quizzes']).whereType<Map>().map(QuizSummary.fromJson).toList();
       });
 
   Future<Either<Failure, List<QuizHistoryItem>>> history() => guardEither(() async {
-        final res = await _dio.get(Endpoints.quizStudentHistory);
+        final res = await _dio.get(Endpoints.quizStudentHistory,
+            queryParameters: {'page': 1, 'limit': 100});
         return res.dataList(['attempts']).whereType<Map>().map(QuizHistoryItem.fromJson).toList();
       });
 

@@ -56,6 +56,7 @@ class SessionState extends Equatable {
     this.resultSummary,
     this.npsHandled = false,
     this.npsEligible = false,
+    this.finishing = false,
   });
 
   final SessionPanel panel;
@@ -93,6 +94,10 @@ class SessionState extends Equatable {
   /// Whether the server says this user is due an NPS survey (set from
   /// `checkNpsEligibility` when a session ends). The survey only shows when true.
   final bool npsEligible;
+
+  /// True while [SessionFinished] is closing the server session (and checking
+  /// NPS eligibility) — drives the loader on the End button.
+  final bool finishing;
 
   Question? get currentQuestion =>
       currentIndex >= 0 && currentIndex < questions.length
@@ -146,6 +151,7 @@ class SessionState extends Equatable {
     bool clearResultSummary = false,
     bool? npsHandled,
     bool? npsEligible,
+    bool? finishing,
   }) {
     return SessionState(
       panel: panel ?? this.panel,
@@ -170,6 +176,7 @@ class SessionState extends Equatable {
           clearResultSummary ? null : (resultSummary ?? this.resultSummary),
       npsHandled: npsHandled ?? this.npsHandled,
       npsEligible: npsEligible ?? this.npsEligible,
+      finishing: finishing ?? this.finishing,
     );
   }
 
@@ -196,5 +203,6 @@ class SessionState extends Equatable {
         resultSummary,
         npsHandled,
         npsEligible,
+        finishing,
       ];
 }

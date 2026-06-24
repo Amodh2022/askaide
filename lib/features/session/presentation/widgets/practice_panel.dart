@@ -150,17 +150,26 @@ class _PracticePanelState extends State<PracticePanel> {
                         style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 8),
                             minimumSize: const Size(0, 36)),
-                        onPressed: () => context.read<SessionBloc>().add(
-                              SessionFinished(
-                                userId: context
-                                        .read<ProfileCubit>()
-                                        .state
-                                        .user
-                                        ?.id ??
-                                    '',
-                              ),
-                            ),
-                        child: Text('End', style: AppTypography.bodySmall(c.danger)),
+                        onPressed: state.finishing
+                            ? null
+                            : () => context.read<SessionBloc>().add(
+                                  SessionFinished(
+                                    userId: context
+                                            .read<ProfileCubit>()
+                                            .state
+                                            .user
+                                            ?.id ??
+                                        '',
+                                  ),
+                                ),
+                        child: state.finishing
+                            ? SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: c.danger),
+                              )
+                            : Text('End', style: AppTypography.bodySmall(c.danger)),
                       ),
                     ],
                   ),

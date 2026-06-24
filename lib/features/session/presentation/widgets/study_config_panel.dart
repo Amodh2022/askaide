@@ -100,6 +100,8 @@ class StudyConfigPanel extends StatelessWidget {
                             value: cfg.selectedSubject,
                             items: state.subjects,
                             itemLabel: (o) => o.name,
+                            loading: state.taxonomyStatus == LoadStatus.loading &&
+                                state.subjects.isEmpty,
                             onChanged: (o) =>
                                 context.read<SessionBloc>().add(SubjectSelected(o)),
                           ),
@@ -113,6 +115,8 @@ class StudyConfigPanel extends StatelessWidget {
                             items: state.chapters,
                             itemLabel: (o) =>
                                 o.number != null ? '${o.number}. ${o.name}' : o.name,
+                            loading: state.taxonomyStatus == LoadStatus.loading &&
+                                state.chapters.isEmpty,
                             onChanged: (o) =>
                                 context.read<SessionBloc>().add(ChapterSelected(o)),
                           ),
