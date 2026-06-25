@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
@@ -8,6 +10,7 @@ import '../../../core/error/failures.dart';
 import '../../../core/network/api_helpers.dart';
 import '../../../core/network/endpoints.dart';
 import '../../../core/taxonomy/taxonomy_repository.dart';
+import '../../teacher/data/teacher_feature.dart';
 
 class PaperQuestion extends Equatable {
   const PaperQuestion({
@@ -148,6 +151,18 @@ class QuestionPaperRepository {
 
   String pdfUrl(String paperId) =>
       '${AppConstants.apiBaseUrl}${Endpoints.questionPaperPdfUrl(paperId)}';
+
+  /// Downloads the server-rendered PDF for [paperId] as raw bytes. Mirrors
+  /// React's `downloadPaperPDF` (`GET /question-paper/:id/pdf`, blob response)
+  /// so the app shares the exact PDF the web produces.
+  Future<Either<Failure, Uint8List>> downloadPdf(String paperId) =>
+      guardEither(() async {
+        final res = await _dio.get<List<int>>(
+          Endpoints.questionPaperPdfUrl(paperId),
+          options: Options(responseType: ResponseType.bytes),
+        );
+        return Uint8List.fromList(res.data ?? const <int>[]);
+      });
 
   Future<Either<Failure, ({List<PaperSummary> papers, int total, int totalPages})>>
       history({int page = 1, int limit = 10}) => guardEither(() async {
@@ -304,8 +319,9 @@ class PaperHistoryCubit extends Cubit<PaperHistoryState> {
 class QpGenState extends Equatable {
   const QpGenState({
     this.step = 1,
-    this.classes = const [],
-    this.subjects = const [],
+    this.loadingAssignments = true,
+    this.assignments = const [],
+    this.schoolNamePrefill = '',
     this.chapters = const [],
     this.classId,
     this.subjectId,
@@ -326,8 +342,17 @@ class QpGenState extends Equatable {
   });
 
   final int step;
-  final List<TaxItem> classes;
-  final List<TaxItem> subjects;
+
+  /// True while the teacher's assignments are being fetched.
+  final bool loadingAssignments;
+
+  /// The teacher's subject assignments — these are the selectable subjects.
+  /// Each carries the classes assigned to the teacher for that subject.
+  final List<TeacherAssignment> assignments;
+
+  /// School name from the teacher profile, used for the "Auto-filled" badge.
+  final String schoolNamePrefill;
+
   final List<TaxItem> chapters;
   final String? classId;
   final String? subjectId;
@@ -349,9 +374,33 @@ class QpGenState extends Equatable {
   int get totalQuestions => easy + medium + hard;
   int get estimatedMarks => easy * 1 + medium * 2 + hard * 3;
 
+  bool get hasAssignments => assignments.isNotEmpty;
+
+  /// Subject is selected first; the assigned classes are derived from it.
+  List<AssignmentClass> get classes =>
+      assignments
+          .where((s) => s.subjectId == subjectId)
+          .map((s) => s.classes)
+          .firstOrNull ??
+      const [];
+
+  String get selectedSubjectName =>
+      assignments
+          .where((s) => s.subjectId == subjectId)
+          .map((s) => s.subjectName)
+          .firstOrNull ??
+      '';
+
+  String get selectedClassName =>
+      classes
+          .where((c) => c.classId == classId)
+          .map((c) => c.className)
+          .firstOrNull ??
+      '';
+
   /// Step 1 is valid once a title, subject and class are chosen.
   bool get step1Valid =>
-      title.trim().isNotEmpty && classId != null && subjectId != null;
+      title.trim().isNotEmpty && subjectId != null && classId != null;
 
   /// Step 2 is valid once chapters are picked and at least one question is set.
   bool get step2Valid => chapterIds.isNotEmpty && totalQuestions >= 1;
@@ -360,8 +409,9 @@ class QpGenState extends Equatable {
 
   QpGenState copyWith({
     int? step,
-    List<TaxItem>? classes,
-    List<TaxItem>? subjects,
+    bool? loadingAssignments,
+    List<TeacherAssignment>? assignments,
+    String? schoolNamePrefill,
     List<TaxItem>? chapters,
     String? classId,
     String? subjectId,
@@ -379,16 +429,17 @@ class QpGenState extends Equatable {
     bool? generating,
     String? generatedPaperId,
     String? error,
-    bool clearSubject = false,
+    bool clearClass = false,
     bool clearChapters = false,
   }) =>
       QpGenState(
         step: step ?? this.step,
-        classes: classes ?? this.classes,
-        subjects: subjects ?? this.subjects,
+        loadingAssignments: loadingAssignments ?? this.loadingAssignments,
+        assignments: assignments ?? this.assignments,
+        schoolNamePrefill: schoolNamePrefill ?? this.schoolNamePrefill,
         chapters: chapters ?? this.chapters,
-        classId: classId ?? this.classId,
-        subjectId: clearSubject ? null : (subjectId ?? this.subjectId),
+        classId: clearClass ? null : (classId ?? this.classId),
+        subjectId: subjectId ?? this.subjectId,
         chapterIds: clearChapters ? const {} : (chapterIds ?? this.chapterIds),
         title: title ?? this.title,
         schoolName: schoolName ?? this.schoolName,
@@ -407,7 +458,8 @@ class QpGenState extends Equatable {
 
   @override
   List<Object?> get props => [
-        step, classes, subjects, chapters, classId, subjectId, chapterIds,
+        step, loadingAssignments, assignments, schoolNamePrefill, chapters,
+        classId, subjectId, chapterIds,
         title, schoolName, examName, duration, easy, medium, hard,
         questionTypes, includeAnswerKey, instructions,
         generating, generatedPaperId, error,
@@ -415,27 +467,45 @@ class QpGenState extends Equatable {
 }
 
 class QpGeneratorCubit extends Cubit<QpGenState> {
-  QpGeneratorCubit(this._papers, this._tax) : super(const QpGenState());
+  QpGeneratorCubit(this._papers, this._teacher, this._tax)
+      : super(const QpGenState());
   final QuestionPaperRepository _papers;
+  final TeacherRepository _teacher;
   final TaxonomyRepository _tax;
 
-  Future<void> init() async {
-    final r = await _tax.classes();
-    emit(state.copyWith(classes: r.getOrElse(() => const [])));
+  /// Loads the teacher's subject/class assignments (mirrors React's
+  /// `getMyAssignments`) and auto-fills the school name from their profile.
+  Future<void> init(String teacherId) async {
+    if (teacherId.isEmpty) {
+      emit(state.copyWith(loadingAssignments: false));
+      return;
+    }
+    emit(state.copyWith(loadingAssignments: true));
+    final r = await _teacher.assignments(teacherId);
+    r.fold(
+      (f) => emit(state.copyWith(loadingAssignments: false, error: f.message)),
+      (data) => emit(state.copyWith(
+        loadingAssignments: false,
+        assignments: data.assignments,
+        schoolNamePrefill: data.schoolName,
+        schoolName: state.schoolName.isEmpty ? data.schoolName : state.schoolName,
+      )),
+    );
   }
 
+  /// Subject is chosen first; selecting one resets the class & chapters.
+  void selectSubject(String subjectId) => emit(state.copyWith(
+        subjectId: subjectId,
+        chapters: const [],
+        clearClass: true,
+        clearChapters: true,
+      ));
+
+  /// Selecting a class loads its chapters for the chosen subject.
   Future<void> selectClass(String classId) async {
-    emit(state.copyWith(
-        classId: classId, subjects: const [], chapters: const [],
-        clearSubject: true, clearChapters: true));
-    final r = await _tax.subjects(classId);
-    emit(state.copyWith(subjects: r.getOrElse(() => const [])));
-  }
-
-  Future<void> selectSubject(String subjectId) async {
-    final classId = state.classId;
-    if (classId == null) return;
-    emit(state.copyWith(subjectId: subjectId, chapters: const [], clearChapters: true));
+    final subjectId = state.subjectId;
+    if (subjectId == null) return;
+    emit(state.copyWith(classId: classId, chapters: const [], clearChapters: true));
     final r = await _tax.chapters(classId, subjectId);
     emit(state.copyWith(chapters: r.getOrElse(() => const [])));
   }

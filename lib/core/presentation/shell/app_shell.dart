@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../router/route_paths.dart';
@@ -62,15 +64,8 @@ class _AuthenticatedScaffold extends StatelessWidget {
   const _AuthenticatedScaffold({required this.child});
   final Widget child;
 
-  double _mobileAssistantBottomOffset(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    return bottomInset + kBottomNavigationBarHeight + 16;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-
     if (context.isDesktop) {
       return Scaffold(
         body: SafeArea(
@@ -91,7 +86,49 @@ class _AuthenticatedScaffold extends StatelessWidget {
       );
     }
 
-    // Mobile: app bar (logo + hamburger), sidebar as drawer, bottom nav, AI FAB.
+    return _MobileAuthScaffold(child: child);
+  }
+}
+
+/// Mobile authenticated chrome: app bar + drawer + bottom nav + AI FAB.
+///
+/// On iOS the glass bottom nav floats over the body (so content scrolls behind
+/// it with no opaque background) and auto-hides on scroll-down / reveals on
+/// scroll-up. Other platforms keep the Material bar in the normal scaffold slot.
+class _MobileAuthScaffold extends StatefulWidget {
+  const _MobileAuthScaffold({required this.child});
+  final Widget child;
+
+  @override
+  State<_MobileAuthScaffold> createState() => _MobileAuthScaffoldState();
+}
+
+class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
+  bool _navVisible = true;
+
+  bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
+
+  double _assistantBottomOffset(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    return bottomInset + kBottomNavigationBarHeight + 16;
+  }
+
+  /// Hide the floating nav while scrolling down, reveal it while scrolling up.
+  bool _onScroll(ScrollNotification n) {
+    if (n is UserScrollNotification) {
+      if (n.direction == ScrollDirection.reverse && _navVisible) {
+        setState(() => _navVisible = false);
+      } else if (n.direction == ScrollDirection.forward && !_navVisible) {
+        setState(() => _navVisible = true);
+      }
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: c.bgPrimary,
@@ -99,12 +136,30 @@ class _AuthenticatedScaffold extends StatelessWidget {
         elevation: 0,
       ),
       drawer: const Drawer(child: AppSidebar()),
-      bottomNavigationBar: const MobileBottomNav(),
+      // iOS floats the glass bar in the body Stack instead; everyone else uses
+      // the standard slot.
+      bottomNavigationBar: _isIOS ? null : const MobileBottomNav(),
       body: Stack(
         children: [
-          Positioned.fill(child: child),
-          AiAssistantWidget(
-              bottomOffset: _mobileAssistantBottomOffset(context)),
+          Positioned.fill(
+            child: _isIOS
+                ? NotificationListener<ScrollNotification>(
+                    onNotification: _onScroll,
+                    child: widget.child,
+                  )
+                : widget.child,
+          ),
+          if (_isIOS)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut,
+                offset: _navVisible ? Offset.zero : const Offset(0, 1),
+                child: const MobileBottomNav(),
+              ),
+            ),
+          AiAssistantWidget(bottomOffset: _assistantBottomOffset(context)),
         ],
       ),
     );

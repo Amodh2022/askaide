@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -108,6 +110,132 @@ class _StatusBadge extends StatelessWidget {
       child: Text(_statusLabel(status), style: AppTypography.mono(color, size: 9)),
     );
   }
+}
+
+/// Fill colour for a mastery [ProgressBar], matching the frontend's
+/// `getBarColor` thresholds. [v] is a 0–1 fraction.
+Color _masteryBarColor(double v, AskAideColors c) {
+  final pct = v * 100;
+  if (pct >= 70) return c.accent;
+  if (pct >= 50) return c.warning;
+  if (pct >= 30) return c.textMuted;
+  return c.danger;
+}
+
+/// Circular mastery ring with the percentage in the centre — mirrors the
+/// frontend's `MasteryGauge` (SVG ring). [value] is 0–1, or 0–100 when
+/// [isPercentage] is true. Colour follows the same mastery thresholds as React.
+enum _GaugeSize { sm, md, lg, xl }
+
+class _MasteryGauge extends StatelessWidget {
+  const _MasteryGauge({
+    required this.value,
+    this.size = _GaugeSize.md,
+    this.label,
+  });
+
+  final double value;
+  final _GaugeSize size;
+  final String? label;
+
+  static ({double width, double stroke, double font}) _dims(_GaugeSize s) =>
+      switch (s) {
+        _GaugeSize.sm => (width: 48, stroke: 4, font: 12),
+        _GaugeSize.md => (width: 64, stroke: 5, font: 14),
+        _GaugeSize.lg => (width: 80, stroke: 6, font: 16),
+        _GaugeSize.xl => (width: 120, stroke: 8, font: 20),
+      };
+
+  static Color _color(double v, AskAideColors c) {
+    if (v >= 0.7) return c.success;
+    if (v >= 0.5) return c.warning;
+    if (v >= 0.3) return const Color(0xFF8B5CF6); // purple (no matching token)
+    return c.danger;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final normalized = value.clamp(0.0, 1.0);
+    final pct = (normalized * 100).round();
+    final d = _dims(size);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: d.width,
+          height: d.width,
+          child: CustomPaint(
+            painter: _GaugePainter(
+              progress: normalized,
+              stroke: d.stroke,
+              trackColor: c.border,
+              progressColor: _color(normalized, c),
+            ),
+            child: Center(
+              child: Text('$pct%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: d.font,
+                    color: c.textPrimary,
+                  )),
+            ),
+          ),
+        ),
+        if (label != null) ...[
+          const SizedBox(height: 8),
+          Text(label!, style: AppTypography.bodySmall(c.textSecondary), textAlign: TextAlign.center),
+        ],
+      ],
+    );
+  }
+}
+
+class _GaugePainter extends CustomPainter {
+  _GaugePainter({
+    required this.progress,
+    required this.stroke,
+    required this.trackColor,
+    required this.progressColor,
+  });
+
+  final double progress;
+  final double stroke;
+  final Color trackColor;
+  final Color progressColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = (size.width - stroke) / 2;
+    final track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = trackColor;
+    canvas.drawCircle(center, radius, track);
+
+    if (progress <= 0) return;
+    final arc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = progressColor;
+    // Start at top (-90°) and sweep clockwise, matching the SVG gauge.
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress,
+      false,
+      arc,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GaugePainter old) =>
+      old.progress != progress ||
+      old.progressColor != progressColor ||
+      old.trackColor != trackColor ||
+      old.stroke != stroke;
 }
 
 class _KpiCard extends StatelessWidget {
@@ -358,8 +486,26 @@ class _TeacherHomeView extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      for (final a in data.assignments)
-                        _SubjectCard(assignment: a),
+                      // Responsive grid: two columns on tablet+ widths, single
+                      // column on phones (mirrors React's md:grid-cols-2).
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          const gap = 12.0;
+                          final twoCol = constraints.maxWidth >= 640;
+                          final cardW = twoCol
+                              ? (constraints.maxWidth - gap) / 2
+                              : constraints.maxWidth;
+                          return Wrap(
+                            spacing: gap,
+                            runSpacing: gap,
+                            children: [
+                              for (final a in data.assignments)
+                                SizedBox(
+                                    width: cardW, child: _SubjectCard(assignment: a)),
+                            ],
+                          );
+                        },
+                      ),
                     ],
                   ],
                 ],
@@ -383,7 +529,6 @@ class _SubjectCard extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.go('/teacher/subject/${assignment.subjectId}'),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
         decoration: context.cardDecoration(),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -733,7 +878,6 @@ class _ChapterProgressCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final total = chapter.studentsCompleted + chapter.studentsInProgress + chapter.studentsNotStarted;
     final masteryPct = (chapter.classAvgMastery * 100).round();
 
     return GestureDetector(
@@ -767,30 +911,36 @@ class _ChapterProgressCard extends StatelessWidget {
                       Expanded(
                         child: Text(chapter.name,
                             style: AppTypography.bodyMedium(c.textPrimary).copyWith(fontWeight: FontWeight.w500),
-                            maxLines: 1, overflow: TextOverflow.ellipsis),
+                            maxLines: 2, overflow: TextOverflow.ellipsis),
                       ),
+                      if (chapter.status.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        _StatusBadge(chapter.status),
+                      ],
                       const SizedBox(width: 8),
-                      if (chapter.status.isNotEmpty) _StatusBadge(chapter.status),
+                      // Avg mastery, folded into the title row so the chapter
+                      // name keeps full width on narrow (mobile) layouts.
+                      Text('$masteryPct%',
+                          style: AppTypography.mono(c.accent, size: 15)
+                              .copyWith(fontWeight: FontWeight.w700)),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  if (total > 0)
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(99),
-                      child: SizedBox(
-                        height: 4,
-                        child: Row(
-                          children: [
-                            if (chapter.studentsCompleted > 0)
-                              Expanded(flex: chapter.studentsCompleted, child: ColoredBox(color: c.accent)),
-                            if (chapter.studentsInProgress > 0)
-                              Expanded(flex: chapter.studentsInProgress, child: ColoredBox(color: c.warning)),
-                            if (chapter.studentsNotStarted > 0)
-                              Expanded(flex: chapter.studentsNotStarted, child: ColoredBox(color: c.border)),
-                          ],
+                  // Single mastery bar (mirrors the frontend's ProgressBar).
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: Container(
+                      height: 4,
+                      color: c.border,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FractionallySizedBox(
+                          widthFactor: chapter.classAvgMastery.clamp(0.0, 1.0),
+                          child: ColoredBox(color: _masteryBarColor(chapter.classAvgMastery, c)),
                         ),
                       ),
                     ),
+                  ),
                   const SizedBox(height: 5),
                   Wrap(
                     spacing: 10,
@@ -823,14 +973,6 @@ class _ChapterProgressCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('$masteryPct%', style: AppTypography.mono(c.accent, size: 16).copyWith(fontWeight: FontWeight.w700)),
-                Text('Avg Mastery', style: AppTypography.bodySmall(c.textMuted)),
-              ],
             ),
             const SizedBox(width: 8),
             Icon(LucideIcons.chevronRight, size: 16, color: c.textMuted),
@@ -1217,8 +1359,10 @@ class _StudentTableRow extends StatelessWidget {
             ),
             SizedBox(
               width: 55,
-              child: Text('${(student.mastery * 100).round()}%',
-                  style: AppTypography.mono(c.accent, size: 13).copyWith(fontWeight: FontWeight.w700)),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _MasteryGauge(value: student.mastery, size: _GaugeSize.sm),
+              ),
             ),
           ],
         ),
@@ -1657,24 +1801,30 @@ class _WeakTopicDetailCard extends StatelessWidget {
         ? c.danger.withValues(alpha: 0.07)
         : topic.teacherAction == 'MEDIUM_PRIORITY' ? c.warning.withValues(alpha: 0.07) : c.accentLight;
 
+    // Rounded card with a full-height 3px left accent bar. A non-uniform
+    // Border can't be combined with borderRadius in Flutter, so the accent is
+    // a separate strip (mirrors the frontend's `border-l-4`).
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bgColor,
-        border: Border(
-          top: BorderSide(color: borderColor.withValues(alpha: 0.4)),
-          right: BorderSide(color: borderColor.withValues(alpha: 0.4)),
-          bottom: BorderSide(color: borderColor.withValues(alpha: 0.4)),
-          left: BorderSide(color: borderColor, width: 3),
-        ),
+        border: Border.all(color: borderColor.withValues(alpha: 0.4)),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 3, color: borderColor),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
@@ -1730,7 +1880,12 @@ class _WeakTopicDetailCard extends StatelessWidget {
               Expanded(child: _DiffBar(label: 'Hard', value: topic.difficulty.hard, color: c.danger)),
             ],
           ),
-        ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2053,32 +2208,34 @@ class _TeacherStudentViewState extends State<_TeacherStudentView> {
                         Text('${summary.subjectName} Progress',
                             style: AppTypography.labelLarge(c.textPrimary).copyWith(fontSize: 17)),
                         const SizedBox(height: 16),
+                        // 2×2 stat grid (mirrors React's grid-cols-2): two
+                        // circular gauges on top, counts below.
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _MasteryGauge(
+                                  value: summary.overallMastery,
+                                  size: _GaugeSize.lg,
+                                  label: 'Mastery'),
+                            ),
+                            Expanded(
+                              child: _MasteryGauge(
+                                  value: summary.overallCoverage,
+                                  size: _GaugeSize.lg,
+                                  label: 'Coverage'),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
                         Row(
                           children: [
                             Expanded(
                               child: Column(
                                 children: [
-                                  Text('${(summary.overallMastery * 100).round()}%',
-                                      style: AppTypography.statNumber(c.accent, size: 28)),
-                                  Text('Mastery', style: AppTypography.mono(c.textMuted, size: 10)),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  Text('${(summary.overallCoverage * 100).round()}%',
-                                      style: AppTypography.statNumber(c.accent, size: 28)),
-                                  Text('Coverage', style: AppTypography.mono(c.textMuted, size: 10)),
-                                ],
-                              ),
-                            ),
-                            Expanded(
-                              child: Column(
-                                children: [
                                   Text('${summary.chaptersStarted}/${summary.totalChapters}',
                                       style: AppTypography.statNumber(c.textPrimary, size: 28)),
-                                  Text('Chapters', style: AppTypography.mono(c.textMuted, size: 10)),
+                                  Text('Chapters Started', style: AppTypography.mono(c.textMuted, size: 10)),
                                 ],
                               ),
                             ),
@@ -2089,7 +2246,7 @@ class _TeacherStudentViewState extends State<_TeacherStudentView> {
                                       style: AppTypography.bodySmall(c.textPrimary).copyWith(fontWeight: FontWeight.w600),
                                       textAlign: TextAlign.center),
                                   Text('Last Active', style: AppTypography.mono(c.textMuted, size: 10)),
-                                  Text('${summary.totalTimeSpent} min',
+                                  Text('${summary.totalTimeSpent} min total',
                                       style: AppTypography.bodySmall(c.textMuted), textAlign: TextAlign.center),
                                 ],
                               ),
@@ -2262,7 +2419,9 @@ class _ChapterAccordion extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 10),
+                  _MasteryGauge(value: chapter.masteryScore, size: _GaugeSize.sm),
+                  const SizedBox(width: 10),
                   Icon(isOpen ? LucideIcons.chevronUp : LucideIcons.chevronDown,
                       size: 16, color: c.textMuted),
                 ],

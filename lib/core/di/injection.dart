@@ -93,7 +93,7 @@ Future<void> configureDependencies(LocalStorageService localStorage) async {
     ..registerLazySingleton<QuestionPaperRepository>(() => QuestionPaperRepository(sl()))
     ..registerFactory<PaperPreviewCubit>(() => PaperPreviewCubit(sl()))
     ..registerFactory<PaperHistoryCubit>(() => PaperHistoryCubit(sl()))
-    ..registerFactory<QpGeneratorCubit>(() => QpGeneratorCubit(sl(), sl()))
+    ..registerFactory<QpGeneratorCubit>(() => QpGeneratorCubit(sl(), sl(), sl()))
     ..registerFactory<PublicQpCubit>(() => PublicQpCubit(sl(), sl()))
     ..registerLazySingleton<AiAssistantRepository>(() => AiAssistantRepository(sl()))
     ..registerLazySingleton<PublicStatsRepository>(() => PublicStatsRepository(sl()))

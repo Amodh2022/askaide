@@ -9,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../profile/presentation/cubit/profile_cubit.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -23,8 +24,9 @@ class QuestionPaperGeneratorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final teacherId = context.read<ProfileCubit>().state.user?.id ?? '';
     return BlocProvider<QpGeneratorCubit>(
-      create: (_) => sl<QpGeneratorCubit>()..init(),
+      create: (_) => sl<QpGeneratorCubit>()..init(teacherId),
       child: const _GeneratorView(),
     );
   }
@@ -63,6 +65,27 @@ class _GeneratorView extends StatelessWidget {
       },
       builder: (context, state) {
         final cubit = context.read<QpGeneratorCubit>();
+
+        // While the teacher's assignments load, show shimmering placeholders.
+        if (state.loadingAssignments) {
+          return const SkeletonListLoader(padding: EdgeInsets.all(24));
+        }
+
+        // No subjects/classes assigned — nothing to generate from.
+        if (!state.hasAssignments) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(40),
+              child: EmptyState(
+                icon: LucideIcons.alertCircle,
+                title: 'No assignments found',
+                hint:
+                    "You don't have any class/subject assigned yet. Please contact your admin.",
+              ),
+            ),
+          );
+        }
+
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Center(
@@ -75,8 +98,15 @@ class _GeneratorView extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Expanded(
-                        child: PageHeader(eyebrow: 'PAPERS', title: 'Generate a', emphasis: 'paper.'),
+                      Expanded(
+                        child: PageHeader(
+                          eyebrow: 'PAPERS',
+                          title: 'Auto Question',
+                          emphasis: 'Paper.',
+                          subtitle: state.schoolNamePrefill.isNotEmpty
+                              ? state.schoolNamePrefill
+                              : null,
+                        ),
                       ),
                       TextButton.icon(
                         onPressed: () => context.go('/question-paper/history'),
@@ -171,9 +201,20 @@ class _GeneratorView extends StatelessWidget {
       const SizedBox(height: 14),
       _LabeledField(
         label: 'SCHOOL NAME',
+        trailing: state.schoolNamePrefill.isNotEmpty
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: c.success.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text('Auto-filled',
+                    style: AppTypography.bodySmall(c.success)),
+              )
+            : null,
         child: _TextInput(
           value: state.schoolName,
-          hint: 'School name',
+          hint: 'School name from your profile',
           onChanged: cubit.setSchoolName,
         ),
       ),
@@ -198,11 +239,30 @@ class _GeneratorView extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 14),
-      // Class chip picker
-      Text('CLASS *', style: AppTypography.mono(c.textMuted, size: 10)),
+      // Subject chip picker — sourced from the teacher's assignments.
+      Text('YOUR SUBJECT *', style: AppTypography.mono(c.textMuted, size: 10)),
       const SizedBox(height: 8),
-      if (state.classes.isEmpty)
-        Text('Loading classes…', style: AppTypography.bodySmall(c.textMuted))
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final sub in state.assignments)
+            _ChipButton(
+              label: sub.subjectName,
+              selected: state.subjectId == sub.subjectId,
+              onTap: () => cubit.selectSubject(sub.subjectId),
+            ),
+        ],
+      ),
+      const SizedBox(height: 14),
+      // Class chip picker — only visible once a subject is selected.
+      Text('YOUR CLASS *', style: AppTypography.mono(c.textMuted, size: 10)),
+      const SizedBox(height: 8),
+      if (state.subjectId == null)
+        Text('Select a subject first', style: AppTypography.bodySmall(c.textMuted))
+      else if (state.classes.isEmpty)
+        Text('No classes assigned for this subject',
+            style: AppTypography.bodySmall(c.textMuted))
       else
         Wrap(
           spacing: 8,
@@ -210,36 +270,17 @@ class _GeneratorView extends StatelessWidget {
           children: [
             for (final cls in state.classes)
               _ChipButton(
-                label: cls.name,
-                selected: state.classId == cls.id,
-                onTap: () => cubit.selectClass(cls.id),
+                label: cls.sections.isEmpty
+                    ? cls.className
+                    : '${cls.className} (${cls.sections.map((s) => s.name).join(', ')})',
+                selected: state.classId == cls.classId,
+                onTap: () => cubit.selectClass(cls.classId),
               ),
           ],
         ),
-      const SizedBox(height: 14),
-      // Subject chip picker — only visible once a class is selected
-      if (state.classId != null) ...[
-        Text('SUBJECT *', style: AppTypography.mono(c.textMuted, size: 10)),
-        const SizedBox(height: 8),
-        if (state.subjects.isEmpty)
-          Text('Loading subjects…', style: AppTypography.bodySmall(c.textMuted))
-        else
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final sub in state.subjects)
-                _ChipButton(
-                  label: sub.name,
-                  selected: state.subjectId == sub.id,
-                  onTap: () => cubit.selectSubject(sub.id),
-                ),
-            ],
-          ),
-        const SizedBox(height: 4),
-        Text('Chapters are selected on the next step.',
-            style: AppTypography.bodySmall(c.textMuted)),
-      ],
+      const SizedBox(height: 4),
+      Text('Chapters are selected on the next step.',
+          style: AppTypography.bodySmall(c.textMuted)),
     ];
   }
 
@@ -430,22 +471,10 @@ class _GeneratorView extends StatelessWidget {
             const SizedBox(height: 8),
             _summaryRow(context, 'Title', state.title.isEmpty ? '—' : state.title),
             _summaryRow(context, 'School', state.schoolName.isEmpty ? '—' : state.schoolName),
-            _summaryRow(
-              context,
-              'Subject',
-              state.subjects
-                  .where((s) => s.id == state.subjectId)
-                  .map((s) => s.name)
-                  .firstOrNull ?? '—',
-            ),
-            _summaryRow(
-              context,
-              'Class',
-              state.classes
-                  .where((c) => c.id == state.classId)
-                  .map((c) => c.name)
-                  .firstOrNull ?? '—',
-            ),
+            _summaryRow(context, 'Subject',
+                state.selectedSubjectName.isEmpty ? '—' : state.selectedSubjectName),
+            _summaryRow(context, 'Class',
+                state.selectedClassName.isEmpty ? '—' : state.selectedClassName),
             _summaryRow(context, 'Chapters', '${state.chapterIds.length}'),
             _summaryRow(context, 'Questions', '${state.totalQuestions}'),
             _summaryRow(context, 'Duration', '${state.duration} min'),
@@ -548,9 +577,10 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _LabeledField extends StatelessWidget {
-  const _LabeledField({required this.label, required this.child});
+  const _LabeledField({required this.label, required this.child, this.trailing});
   final String label;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -558,7 +588,15 @@ class _LabeledField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
+        Row(
+          children: [
+            Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
+            if (trailing != null) ...[
+              const SizedBox(width: 8),
+              trailing!,
+            ],
+          ],
+        ),
         const SizedBox(height: 6),
         child,
       ],
@@ -840,10 +878,22 @@ class _PreviewViewState extends State<_PreviewView> {
   Future<void> _printPdf(PaperPreview preview) async {
     setState(() => _printing = true);
     try {
-      await Printing.layoutPdf(
-        name: preview.examName.isNotEmpty ? preview.examName : preview.title,
-        onLayout: (format) async =>
-            _buildPdf(preview, format, preview.includeAnswerKey),
+      // Download the server-rendered PDF (same output as the web app) and hand
+      // it to the native share/save sheet.
+      final repo = sl<QuestionPaperRepository>();
+      final r = await repo.downloadPdf(widget.paperId);
+      await r.fold(
+        (f) async {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Failed to download PDF: ${f.message}')));
+          }
+        },
+        (bytes) => Printing.sharePdf(
+          bytes: bytes,
+          filename: _pdfFileName(
+              preview.examName.isNotEmpty ? preview.examName : preview.title),
+        ),
       );
     } finally {
       if (mounted) setState(() => _printing = false);
@@ -881,7 +931,7 @@ class _PreviewViewState extends State<_PreviewView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Top bar
+                  // Top bar — actions wrap to a new line on narrow widths.
                   Row(
                     children: [
                       TextButton.icon(
@@ -891,28 +941,36 @@ class _PreviewViewState extends State<_PreviewView> {
                         label: Text('Back',
                             style: AppTypography.bodySmall(c.textMuted)),
                       ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () => context.go('/question-paper'),
-                        child: Text('Generate Another',
-                            style: AppTypography.bodySmall(c.accent)),
-                      ),
-                      const SizedBox(width: 8),
-                      FilledButton.icon(
-                        onPressed: (!hasQuestions || _printing)
-                            ? null
-                            : () => _printPdf(preview),
-                        icon: _printing
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: Colors.white))
-                            : const Icon(LucideIcons.download, size: 16),
-                        label: const Text('Download / Print'),
-                        style: FilledButton.styleFrom(
-                            backgroundColor: c.accent,
-                            foregroundColor: Colors.white),
+                      Expanded(
+                        child: Wrap(
+                          alignment: WrapAlignment.end,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            TextButton(
+                              onPressed: () => context.go('/question-paper'),
+                              child: Text('Generate Another',
+                                  style: AppTypography.bodySmall(c.accent)),
+                            ),
+                            FilledButton.icon(
+                              onPressed: (!hasQuestions || _printing)
+                                  ? null
+                                  : () => _printPdf(preview),
+                              icon: _printing
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2, color: Colors.white))
+                                  : const Icon(LucideIcons.download, size: 16),
+                              label: const Text('Download / Print'),
+                              style: FilledButton.styleFrom(
+                                  backgroundColor: c.accent,
+                                  foregroundColor: Colors.white),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -1180,6 +1238,14 @@ class _PreviewViewState extends State<_PreviewView> {
   }
 }
 
+/// Builds a safe PDF filename from a paper title, mirroring React's
+/// `` `${title}.pdf`.replace(/[^a-zA-Z0-9.\-_ ]/g, '') ``.
+String _pdfFileName(String title) {
+  final base = title.trim().isEmpty ? 'question-paper' : title.trim();
+  final safe = base.replaceAll(RegExp(r'[^a-zA-Z0-9.\-_ ]'), '');
+  return '$safe.pdf';
+}
+
 /// Opens the system print/share sheet for a generated [preview] with an answer
 /// key included. Used by the public/guest generator to download its PDF.
 Future<void> printPaperPdf(PaperPreview preview, {bool withAnswers = true}) {
@@ -1208,7 +1274,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
             children: [
               pw.Expanded(
                 child: pw.Text('Q$displayNo. ${q.text}',
-                    style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                    style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
               ),
               pw.Text('[$m Mark${m > 1 ? 's' : ''}]',
                   style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
@@ -1241,12 +1307,12 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         if (preview.schoolName.isNotEmpty)
           pw.Center(
             child: pw.Text(preview.schoolName.toUpperCase(),
-                style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           ),
         pw.Center(
           child: pw.Text(
               preview.examName.isNotEmpty ? preview.examName : preview.title,
-              style: const pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+              style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
         ),
         pw.SizedBox(height: 4),
         pw.Center(
@@ -1261,7 +1327,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         pw.Divider(),
         if (preview.instructions.isNotEmpty) ...[
           pw.Text('General Instructions:',
-              style: const pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 2),
           for (var i = 0; i < preview.instructions.length; i++)
             pw.Text('${i + 1}. ${preview.instructions[i]}',
@@ -1271,14 +1337,14 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         if (hasSections) ...[
           if (mcqs.isNotEmpty) ...[
             pw.Text('Section A — Multiple Choice Questions',
-                style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
             for (var i = 0; i < mcqs.length; i++) questionBlock(i + 1, mcqs[i]),
           ],
           if (fills.isNotEmpty) ...[
             pw.SizedBox(height: 6),
             pw.Text('Section B — Fill in the Blanks',
-                style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
             for (var i = 0; i < fills.length; i++)
               questionBlock(mcqs.length + i + 1, fills[i], showOptions: false),
@@ -1289,7 +1355,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
           pw.SizedBox(height: 16),
           pw.Divider(),
           pw.Text('Answer Key',
-              style: const pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+              style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
           for (var i = 0; i < ordered.length; i++)
             if (ordered[i].correctAnswer.isNotEmpty)
@@ -1401,14 +1467,14 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
   Future<void> _download(PaperSummary p) async {
     setState(() => _downloadingId = p.id);
     try {
+      // Fetch the server-rendered PDF (matches the web download) and share it.
       final repo = sl<QuestionPaperRepository>();
-      final r = await repo.preview(p.id);
+      final r = await repo.downloadPdf(p.id);
       await r.fold(
-        (f) async => _snack('Failed to load paper: ${f.message}'),
-        (preview) => Printing.layoutPdf(
-          name: preview.examName.isNotEmpty ? preview.examName : preview.title,
-          onLayout: (format) async =>
-              _buildPdf(preview, format, preview.includeAnswerKey),
+        (f) async => _snack('Failed to download PDF: ${f.message}'),
+        (bytes) => Printing.sharePdf(
+          bytes: bytes,
+          filename: _pdfFileName(p.title),
         ),
       );
     } finally {

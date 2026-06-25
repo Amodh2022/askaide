@@ -131,7 +131,8 @@ class ChapterProgress extends Equatable {
         name: j.str(['name', 'chapterName'], 'Chapter'),
         order: j.intval(['order']),
         status: j.str(['status']),
-        classAvgMastery: _frac(j.dbl(['classAvgMastery', 'avgMastery', 'mastery'])),
+        classAvgMastery: _frac(j.dbl(
+            ['classAvgMastery', 'avgMastery', 'avgClassMastery', 'masteryScore', 'mastery'])),
         studentsCompleted: j.intval(['studentsCompleted', 'completed']),
         studentsInProgress: j.intval(['studentsInProgress', 'inProgress']),
         studentsNotStarted: j.intval(['studentsNotStarted', 'notStarted']),
