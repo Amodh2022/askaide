@@ -36,6 +36,11 @@ class LocalStorageService {
   Future<void> setThemeMode(String mode) =>
       _prefs.setString(AppConstants.kThemeMode, mode);
 
+  // ---- Sound effects (defaults to enabled, mirroring the web client) -----
+  bool get soundEnabled => _prefs.getBool(AppConstants.kSoundEnabled) ?? true;
+  Future<void> setSoundEnabled(bool enabled) =>
+      _prefs.setBool(AppConstants.kSoundEnabled, enabled);
+
   // ---- Session history (list of JSON-encoded sessions) -------------------
   List<Map<String, dynamic>> readSessionHistory() {
     return _sessionBox.values

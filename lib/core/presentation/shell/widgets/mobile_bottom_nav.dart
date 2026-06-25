@@ -6,6 +6,7 @@ import 'package:native_glass_navbar/native_glass_navbar.dart';
 
 import '../../../../features/profile/domain/entities/account_type.dart';
 import '../../../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../../sound/sound_cubit.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_typography.dart';
 import '../nav_items.dart';
@@ -32,16 +33,21 @@ class MobileBottomNav extends StatelessWidget {
     );
     if (index < 0) index = 0;
 
+    void go(int i) {
+      context.read<SoundCubit>().playClick();
+      context.go(items[i].path);
+    }
+
     final material = _MaterialBottomNav(
       items: items,
       index: index,
-      onTap: (i) => context.go(items[i].path),
+      onTap: go,
     );
 
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return NativeGlassNavBar(
         currentIndex: index,
-        onTap: (i) => context.go(items[i].path),
+        onTap: go,
         tintColor: c.accent,
         fallback: material,
         tabs: [

@@ -1,9 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../router/route_paths.dart';
+import '../../sound/sound_cubit.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/responsive.dart';
 import '../widgets/brand_logo.dart';
@@ -69,6 +71,7 @@ class _AuthenticatedScaffold extends StatelessWidget {
     if (context.isDesktop) {
       return Scaffold(
         body: SafeArea(
+          bottom: false,
           child: Row(
             children: [
               const AppSidebar(),
@@ -76,7 +79,7 @@ class _AuthenticatedScaffold extends StatelessWidget {
                 child: Stack(
                   children: [
                     Positioned.fill(child: child),
-                    const AiAssistantWidget(),
+                    // const AiAssistantWidget(),
                   ],
                 ),
               ),
@@ -108,6 +111,10 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
 
   bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
+  bool _showBottomNav(String location) {
+    return location.startsWith(RoutePaths.study);
+  }
+
   double _assistantBottomOffset(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
     return bottomInset + kBottomNavigationBarHeight + 16;
@@ -128,17 +135,29 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final location = GoRouterState.of(context).uri.path;
+    final showNav = _showBottomNav(location);
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: c.bgPrimary,
         title: const BrandLogo(size: 24),
         elevation: 0,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              context.read<SoundCubit>().playClick();
+              Scaffold.of(context).openDrawer();
+            },
+          ),
+        ),
       ),
-      drawer: const Drawer(child: AppSidebar()),
+      drawer: const Drawer(child: SafeArea(child: AppSidebar())),
       // iOS floats the glass bar in the body Stack instead; everyone else uses
       // the standard slot.
-      bottomNavigationBar: _isIOS ? null : const MobileBottomNav(),
+      bottomNavigationBar:
+          (_isIOS || !showNav) ? null : const MobileBottomNav(),
       body: Stack(
         children: [
           Positioned.fill(
@@ -149,7 +168,7 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
                   )
                 : widget.child,
           ),
-          if (_isIOS)
+          if (_isIOS && showNav)
             Align(
               alignment: Alignment.bottomCenter,
               child: AnimatedSlide(
@@ -159,7 +178,7 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
                 child: const MobileBottomNav(),
               ),
             ),
-          AiAssistantWidget(bottomOffset: _assistantBottomOffset(context)),
+          // AiAssistantWidget(bottomOffset: _assistantBottomOffset(context)),
         ],
       ),
     );

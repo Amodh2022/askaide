@@ -5,6 +5,7 @@ import '../constants/app_constants.dart';
 import '../storage/secure_storage_service.dart';
 import 'interceptors/auth_interceptor.dart';
 import 'interceptors/error_interceptor.dart';
+import 'interceptors/refresh_interceptor.dart';
 
 /// Builds the single configured [Dio] instance used by every remote data
 /// source. 30s timeouts and the auth + error interceptors are wired here.
@@ -27,8 +28,13 @@ class DioClient {
       ),
     );
 
+    // The refresh interceptor needs a reference to the client to replay the
+    // original request after obtaining a fresh token.
+    final refresh = RefreshInterceptor(storage)..dio = dio;
+
     dio.interceptors.addAll([
       AuthInterceptor(storage),
+      refresh,
       ErrorInterceptor(onUnauthorized: onUnauthorized),
     ]);
 

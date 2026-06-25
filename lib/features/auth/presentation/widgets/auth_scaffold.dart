@@ -21,6 +21,7 @@ class AuthScaffold extends StatelessWidget {
     return Scaffold(
       backgroundColor: c.bgPrimary,
       body: SafeArea(
+        bottom: false,
         child: Column(
         children: [
           // Top bar

@@ -4,11 +4,12 @@ import 'package:equatable/equatable.dart';
 /// backend returns alongside it (used to seed the first redirect before the
 /// full profile loads).
 class AuthSession extends Equatable {
-  const AuthSession({required this.token, this.accountType});
+  const AuthSession({required this.token, this.refreshToken, this.accountType});
 
   final String token;
+  final String? refreshToken;
   final String? accountType;
 
   @override
-  List<Object?> get props => [token, accountType];
+  List<Object?> get props => [token, refreshToken, accountType];
 }

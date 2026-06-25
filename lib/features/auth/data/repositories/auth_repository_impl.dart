@@ -55,9 +55,19 @@ class AuthRepositoryImpl implements AuthRepository {
         if (session.token.isEmpty) {
           throw ServerException('No token returned by server');
         }
-        await _storage.writeToken(session.token);
+        await _persistTokens(session);
         return session;
       });
+
+  /// Writes the access token and (when present) the refresh token to secure
+  /// storage so the auth + refresh interceptors can pick them up.
+  Future<void> _persistTokens(AuthSession session) async {
+    await _storage.writeToken(session.token);
+    final refresh = session.refreshToken;
+    if (refresh != null && refresh.isNotEmpty) {
+      await _storage.writeRefreshToken(refresh);
+    }
+  }
 
   @override
   Future<Either<Failure, Unit>> sendOtp(String email) => _guard(() async {
@@ -70,7 +80,7 @@ class AuthRepositoryImpl implements AuthRepository {
       _guard(() async {
         final session = (await _remote.signup(data)).toEntity();
         if (session.token.isNotEmpty) {
-          await _storage.writeToken(session.token);
+          await _persistTokens(session);
         }
         return session;
       });
@@ -95,7 +105,17 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, Unit>> logout() => _guard(() async {
-        await _storage.deleteToken();
+        // Best-effort server-side revocation of the refresh token, mirroring
+        // the web client. Local state is cleared regardless of the outcome.
+        final refresh = await _storage.readRefreshToken();
+        if (refresh != null && refresh.isNotEmpty) {
+          try {
+            await _remote.revokeRefreshToken(refresh);
+          } catch (_) {
+            // Ignore network/server errors — still clear the local session.
+          }
+        }
+        await _storage.clear();
         return unit;
       });
 

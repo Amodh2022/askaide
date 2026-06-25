@@ -6,11 +6,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/profile/domain/entities/account_type.dart';
 import '../../../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../../sound/sound_cubit.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_tokens.dart';
 import '../../../theme/app_typography.dart';
 import '../../../theme/theme_cubit.dart';
 import '../../widgets/brand_logo.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../nav_items.dart';
 
 /// Fixed 240px left rail shown on desktop for authenticated routes. Groups are
@@ -116,6 +118,7 @@ class _NavTile extends StatelessWidget {
         child: InkWell(
           borderRadius: AppRadii.modalR,
           onTap: () {
+            context.read<SoundCubit>().playClick();
             // On mobile the sidebar lives in a Drawer; close it after picking a
             // destination. No-op on desktop where the rail is persistent.
             final scaffold = Scaffold.maybeOf(context);
@@ -222,8 +225,10 @@ class _ThemeToggleTile extends StatelessWidget {
           size: 18, color: c.textSecondary),
       title: Text(isDark ? 'Light mode' : 'Dark mode',
           style: AppTypography.bodyMedium(c.textSecondary)),
-      onTap: () =>
-          context.read<ThemeCubit>().toggle(Theme.of(context).brightness),
+      onTap: () {
+        context.read<SoundCubit>().playClick();
+        context.read<ThemeCubit>().toggle(Theme.of(context).brightness);
+      },
     );
   }
 }
@@ -236,7 +241,16 @@ class _SignOutTile extends StatelessWidget {
       dense: true,
       leading: Icon(LucideIcons.logOut, size: 18, color: c.danger),
       title: Text('Sign out', style: AppTypography.bodyMedium(c.danger)),
-      onTap: () {
+      onTap: () async {
+        context.read<SoundCubit>().playClick();
+        final confirmed = await showConfirmDialog(
+          context,
+          title: 'Sign out',
+          message: 'Do you want to sign out?',
+          confirmLabel: 'Sign Out',
+          destructive: true,
+        );
+        if (!confirmed || !context.mounted) return;
         context.read<ProfileCubit>().clear();
         context.read<AuthBloc>().add(const AuthLogoutRequested());
       },

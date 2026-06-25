@@ -24,6 +24,7 @@ class AppConstants {
 
   // Secure-storage keys
   static const String kJwtToken = 'askaide_jwt_token';
+  static const String kRefreshToken = 'askaide_refresh_token';
 
   // Hive box names
   static const String boxSessionHistory = 'session_history';
@@ -32,6 +33,7 @@ class AppConstants {
 
   // SharedPreferences keys
   static const String kThemeMode = 'theme_mode';
+  static const String kSoundEnabled = 'sound_enabled';
 
   // Batch sizes for the study flow
   static const int questionBatchSize = 5;

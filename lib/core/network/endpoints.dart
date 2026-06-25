@@ -8,6 +8,8 @@ class Endpoints {
   static const String sendOtp = '/authenticate/sendotp';
   static const String signup = '/authenticate/signup';
   static const String login = '/authenticate/login';
+  static const String refresh = '/authenticate/refresh';
+  static const String logout = '/authenticate/logout';
   static const String resetPasswordToken = '/authenticate/reset-password-token';
   static const String resetPassword = '/authenticate/reset-password';
 
@@ -82,6 +84,15 @@ class Endpoints {
   // Single-record mutations (PUT/DELETE by id).
   static String schoolById(String id) => '/school/$id';
   static String teacherById(String id) => '/teacher/$id';
+
+  // ---- ADMIN METRICS (SuperAdmin overview) -------------------------------
+  // Mirrors React `adminApi.get*Metrics`; each returns a `{ success, data }`
+  // envelope whose inner `data` object carries the figures.
+  static const String adminMetricsOverview = '/admin/metrics/overview';
+  static const String adminMetricsUsers = '/admin/metrics/users';
+  static const String adminMetricsContent = '/admin/metrics/content';
+  static const String adminMetricsQuestionJobs = '/admin/metrics/question-jobs';
+  static const String adminMetricsEngagement = '/admin/metrics/engagement';
 
   // ---- SECTIONS ----------------------------------------------------------
   static const String sections = '/sections';

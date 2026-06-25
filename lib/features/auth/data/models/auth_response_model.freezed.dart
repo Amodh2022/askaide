@@ -14,19 +14,12 @@ T _$identity<T>(T value) => value;
 final _privateConstructorUsedError = UnsupportedError(
     'It seems like you constructed your class using `MyClass._()`. This constructor is only meant to be used by freezed and you are not supposed to need it nor use it.\nPlease check the documentation here for more information: https://github.com/rrousselGit/freezed#adding-getters-and-methods-to-our-models');
 
-AuthResponseModel _$AuthResponseModelFromJson(Map<String, dynamic> json) {
-  return _AuthResponseModel.fromJson(json);
-}
-
 /// @nodoc
 mixin _$AuthResponseModel {
   String? get token => throw _privateConstructorUsedError;
-  @JsonKey(name: 'accountType')
+  String? get refreshToken => throw _privateConstructorUsedError;
   String? get accountType => throw _privateConstructorUsedError;
   Map<String, dynamic>? get user => throw _privateConstructorUsedError;
-
-  /// Serializes this AuthResponseModel to a JSON map.
-  Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
 
   /// Create a copy of AuthResponseModel
   /// with the given fields replaced by the non-null parameter values.
@@ -43,7 +36,8 @@ abstract class $AuthResponseModelCopyWith<$Res> {
   @useResult
   $Res call(
       {String? token,
-      @JsonKey(name: 'accountType') String? accountType,
+      String? refreshToken,
+      String? accountType,
       Map<String, dynamic>? user});
 }
 
@@ -63,6 +57,7 @@ class _$AuthResponseModelCopyWithImpl<$Res, $Val extends AuthResponseModel>
   @override
   $Res call({
     Object? token = freezed,
+    Object? refreshToken = freezed,
     Object? accountType = freezed,
     Object? user = freezed,
   }) {
@@ -70,6 +65,10 @@ class _$AuthResponseModelCopyWithImpl<$Res, $Val extends AuthResponseModel>
       token: freezed == token
           ? _value.token
           : token // ignore: cast_nullable_to_non_nullable
+              as String?,
+      refreshToken: freezed == refreshToken
+          ? _value.refreshToken
+          : refreshToken // ignore: cast_nullable_to_non_nullable
               as String?,
       accountType: freezed == accountType
           ? _value.accountType
@@ -93,7 +92,8 @@ abstract class _$$AuthResponseModelImplCopyWith<$Res>
   @useResult
   $Res call(
       {String? token,
-      @JsonKey(name: 'accountType') String? accountType,
+      String? refreshToken,
+      String? accountType,
       Map<String, dynamic>? user});
 }
 
@@ -111,6 +111,7 @@ class __$$AuthResponseModelImplCopyWithImpl<$Res>
   @override
   $Res call({
     Object? token = freezed,
+    Object? refreshToken = freezed,
     Object? accountType = freezed,
     Object? user = freezed,
   }) {
@@ -118,6 +119,10 @@ class __$$AuthResponseModelImplCopyWithImpl<$Res>
       token: freezed == token
           ? _value.token
           : token // ignore: cast_nullable_to_non_nullable
+              as String?,
+      refreshToken: freezed == refreshToken
+          ? _value.refreshToken
+          : refreshToken // ignore: cast_nullable_to_non_nullable
               as String?,
       accountType: freezed == accountType
           ? _value.accountType
@@ -132,22 +137,21 @@ class __$$AuthResponseModelImplCopyWithImpl<$Res>
 }
 
 /// @nodoc
-@JsonSerializable()
+
 class _$AuthResponseModelImpl extends _AuthResponseModel {
   const _$AuthResponseModelImpl(
       {this.token,
-      @JsonKey(name: 'accountType') this.accountType,
+      this.refreshToken,
+      this.accountType,
       final Map<String, dynamic>? user})
       : _user = user,
         super._();
 
-  factory _$AuthResponseModelImpl.fromJson(Map<String, dynamic> json) =>
-      _$$AuthResponseModelImplFromJson(json);
-
   @override
   final String? token;
   @override
-  @JsonKey(name: 'accountType')
+  final String? refreshToken;
+  @override
   final String? accountType;
   final Map<String, dynamic>? _user;
   @override
@@ -161,7 +165,7 @@ class _$AuthResponseModelImpl extends _AuthResponseModel {
 
   @override
   String toString() {
-    return 'AuthResponseModel(token: $token, accountType: $accountType, user: $user)';
+    return 'AuthResponseModel(token: $token, refreshToken: $refreshToken, accountType: $accountType, user: $user)';
   }
 
   @override
@@ -170,14 +174,15 @@ class _$AuthResponseModelImpl extends _AuthResponseModel {
         (other.runtimeType == runtimeType &&
             other is _$AuthResponseModelImpl &&
             (identical(other.token, token) || other.token == token) &&
+            (identical(other.refreshToken, refreshToken) ||
+                other.refreshToken == refreshToken) &&
             (identical(other.accountType, accountType) ||
                 other.accountType == accountType) &&
             const DeepCollectionEquality().equals(other._user, _user));
   }
 
-  @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(runtimeType, token, accountType,
+  int get hashCode => Object.hash(runtimeType, token, refreshToken, accountType,
       const DeepCollectionEquality().hash(_user));
 
   /// Create a copy of AuthResponseModel
@@ -188,29 +193,21 @@ class _$AuthResponseModelImpl extends _AuthResponseModel {
   _$$AuthResponseModelImplCopyWith<_$AuthResponseModelImpl> get copyWith =>
       __$$AuthResponseModelImplCopyWithImpl<_$AuthResponseModelImpl>(
           this, _$identity);
-
-  @override
-  Map<String, dynamic> toJson() {
-    return _$$AuthResponseModelImplToJson(
-      this,
-    );
-  }
 }
 
 abstract class _AuthResponseModel extends AuthResponseModel {
   const factory _AuthResponseModel(
       {final String? token,
-      @JsonKey(name: 'accountType') final String? accountType,
+      final String? refreshToken,
+      final String? accountType,
       final Map<String, dynamic>? user}) = _$AuthResponseModelImpl;
   const _AuthResponseModel._() : super._();
-
-  factory _AuthResponseModel.fromJson(Map<String, dynamic> json) =
-      _$AuthResponseModelImpl.fromJson;
 
   @override
   String? get token;
   @override
-  @JsonKey(name: 'accountType')
+  String? get refreshToken;
+  @override
   String? get accountType;
   @override
   Map<String, dynamic>? get user;

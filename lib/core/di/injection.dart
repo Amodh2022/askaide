@@ -36,6 +36,8 @@ import '../../features/session/domain/repositories/session_repository.dart';
 import '../../features/session/domain/usecases/session_usecases.dart';
 import '../../features/session/presentation/bloc/session_bloc.dart';
 import '../network/dio_client.dart';
+import '../sound/sound_cubit.dart';
+import '../sound/sound_service.dart';
 import '../taxonomy/taxonomy_repository.dart';
 import '../network/network_info.dart';
 import '../storage/local_storage_service.dart';
@@ -100,7 +102,10 @@ Future<void> configureDependencies(LocalStorageService localStorage) async {
     ..registerFactory<PublicStatsCubit>(() => PublicStatsCubit(sl()));
 
   // ---- App-global cubits --------------------------------------------------
-  sl.registerLazySingleton<ThemeCubit>(() => ThemeCubit(sl()));
+  sl
+    ..registerLazySingleton<ThemeCubit>(() => ThemeCubit(sl()))
+    ..registerLazySingleton<SoundService>(() => SoundService(sl()))
+    ..registerLazySingleton<SoundCubit>(() => SoundCubit(sl(), sl()));
 }
 
 void _registerDashboard() {

@@ -13,6 +13,9 @@ abstract class AuthRemoteDataSource {
   Future<AuthResponseModel> signup(SignupData data);
   Future<void> requestPasswordReset(String email);
   Future<void> resetPassword(String password, String confirmPassword, String token);
+
+  /// Best-effort server-side revocation of the refresh token on logout.
+  Future<void> revokeRefreshToken(String refreshToken);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -72,4 +75,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'newPassword': password,
         'confirmPassword': confirmPassword,
       });
+
+  @override
+  Future<void> revokeRefreshToken(String refreshToken) =>
+      _dio.post(Endpoints.logout, data: {'refreshToken': refreshToken});
 }
