@@ -11,7 +11,6 @@ import 'package:printing/printing.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
-import '../../../../core/taxonomy/taxonomy_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -199,24 +198,48 @@ class _GeneratorView extends StatelessWidget {
         ),
       ),
       const SizedBox(height: 14),
-      _Picker(
-        label: 'CLASS *',
-        hint: 'Select class',
-        value: state.classId,
-        items: state.classes,
-        onChanged: cubit.selectClass,
-      ),
+      // Class chip picker
+      Text('CLASS *', style: AppTypography.mono(c.textMuted, size: 10)),
+      const SizedBox(height: 8),
+      if (state.classes.isEmpty)
+        Text('Loading classes…', style: AppTypography.bodySmall(c.textMuted))
+      else
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final cls in state.classes)
+              _ChipButton(
+                label: cls.name,
+                selected: state.classId == cls.id,
+                onTap: () => cubit.selectClass(cls.id),
+              ),
+          ],
+        ),
       const SizedBox(height: 14),
-      _Picker(
-        label: 'SUBJECT *',
-        hint: state.classId == null ? 'Select class first' : 'Select subject',
-        value: state.subjectId,
-        items: state.subjects,
-        onChanged: cubit.selectSubject,
-      ),
-      const SizedBox(height: 4),
-      Text('Chapters are selected on the next step.',
-          style: AppTypography.bodySmall(c.textMuted)),
+      // Subject chip picker — only visible once a class is selected
+      if (state.classId != null) ...[
+        Text('SUBJECT *', style: AppTypography.mono(c.textMuted, size: 10)),
+        const SizedBox(height: 8),
+        if (state.subjects.isEmpty)
+          Text('Loading subjects…', style: AppTypography.bodySmall(c.textMuted))
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final sub in state.subjects)
+                _ChipButton(
+                  label: sub.name,
+                  selected: state.subjectId == sub.id,
+                  onTap: () => cubit.selectSubject(sub.id),
+                ),
+            ],
+          ),
+        const SizedBox(height: 4),
+        Text('Chapters are selected on the next step.',
+            style: AppTypography.bodySmall(c.textMuted)),
+      ],
     ];
   }
 
@@ -407,6 +430,22 @@ class _GeneratorView extends StatelessWidget {
             const SizedBox(height: 8),
             _summaryRow(context, 'Title', state.title.isEmpty ? '—' : state.title),
             _summaryRow(context, 'School', state.schoolName.isEmpty ? '—' : state.schoolName),
+            _summaryRow(
+              context,
+              'Subject',
+              state.subjects
+                  .where((s) => s.id == state.subjectId)
+                  .map((s) => s.name)
+                  .firstOrNull ?? '—',
+            ),
+            _summaryRow(
+              context,
+              'Class',
+              state.classes
+                  .where((c) => c.id == state.classId)
+                  .map((c) => c.name)
+                  .firstOrNull ?? '—',
+            ),
             _summaryRow(context, 'Chapters', '${state.chapterIds.length}'),
             _summaryRow(context, 'Questions', '${state.totalQuestions}'),
             _summaryRow(context, 'Duration', '${state.duration} min'),
@@ -743,53 +782,34 @@ class _InstructionAdderState extends State<_InstructionAdder> {
   }
 }
 
-class _Picker extends StatelessWidget {
-  const _Picker({
+/// Pill-shaped chip button — accent-filled when selected, outlined otherwise.
+class _ChipButton extends StatelessWidget {
+  const _ChipButton({
     required this.label,
-    required this.hint,
-    required this.value,
-    required this.items,
-    required this.onChanged,
+    required this.selected,
+    required this.onTap,
   });
   final String label;
-  final String hint;
-  final String? value;
-  final List<TaxItem> items;
-  final ValueChanged<String> onChanged;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
-        const SizedBox(height: 6),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: c.bgRaised,
-            border: Border.all(color: c.border),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: value,
-              isExpanded: true,
-              hint: Text(hint, style: AppTypography.bodyMedium(c.textMuted)),
-              dropdownColor: c.bgCard,
-              style: AppTypography.bodyLarge(c.textPrimary),
-              items: [
-                for (final it in items)
-                  DropdownMenuItem(value: it.id, child: Text(it.name)),
-              ],
-              onChanged: (v) {
-                if (v != null) onChanged(v);
-              },
-            ),
-          ),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected ? c.accent : c.bgRaised,
+          border: Border.all(color: selected ? c.accent : c.border),
+          borderRadius: BorderRadius.circular(99),
         ),
-      ],
+        child: Text(
+          label,
+          style: AppTypography.bodySmall(selected ? Colors.white : c.textPrimary),
+        ),
+      ),
     );
   }
 }
@@ -815,15 +835,15 @@ class _PreviewView extends StatefulWidget {
 }
 
 class _PreviewViewState extends State<_PreviewView> {
-  bool _showAnswers = false;
   bool _printing = false;
 
   Future<void> _printPdf(PaperPreview preview) async {
     setState(() => _printing = true);
     try {
       await Printing.layoutPdf(
-        name: preview.title,
-        onLayout: (format) async => _buildPdf(preview, format, _showAnswers),
+        name: preview.examName.isNotEmpty ? preview.examName : preview.title,
+        onLayout: (format) async =>
+            _buildPdf(preview, format, preview.includeAnswerKey),
       );
     } finally {
       if (mounted) setState(() => _printing = false);
@@ -837,6 +857,22 @@ class _PreviewViewState extends State<_PreviewView> {
       builder: (context, state) {
         final preview = state.preview;
         final hasQuestions = preview != null && preview.questions.isNotEmpty;
+
+        // Split questions into sections matching the PDF / frontend layout.
+        final mcqs = preview?.questions
+                .where((q) => q.questionType == 'mcq')
+                .toList() ??
+            const [];
+        final fills = preview?.questions
+                .where((q) => q.questionType == 'fillblanks')
+                .toList() ??
+            const [];
+        final hasSections = mcqs.isNotEmpty || fills.isNotEmpty;
+        final ordered =
+            hasSections ? [...mcqs, ...fills] : (preview?.questions ?? const []);
+        final hasAnswers =
+            ordered.any((q) => q.correctAnswer.isNotEmpty);
+
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           child: Center(
@@ -845,40 +881,43 @@ class _PreviewViewState extends State<_PreviewView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Top bar
                   Row(
                     children: [
                       TextButton.icon(
                         onPressed: () => context.go('/question-paper'),
-                        icon: Icon(LucideIcons.arrowLeft, size: 16, color: c.textMuted),
-                        label: Text('Back', style: AppTypography.bodySmall(c.textMuted)),
+                        icon: Icon(LucideIcons.arrowLeft,
+                            size: 16, color: c.textMuted),
+                        label: Text('Back',
+                            style: AppTypography.bodySmall(c.textMuted)),
                       ),
                       const Spacer(),
-                      // Answer-key toggle
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('Answer key', style: AppTypography.bodySmall(c.textMuted)),
-                          Switch(
-                            value: _showAnswers,
-                            activeThumbColor: c.accent,
-                            onChanged: (v) => setState(() => _showAnswers = v),
-                          ),
-                        ],
+                      TextButton(
+                        onPressed: () => context.go('/question-paper'),
+                        child: Text('Generate Another',
+                            style: AppTypography.bodySmall(c.accent)),
                       ),
                       const SizedBox(width: 8),
                       FilledButton.icon(
-                        onPressed: (!hasQuestions || _printing) ? null : () => _printPdf(preview),
+                        onPressed: (!hasQuestions || _printing)
+                            ? null
+                            : () => _printPdf(preview),
                         icon: _printing
                             ? const SizedBox(
-                                width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2, color: Colors.white))
                             : const Icon(LucideIcons.download, size: 16),
                         label: const Text('Download / Print'),
                         style: FilledButton.styleFrom(
-                            backgroundColor: c.accent, foregroundColor: Colors.white),
+                            backgroundColor: c.accent,
+                            foregroundColor: Colors.white),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
+                  // Paper card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(32),
@@ -886,30 +925,250 @@ class _PreviewViewState extends State<_PreviewView> {
                       color: c.bgCard,
                       border: Border.all(color: c.border),
                       borderRadius: BorderRadius.circular(2),
-                      boxShadow: AppShadows.editorial(Theme.of(context).brightness),
+                      boxShadow:
+                          AppShadows.editorial(Theme.of(context).brightness),
                     ),
-                    child: Column(
-                      children: [
-                        Text(preview?.title ?? 'Question Paper',
-                            style: AppTypography.h3(c.textPrimary), textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        Divider(color: c.border),
-                        const SizedBox(height: 16),
-                        if (state.status == QpLoad.loading)
-                          const SkeletonListLoader(
-                              itemCount: 3, padding: EdgeInsets.all(8))
-                        else if (!hasQuestions)
-                          const EmptyState(
-                            icon: LucideIcons.fileText,
-                            title: 'No questions',
-                            hint: 'This paper has no questions to preview.',
-                          )
-                        else
-                          for (var i = 0; i < preview.questions.length; i++)
-                            _PaperQuestionRow(
-                                index: i, q: preview.questions[i], showAnswer: _showAnswers),
-                      ],
-                    ),
+                    child: state.status == QpLoad.loading
+                        ? const SkeletonListLoader(
+                            itemCount: 3, padding: EdgeInsets.all(8))
+                        : !hasQuestions
+                            ? const EmptyState(
+                                icon: LucideIcons.fileText,
+                                title: 'No questions',
+                                hint:
+                                    'This paper has no questions to preview.',
+                              )
+                            : Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // ---- Paper header ----
+                                  if (preview.schoolName.isNotEmpty)
+                                    Center(
+                                      child: Text(
+                                        preview.schoolName.toUpperCase(),
+                                        textAlign: TextAlign.center,
+                                        style: AppTypography.h2(c.textPrimary)
+                                            .copyWith(
+                                                fontSize: 16,
+                                                letterSpacing: 1.2),
+                                      ),
+                                    ),
+                                  Center(
+                                    child: Text(
+                                      preview.examName.isNotEmpty
+                                          ? preview.examName
+                                          : preview.title,
+                                      textAlign: TextAlign.center,
+                                      style:
+                                          AppTypography.h3(c.textPrimary),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Class + Subject
+                                  Center(
+                                    child: Wrap(
+                                      alignment: WrapAlignment.center,
+                                      spacing: 8,
+                                      children: [
+                                        if (preview.className.isNotEmpty)
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(LucideIcons.graduationCap,
+                                                  size: 13,
+                                                  color: c.textMuted),
+                                              const SizedBox(width: 4),
+                                              Text(preview.className,
+                                                  style: AppTypography
+                                                      .bodySmall(c.textMuted)),
+                                            ],
+                                          ),
+                                        if (preview.subjectName.isNotEmpty)
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(LucideIcons.bookOpen,
+                                                  size: 13,
+                                                  color: c.textMuted),
+                                              const SizedBox(width: 4),
+                                              Text(preview.subjectName,
+                                                  style: AppTypography
+                                                      .bodySmall(c.textMuted)),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  // Marks + Time
+                                  Center(
+                                    child: Wrap(
+                                      alignment: WrapAlignment.center,
+                                      spacing: 16,
+                                      children: [
+                                        if (preview.totalMarks > 0)
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(LucideIcons.award,
+                                                  size: 13,
+                                                  color: c.textMuted),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                  'Total Marks: ${preview.totalMarks}',
+                                                  style: AppTypography
+                                                      .bodySmall(c.textMuted)),
+                                            ],
+                                          ),
+                                        if (preview.duration > 0)
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(LucideIcons.clock,
+                                                  size: 13,
+                                                  color: c.textMuted),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                  'Time: ${preview.duration} min',
+                                                  style: AppTypography
+                                                      .bodySmall(c.textMuted)),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Divider(color: c.border),
+                                  const SizedBox(height: 16),
+                                  // ---- Instructions ----
+                                  if (preview.instructions.isNotEmpty) ...[
+                                    Text('General Instructions',
+                                        style: AppTypography.labelLarge(
+                                            c.textPrimary)),
+                                    const SizedBox(height: 8),
+                                    for (var i = 0;
+                                        i < preview.instructions.length;
+                                        i++)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(bottom: 3),
+                                        child: Text(
+                                          '${i + 1}. ${preview.instructions[i]}',
+                                          style: AppTypography.bodySmall(
+                                              c.textMuted),
+                                        ),
+                                      ),
+                                    const SizedBox(height: 16),
+                                    Divider(color: c.border),
+                                    const SizedBox(height: 16),
+                                  ],
+                                  // ---- Section A — MCQ ----
+                                  if (hasSections && mcqs.isNotEmpty) ...[
+                                    Text(
+                                        'Section A — Multiple Choice Questions',
+                                        style: AppTypography.labelLarge(
+                                            c.textPrimary)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                        'Answer all questions. Choose the correct option.',
+                                        style:
+                                            AppTypography.bodySmall(c.textMuted)
+                                                .copyWith(
+                                                    fontStyle:
+                                                        FontStyle.italic)),
+                                    const SizedBox(height: 12),
+                                    for (var i = 0; i < mcqs.length; i++)
+                                      _PaperQuestionTile(
+                                          index: i + 1, q: mcqs[i]),
+                                  ],
+                                  // ---- Section B — Fill Blanks ----
+                                  if (hasSections && fills.isNotEmpty) ...[
+                                    if (mcqs.isNotEmpty)
+                                      const SizedBox(height: 12),
+                                    Text('Section B — Fill in the Blanks',
+                                        style: AppTypography.labelLarge(
+                                            c.textPrimary)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                        'Fill in the blanks with the correct answer.',
+                                        style:
+                                            AppTypography.bodySmall(c.textMuted)
+                                                .copyWith(
+                                                    fontStyle:
+                                                        FontStyle.italic)),
+                                    const SizedBox(height: 12),
+                                    for (var i = 0; i < fills.length; i++)
+                                      _PaperQuestionTile(
+                                          index: mcqs.length + i + 1,
+                                          q: fills[i],
+                                          showOptions: false),
+                                  ],
+                                  // ---- Flat list (no type info) ----
+                                  if (!hasSections)
+                                    for (var i = 0;
+                                        i < preview.questions.length;
+                                        i++)
+                                      _PaperQuestionTile(
+                                          index: i + 1,
+                                          q: preview.questions[i]),
+                                  // ---- Answer Key ----
+                                  if (preview.includeAnswerKey &&
+                                      hasAnswers) ...[
+                                    const SizedBox(height: 24),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.only(top: 16),
+                                      decoration: BoxDecoration(
+                                        border: Border(
+                                          top: BorderSide(
+                                              color: c.border,
+                                              style: BorderStyle.solid),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text('Answer Key',
+                                              style: AppTypography.labelLarge(
+                                                  c.textPrimary)),
+                                          const SizedBox(height: 12),
+                                          Wrap(
+                                            spacing: 8,
+                                            runSpacing: 8,
+                                            children: [
+                                              for (var i = 0;
+                                                  i < ordered.length;
+                                                  i++)
+                                                if (ordered[i]
+                                                    .correctAnswer
+                                                    .isNotEmpty)
+                                                  Container(
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: c.accentLight,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              4),
+                                                    ),
+                                                    child: Text(
+                                                      'Q${i + 1}: ${ordered[i].correctAnswer}',
+                                                      style: AppTypography.mono(
+                                                          c.accent,
+                                                          size: 11),
+                                                    ),
+                                                  ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                   ),
                 ],
               ),
@@ -949,7 +1208,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
             children: [
               pw.Expanded(
                 child: pw.Text('Q$displayNo. ${q.text}',
-                    style:  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                    style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
               ),
               pw.Text('[$m Mark${m > 1 ? 's' : ''}]',
                   style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600)),
@@ -982,12 +1241,12 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         if (preview.schoolName.isNotEmpty)
           pw.Center(
             child: pw.Text(preview.schoolName.toUpperCase(),
-                style:  pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+                style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
           ),
         pw.Center(
           child: pw.Text(
               preview.examName.isNotEmpty ? preview.examName : preview.title,
-              style:  pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+              style: const pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
         ),
         pw.SizedBox(height: 4),
         pw.Center(
@@ -1002,7 +1261,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         pw.Divider(),
         if (preview.instructions.isNotEmpty) ...[
           pw.Text('General Instructions:',
-              style:  pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+              style: const pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 2),
           for (var i = 0; i < preview.instructions.length; i++)
             pw.Text('${i + 1}. ${preview.instructions[i]}',
@@ -1012,14 +1271,14 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
         if (hasSections) ...[
           if (mcqs.isNotEmpty) ...[
             pw.Text('Section A — Multiple Choice Questions',
-                style:  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
             for (var i = 0; i < mcqs.length; i++) questionBlock(i + 1, mcqs[i]),
           ],
           if (fills.isNotEmpty) ...[
             pw.SizedBox(height: 6),
             pw.Text('Section B — Fill in the Blanks',
-                style:  pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+                style: const pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
             for (var i = 0; i < fills.length; i++)
               questionBlock(mcqs.length + i + 1, fills[i], showOptions: false),
@@ -1030,7 +1289,7 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
           pw.SizedBox(height: 16),
           pw.Divider(),
           pw.Text('Answer Key',
-              style:  pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
+              style: const pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 6),
           for (var i = 0; i < ordered.length; i++)
             if (ordered[i].correctAnswer.isNotEmpty)
@@ -1046,35 +1305,67 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
   return doc.save();
 }
 
-class _PaperQuestionRow extends StatelessWidget {
-  const _PaperQuestionRow({required this.index, required this.q, this.showAnswer = false});
+/// One question tile — number + text + marks badge + options (if MCQ).
+class _PaperQuestionTile extends StatelessWidget {
+  const _PaperQuestionTile({
+    required this.index,
+    required this.q,
+    this.showOptions = true,
+  });
   final int index;
   final PaperQuestion q;
-  final bool showAnswer;
+  final bool showOptions;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final marks = switch (q.difficulty.toLowerCase()) {
+      'medium' => 2,
+      'hard' => 3,
+      _ => 1,
+    };
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Q${index + 1}. ${q.text}',
-              style: AppTypography.bodyLarge(c.textPrimary)),
-          const SizedBox(height: 6),
-          for (var i = 0; i < q.options.length; i++)
-            Padding(
-              padding: const EdgeInsets.only(left: 12, bottom: 2),
-              child: Text('${String.fromCharCode(65 + i)}. ${q.options[i]}',
-                  style: AppTypography.bodyMedium(c.textSecondary)),
-            ),
-          if (showAnswer && q.correctAnswer.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 12, top: 4),
-              child: Text('Answer: ${q.correctAnswer}',
-                  style: AppTypography.bodySmall(c.success)),
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  'Q$index. ${q.text}',
+                  style: AppTypography.bodyLarge(c.textPrimary)
+                      .copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: c.bgRaised,
+                  border: Border.all(color: c.border),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '[$marks Mark${marks > 1 ? 's' : ''}]',
+                  style: AppTypography.mono(c.textMuted, size: 9),
+                ),
+              ),
+            ],
+          ),
+          if (showOptions && q.options.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            for (var i = 0; i < q.options.length; i++)
+              Padding(
+                padding: const EdgeInsets.only(left: 12, bottom: 3),
+                child: Text(
+                  '(${String.fromCharCode(97 + i)}) ${q.options[i]}',
+                  style: AppTypography.bodyMedium(c.textSecondary),
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -1115,8 +1406,9 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
       await r.fold(
         (f) async => _snack('Failed to load paper: ${f.message}'),
         (preview) => Printing.layoutPdf(
-          name: preview.title.isEmpty ? p.title : preview.title,
-          onLayout: (format) async => _buildPdf(preview, format, true),
+          name: preview.examName.isNotEmpty ? preview.examName : preview.title,
+          onLayout: (format) async =>
+              _buildPdf(preview, format, preview.includeAnswerKey),
         ),
       );
     } finally {
@@ -1132,10 +1424,13 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
         title: const Text('Delete paper?'),
         content: Text('"${p.title}" will be permanently deleted.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: FilledButton.styleFrom(backgroundColor: context.colors.error),
+            style:
+                FilledButton.styleFrom(backgroundColor: context.colors.error),
             child: const Text('Delete'),
           ),
         ],
@@ -1149,98 +1444,293 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
     _snack(success ? 'Paper deleted' : 'Failed to delete paper');
   }
 
+  String _formatDate(String? raw) {
+    if (raw == null || raw.isEmpty) return '';
+    final d = DateTime.tryParse(raw);
+    if (d == null) return '';
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ];
+    final hour12 =
+        d.hour == 0 ? 12 : (d.hour > 12 ? d.hour - 12 : d.hour);
+    final mm = d.minute.toString().padLeft(2, '0');
+    final amPm = d.hour < 12 ? 'AM' : 'PM';
+    return '${months[d.month - 1]} ${d.day}, ${d.year}, $hour12:$mm $amPm';
+  }
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 880),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const PageHeader(eyebrow: 'PAPERS', title: 'Paper', emphasis: 'history.'),
-              const SizedBox(height: 24),
-              BlocBuilder<PaperHistoryCubit, PaperHistoryState>(
-                builder: (context, state) {
-                  if (state.status == QpLoad.loading) {
-                    return const SkeletonListLoader(padding: EdgeInsets.all(24));
-                  }
-                  if (state.papers.isEmpty) {
-                    return Container(
-                      width: double.infinity,
-                      decoration: context.cardDecoration(),
-                      child: const EmptyState(
-                        icon: LucideIcons.history,
-                        title: 'No papers yet',
-                        hint: 'Papers you generate will be listed here.',
-                      ),
-                    );
-                  }
-                  return Column(
+    return BlocBuilder<PaperHistoryCubit, PaperHistoryState>(
+      builder: (context, state) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 880),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header: icon badge + title + count + Generate New button
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final p in state.papers)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(14),
-                          decoration: context.cardDecoration(),
-                          child: Row(
-                            children: [
-                              Icon(LucideIcons.fileText, color: c.accent),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: InkWell(
-                                  onTap: () => context.go('/question-paper/preview/${p.id}'),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(p.title,
-                                          style: AppTypography.labelLarge(c.textPrimary)),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        [
-                                          if (p.className.isNotEmpty) p.className,
-                                          if (p.subjectName.isNotEmpty) p.subjectName,
-                                          '${p.questionCount} Q',
-                                          if (p.totalMarks > 0) '${p.totalMarks} marks',
-                                          if (p.duration > 0) '${p.duration} min',
-                                        ].join(' · '),
-                                        style: AppTypography.bodySmall(c.textMuted),
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: c.accent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(LucideIcons.fileText,
+                            size: 20, color: Colors.white),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Paper History',
+                                style: AppTypography.h2(c.textPrimary)
+                                    .copyWith(fontSize: 22)),
+                            Text(
+                              state.total > 0
+                                  ? '${state.total} papers generated'
+                                  : 'Your generated papers',
+                              style: AppTypography.bodySmall(c.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      FilledButton.icon(
+                        onPressed: () => context.go('/question-paper'),
+                        icon: const Icon(LucideIcons.plus, size: 16),
+                        label: const Text('Generate New'),
+                        style: FilledButton.styleFrom(
+                            backgroundColor: c.accent,
+                            foregroundColor: Colors.white),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Content
+                  if (state.status == QpLoad.loading)
+                    const SkeletonListLoader(padding: EdgeInsets.all(24))
+                  else if (state.papers.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 48, horizontal: 24),
+                      decoration: context.cardDecoration(),
+                      child: Column(
+                        children: [
+                          Icon(LucideIcons.alertCircle,
+                              size: 40, color: c.textMuted),
+                          const SizedBox(height: 12),
+                          Text('No papers generated yet',
+                              style: AppTypography.h4(c.textPrimary)),
+                          const SizedBox(height: 8),
+                          Text('Create your first AI-generated question paper.',
+                              style: AppTypography.bodySmall(c.textMuted),
+                              textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          FilledButton(
+                            onPressed: () => context.go('/question-paper'),
+                            style: FilledButton.styleFrom(
+                                backgroundColor: c.accent,
+                                foregroundColor: Colors.white),
+                            child: const Text('Generate First Paper'),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Column(
+                      children: [
+                        for (final p in state.papers)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: c.bgCard,
+                              border: Border.all(color: c.border),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Title + date
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        p.title,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTypography.labelLarge(
+                                            c.textPrimary),
                                       ),
-                                    ],
-                                  ),
+                                    ),
+                                    if (_formatDate(p.createdAt).isNotEmpty)
+                                      Text(
+                                        _formatDate(p.createdAt),
+                                        style: AppTypography.mono(c.textMuted,
+                                            size: 10),
+                                      ),
+                                  ],
                                 ),
+                                const SizedBox(height: 8),
+                                // Class + Subject chips
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    if (p.className.isNotEmpty)
+                                      _HistoryChip(p.className,
+                                          fg: c.accent, bg: c.accentLight),
+                                    if (p.subjectName.isNotEmpty)
+                                      _HistoryChip(p.subjectName,
+                                          fg: const Color(0xFF3B82F6),
+                                          bg: const Color(0xFFEFF6FF)),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                // Stats
+                                Text(
+                                  [
+                                    '${p.questionCount} Q',
+                                    if (p.totalMarks > 0)
+                                      '${p.totalMarks} marks',
+                                    if (p.duration > 0) '${p.duration} min',
+                                  ].join(' · '),
+                                  style: AppTypography.bodySmall(c.textMuted),
+                                ),
+                                const SizedBox(height: 12),
+                                // Action row: Eye + Download + Delete
+                                Row(
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: () => context.go(
+                                          '/question-paper/preview/${p.id}'),
+                                      icon: const Icon(LucideIcons.eye,
+                                          size: 14),
+                                      label: const Text('Preview'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: c.textMuted,
+                                        side: BorderSide(color: c.border),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        textStyle:
+                                            AppTypography.bodySmall(c.textMuted),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    OutlinedButton.icon(
+                                      onPressed: _downloadingId == p.id
+                                          ? null
+                                          : () => _download(p),
+                                      icon: _downloadingId == p.id
+                                          ? const SizedBox(
+                                              width: 12,
+                                              height: 12,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 1.5))
+                                          : const Icon(LucideIcons.download,
+                                              size: 14),
+                                      label: const Text('Download'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: c.success,
+                                        side: BorderSide(color: c.success),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        textStyle:
+                                            AppTypography.bodySmall(c.success),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    OutlinedButton.icon(
+                                      onPressed: _deletingId == p.id
+                                          ? null
+                                          : () => _confirmDelete(p),
+                                      icon: _deletingId == p.id
+                                          ? const SizedBox(
+                                              width: 12,
+                                              height: 12,
+                                              child: CircularProgressIndicator(
+                                                  strokeWidth: 1.5))
+                                          : const Icon(LucideIcons.trash2,
+                                              size: 14),
+                                      label: const Text('Delete'),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: c.error,
+                                        side: BorderSide(color: c.error),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 12, vertical: 6),
+                                        textStyle:
+                                            AppTypography.bodySmall(c.error),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        // Pagination
+                        if (state.totalPages > 1) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              OutlinedButton(
+                                onPressed: state.page > 1
+                                    ? () => context
+                                        .read<PaperHistoryCubit>()
+                                        .load(page: state.page - 1)
+                                    : null,
+                                child: const Text('Previous'),
                               ),
-                              IconButton(
-                                tooltip: 'Download PDF',
-                                onPressed: _downloadingId == p.id ? null : () => _download(p),
-                                icon: _downloadingId == p.id
-                                    ? const SizedBox(
-                                        width: 16, height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2))
-                                    : Icon(LucideIcons.download, size: 18, color: c.success),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Page ${state.page} of ${state.totalPages}',
+                                style: AppTypography.mono(c.textMuted, size: 11),
                               ),
-                              IconButton(
-                                tooltip: 'Delete',
-                                onPressed: _deletingId == p.id ? null : () => _confirmDelete(p),
-                                icon: _deletingId == p.id
-                                    ? const SizedBox(
-                                        width: 16, height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2))
-                                    : Icon(LucideIcons.trash2, size: 18, color: c.error),
+                              const SizedBox(width: 12),
+                              OutlinedButton(
+                                onPressed: state.page < state.totalPages
+                                    ? () => context
+                                        .read<PaperHistoryCubit>()
+                                        .load(page: state.page + 1)
+                                    : null,
+                                child: const Text('Next'),
                               ),
                             ],
                           ),
-                        ),
-                    ],
-                  );
-                },
+                        ],
+                      ],
+                    ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
+    );
+  }
+}
+
+/// Colored pill chip for class/subject labels on history cards.
+class _HistoryChip extends StatelessWidget {
+  const _HistoryChip(this.label, {required this.fg, required this.bg});
+  final String label;
+  final Color fg;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+      child: Text(label, style: AppTypography.bodySmall(fg).copyWith(fontWeight: FontWeight.w500)),
     );
   }
 }

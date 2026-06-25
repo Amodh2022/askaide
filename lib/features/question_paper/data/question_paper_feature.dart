@@ -149,9 +149,28 @@ class QuestionPaperRepository {
   String pdfUrl(String paperId) =>
       '${AppConstants.apiBaseUrl}${Endpoints.questionPaperPdfUrl(paperId)}';
 
-  Future<Either<Failure, List<PaperSummary>>> history() => guardEither(() async {
-        final res = await _dio.get(Endpoints.questionPaperHistoryPath);
-        return res.dataList(['papers']).whereType<Map>().map(PaperSummary.fromJson).toList();
+  Future<Either<Failure, ({List<PaperSummary> papers, int total, int totalPages})>>
+      history({int page = 1, int limit = 10}) => guardEither(() async {
+        final res = await _dio.get(
+          Endpoints.questionPaperHistoryPath,
+          queryParameters: {'page': page, 'limit': limit},
+        );
+        final body = res.dataMap();
+        final pg = body['pagination'] is Map
+            ? Map<dynamic, dynamic>.from(body['pagination'] as Map)
+            : const <dynamic, dynamic>{};
+        final papers = res
+            .dataList(['data', 'papers'])
+            .whereType<Map>()
+            .map(PaperSummary.fromJson)
+            .toList();
+        final total = pg.intval(['total']);
+        final totalPages = pg.intval(['totalPages']);
+        return (
+          papers: papers,
+          total: total,
+          totalPages: totalPages > 0 ? totalPages : 1,
+        );
       });
 
   Future<Either<Failure, PaperPreview>> preview(String paperId) => guardEither(() async {
@@ -213,27 +232,59 @@ class PaperPreviewCubit extends Cubit<PaperPreviewState> {
 }
 
 class PaperHistoryState extends Equatable {
-  const PaperHistoryState({this.status = QpLoad.initial, this.papers = const []});
+  const PaperHistoryState({
+    this.status = QpLoad.initial,
+    this.papers = const [],
+    this.page = 1,
+    this.total = 0,
+    this.totalPages = 1,
+    this.error,
+  });
   final QpLoad status;
   final List<PaperSummary> papers;
+  final int page;
+  final int total;
+  final int totalPages;
+  final String? error;
 
-  PaperHistoryState copyWith({QpLoad? status, List<PaperSummary>? papers}) =>
-      PaperHistoryState(status: status ?? this.status, papers: papers ?? this.papers);
+  PaperHistoryState copyWith({
+    QpLoad? status,
+    List<PaperSummary>? papers,
+    int? page,
+    int? total,
+    int? totalPages,
+    String? error,
+  }) =>
+      PaperHistoryState(
+        status: status ?? this.status,
+        papers: papers ?? this.papers,
+        page: page ?? this.page,
+        total: total ?? this.total,
+        totalPages: totalPages ?? this.totalPages,
+        error: error,
+      );
 
   @override
-  List<Object?> get props => [status, papers];
+  List<Object?> get props => [status, papers, page, total, totalPages, error];
 }
 
 class PaperHistoryCubit extends Cubit<PaperHistoryState> {
   PaperHistoryCubit(this._repo) : super(const PaperHistoryState());
   final QuestionPaperRepository _repo;
 
-  Future<void> load() async {
+  Future<void> load({int page = 1}) async {
     emit(state.copyWith(status: QpLoad.loading));
-    final r = await _repo.history();
+    final r = await _repo.history(page: page);
     r.fold(
-      (f) => emit(state.copyWith(status: QpLoad.error)),
-      (list) => emit(state.copyWith(status: QpLoad.loaded, papers: list)),
+      (f) => emit(state.copyWith(status: QpLoad.error, error: f.message)),
+      (result) => emit(state.copyWith(
+        status: QpLoad.loaded,
+        papers: result.papers,
+        page: page,
+        total: result.total,
+        totalPages: result.totalPages,
+        error: null,
+      )),
     );
   }
 

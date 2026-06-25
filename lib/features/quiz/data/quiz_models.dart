@@ -378,6 +378,7 @@ class QuizResult extends Equatable {
     this.passingPercentage = 50,
     this.showAnswers = true,
     this.canRetry = false,
+    this.previousBestPercentage,
   });
 
   final int score;
@@ -392,6 +393,10 @@ class QuizResult extends Equatable {
   final double passingPercentage; // 0..100
   final bool showAnswers;
   final bool canRetry;
+
+  /// Percentage from the student's previous best attempt (for "VS LAST QUIZ"
+  /// comparison). Null when this is the student's first attempt.
+  final double? previousBestPercentage;
 
   /// Human-readable status used by the result screen.
   String get passStatus => passed ? 'PASS' : 'FAIL';
@@ -430,6 +435,10 @@ class QuizResult extends Equatable {
       passingPercentage: passingPct > 0 ? passingPct : 50,
       showAnswers: j['showAnswers'] != null ? j.boolean(['showAnswers']) : true,
       canRetry: attempt.boolean(['canRetry']),
+      previousBestPercentage:
+          attempt['previousBestPercentage'] is num
+              ? (attempt['previousBestPercentage'] as num).toDouble()
+              : null,
     );
   }
 
@@ -447,6 +456,7 @@ class QuizResult extends Equatable {
         passingPercentage,
         showAnswers,
         canRetry,
+        previousBestPercentage,
       ];
 }
 

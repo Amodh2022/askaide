@@ -102,11 +102,10 @@ class QuizRepository {
         return unit;
       });
 
-  Future<Either<Failure, QuizResult>> submit(String attemptId) =>
+  Future<Either<Failure, Unit>> submit(String attemptId) =>
       guardEither(() async {
         await _dio.post(Endpoints.quizAttemptSubmit(attemptId));
-        final res = await _dio.get(Endpoints.quizAttemptResult(attemptId));
-        return QuizResult.fromJson(res.dataMap());
+        return unit;
       });
 
   Future<Either<Failure, QuizResult>> result(String attemptId) =>
@@ -175,6 +174,11 @@ extension TeacherQuizApi on QuizRepository {
     required String subjectId,
     required List<String> chapterIds,
     String? difficulty,
+    String? questionType,
+    String? search,
+    String? excludeQuizId,
+    int page = 1,
+    int limit = 20,
   }) =>
       guardEither(() async {
         final res = await _dio.get('/quiz/questions/search', queryParameters: {
@@ -182,6 +186,12 @@ extension TeacherQuizApi on QuizRepository {
           'subjectId': subjectId,
           'chapterIds': chapterIds.join(','),
           if (difficulty != null) 'difficulty': difficulty,
+          if (questionType != null) 'questionType': questionType,
+          if (search != null && search.isNotEmpty) 'search': search,
+          if (excludeQuizId != null && excludeQuizId.isNotEmpty)
+            'excludeQuizId': excludeQuizId,
+          'page': page,
+          'limit': limit,
         });
         return res
             .dataList(['questions'])
@@ -190,20 +200,26 @@ extension TeacherQuizApi on QuizRepository {
             .toList();
       });
 
-  /// Adds bank questions to a quiz with explicit per-question marks.
-  /// Mirrors React `quizApi.addQuestions` body: `{ questions: [{ questionId, marks }] }`.
+  /// Adds questions to a quiz.
+  ///
+  /// Mirrors React `quizApi.addQuestions` body:
+  /// `{ questions: [{ questionId?, marks, customQuestion? }] }`.
+  /// Pass [questionIds] for bank questions (uses [marksById] for per-item
+  /// marks) or pass [rawQuestions] for a pre-built list that may contain
+  /// `customQuestion` entries.
   Future<Either<Failure, Unit>> addQuestions(
     String quizId,
     List<String> questionIds, {
     Map<String, int> marksById = const {},
+    List<Map<String, dynamic>>? rawQuestions,
   }) =>
       guardEither(() async {
-        await _dio.post('/quiz/$quizId/questions', data: {
-          'questions': [
-            for (final id in questionIds)
-              {'questionId': id, 'marks': marksById[id] ?? 1},
-          ],
-        });
+        final body = rawQuestions ??
+            [
+              for (final id in questionIds)
+                {'questionId': id, 'marks': marksById[id] ?? 1},
+            ];
+        await _dio.post('/quiz/$quizId/questions', data: {'questions': body});
         return unit;
       });
 

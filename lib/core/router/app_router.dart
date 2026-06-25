@@ -198,6 +198,25 @@ class AppRouter {
               QuizAnalyticsPage(quizId: state.pathParameters['quizId'] ?? ''),
         ),
         _route(
+          '/teacher/subject/:subjectId/students',
+          (_, state) => TeacherStudentsPage(subjectId: state.pathParameters['subjectId'] ?? ''),
+        ),
+        _route(
+          '/teacher/subject/:subjectId/chapter/:chapterId',
+          (_, state) => TeacherChapterPage(
+            subjectId: state.pathParameters['subjectId'] ?? '',
+            chapterId: state.pathParameters['chapterId'] ?? '',
+          ),
+        ),
+        _route(
+          '/teacher/subject/:subjectId/weak-topics',
+          (_, state) => TeacherWeakTopicsPage(subjectId: state.pathParameters['subjectId'] ?? ''),
+        ),
+        _route(
+          '/teacher/subject/:subjectId/activity',
+          (_, state) => TeacherActivityPage(subjectId: state.pathParameters['subjectId'] ?? ''),
+        ),
+        _route(
           '/teacher/subject/:subjectId/student/:studentId',
           (_, state) => TeacherStudentPage(
             subjectId: state.pathParameters['subjectId'] ?? '',
