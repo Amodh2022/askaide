@@ -31,6 +31,7 @@ abstract class SessionRepository {
   Future<Either<Failure, List<Question>>> fetchQuestionBatch({
     required StudyConfig config,
     required String sessionId,
+    bool retry = false,
   });
 
   // --- Answers ---
@@ -59,6 +60,13 @@ abstract class SessionRepository {
 
   /// Submits an emoji reaction after a session (React `submitSessionReaction`).
   Future<Either<Failure, Unit>> submitSessionReaction(Map<String, dynamic> data);
+
+  /// Submits general feedback (mirrors React's FeedbackForm → POST /feedback).
+  Future<Either<Failure, Unit>> submitFeedback({
+    required String name,
+    required String feedback,
+    String? email,
+  });
 
   /// Whether the post-session NPS survey should be shown for [userId].
   Future<Either<Failure, bool>> checkNpsEligibility(String userId);

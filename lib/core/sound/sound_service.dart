@@ -36,8 +36,11 @@ class SoundService {
   }
 
   final LocalStorageService _storage;
-  final AudioPlayer _player = AudioPlayer(playerId: 'askaide_sfx')
+  AudioPlayer _player = AudioPlayer(playerId: 'askaide_sfx')
     ..setReleaseMode(ReleaseMode.stop);
+
+  /// Guards against concurrent `_play` calls piling up on a stuck player.
+  bool _busy = false;
 
   static const int _sampleRate = 44100;
 
@@ -62,16 +65,21 @@ class SoundService {
   void playNotification() => _play('notification', _notificationSamples);
 
   Future<void> _play(String key, List<double> Function() build) async {
-    if (!enabled) return;
+    if (!enabled || _busy) return;
+    _busy = true;
     final bytes = _cache.putIfAbsent(key, () => _encodeWav(build()));
     try {
-      // Restart from the top if a sound is still playing.
       await _player.stop();
-      await _player.play(BytesSource(bytes, mimeType: 'audio/wav'));
+      await _player
+          .play(BytesSource(bytes, mimeType: 'audio/wav'))
+          .timeout(const Duration(seconds: 3));
     } catch (e, st) {
-      // Surface failures in debug (e.g. a missing native plugin) instead of
-      // swallowing them — UI sounds are best-effort and never crash the app.
       if (kDebugMode) debugPrint('SoundService._play($key) failed: $e\n$st');
+      // The player is stuck — swap it out so the next sound starts clean.
+      _player.dispose().ignore();
+      _player = AudioPlayer()..setReleaseMode(ReleaseMode.stop);
+    } finally {
+      _busy = false;
     }
   }
 

@@ -100,15 +100,19 @@ class SessionRepositoryImpl implements SessionRepository {
   Future<Either<Failure, List<Question>>> fetchQuestionBatch({
     required StudyConfig config,
     required String sessionId,
+    bool retry = false,
   }) {
     final chapterId = config.selectedChapter?.id ?? '';
     return _guard(() async {
       // Mirrors the frontend's `useQuestionPolling`: while the server is still
       // AI-generating a batch we poll (~3s apart, up to ~60s); a `failed`
-      // generation is retried a few times; a request timeout is treated as
-      // "generation is taking long" and we keep waiting rather than erroring.
+      // generation is retried a few times with `retry=true` (mirrors React's
+      // re-kick); a request timeout is treated as "generation is taking long".
       var generatingPolls = 0;
       var failedRetries = 0;
+      // First call uses the caller-supplied retry flag; subsequent failed
+      // retries always pass retry=true so the backend re-generates.
+      var useRetry = retry;
       while (true) {
         QuestionBatchResult result;
         try {
@@ -117,6 +121,7 @@ class SessionRepositoryImpl implements SessionRepository {
             type: config.questionType.apiValue,
             difficulty: config.difficulty.apiValue,
             sessionId: sessionId,
+            retry: useRetry,
           );
         } on DioException catch (e) {
           final timedOut = e.type == DioExceptionType.connectionTimeout ||
@@ -133,12 +138,17 @@ class SessionRepositoryImpl implements SessionRepository {
         switch (result.status) {
           case QuestionBatchStatus.ready:
             return result.questions.map((m) => m.toEntity()).toList();
+          case QuestionBatchStatus.mastered:
+            // Terminal: the chapter is exhausted. Return an empty list — the
+            // bloc reads "empty success after a batch was loaded" as mastered.
+            return const [];
           case QuestionBatchStatus.generating:
             if (generatingPolls >= AppConstants.questionGeneratingPollLimit) {
               throw ServerException(
                   'Questions are still being generated. Please try again in a moment.');
             }
             generatingPolls++;
+            useRetry = false; // normal poll, no re-generation needed
             await Future<void>.delayed(AppConstants.questionGeneratingPollInterval);
             continue;
           case QuestionBatchStatus.failed:
@@ -147,6 +157,7 @@ class SessionRepositoryImpl implements SessionRepository {
                   'Unable to generate more questions right now. Please try again later.');
             }
             failedRetries++;
+            useRetry = true; // re-kick generation, mirrors React ?retry=true
             await Future<void>.delayed(AppConstants.questionFailedRetryDelay);
             continue;
         }
@@ -216,6 +227,17 @@ class SessionRepositoryImpl implements SessionRepository {
   Future<Either<Failure, Unit>> submitSessionReaction(Map<String, dynamic> data) =>
       _guard(() async {
         await _remote.submitReaction(data);
+        return unit;
+      });
+
+  @override
+  Future<Either<Failure, Unit>> submitFeedback({
+    required String name,
+    required String feedback,
+    String? email,
+  }) =>
+      _guard(() async {
+        await _remote.submitFeedback(name: name, feedback: feedback, email: email);
         return unit;
       });
 

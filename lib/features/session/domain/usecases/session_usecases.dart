@@ -43,11 +43,18 @@ class GetChapters implements UseCase<List<ChapterOption>, GetChaptersParams> {
 }
 
 class FetchBatchParams extends Equatable {
-  const FetchBatchParams({required this.config, required this.sessionId});
+  const FetchBatchParams({
+    required this.config,
+    required this.sessionId,
+    this.retry = false,
+  });
   final StudyConfig config;
   final String sessionId;
+  /// Mirrors React's `?retry=true` — signals the backend to re-generate rather
+  /// than return a cached (possibly duplicate) batch after a `failed` status.
+  final bool retry;
   @override
-  List<Object?> get props => [config, sessionId];
+  List<Object?> get props => [config, sessionId, retry];
 }
 
 class FetchQuestionBatch implements UseCase<List<Question>, FetchBatchParams> {
@@ -55,7 +62,8 @@ class FetchQuestionBatch implements UseCase<List<Question>, FetchBatchParams> {
   final SessionRepository _repo;
   @override
   Future<Either<Failure, List<Question>>> call(FetchBatchParams p) =>
-      _repo.fetchQuestionBatch(config: p.config, sessionId: p.sessionId);
+      _repo.fetchQuestionBatch(
+          config: p.config, sessionId: p.sessionId, retry: p.retry);
 }
 
 class SubmitAnswers implements UseCase<Unit, List<UserAnswer>> {

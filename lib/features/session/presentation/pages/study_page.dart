@@ -89,6 +89,8 @@ class _StudyPageState extends State<StudyPage> {
         }
 
         // Mobile: header + panel; history opens in a drawer.
+        // The header (and its Sessions button) is hidden during practice so the
+        // student gets a distraction-free full-screen question view.
         return Scaffold(
           backgroundColor: c.bgPrimary,
           drawer: Drawer(
@@ -98,30 +100,31 @@ class _StudyPageState extends State<StudyPage> {
           ),
           body: Column(
             children: [
-              Builder(
-                builder: (context) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: c.bgCard,
-                    border: Border(bottom: BorderSide(color: c.border)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('AskAide', style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 18)),
-                      OutlinedButton(
-                        onPressed: () => Scaffold.of(context).openDrawer(),
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: c.border),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              if (state.panel != SessionPanel.practice)
+                Builder(
+                  builder: (context) => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: c.bgCard,
+                      border: Border(bottom: BorderSide(color: c.border)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('AskAide', style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 18)),
+                        OutlinedButton(
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: c.border),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: Text('Sessions', style: AppTypography.bodySmall(c.textPrimary)),
                         ),
-                        child: Text('Sessions', style: AppTypography.bodySmall(c.textPrimary)),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
               Expanded(child: _panel(state.panel)),
             ],
           ),

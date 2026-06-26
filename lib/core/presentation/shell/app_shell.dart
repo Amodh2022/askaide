@@ -9,7 +9,7 @@ import '../../sound/sound_cubit.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/responsive.dart';
 import '../widgets/brand_logo.dart';
-import 'widgets/ai_assistant_widget.dart';
+import '../../../features/session/presentation/bloc/session_bloc.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/mobile_bottom_nav.dart';
 import 'widgets/public_navbar.dart';
@@ -115,11 +115,6 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
     return location.startsWith(RoutePaths.study);
   }
 
-  double _assistantBottomOffset(BuildContext context) {
-    final bottomInset = MediaQuery.of(context).padding.bottom;
-    return bottomInset + kBottomNavigationBarHeight + 16;
-  }
-
   /// Hide the floating nav while scrolling down, reveal it while scrolling up.
   bool _onScroll(ScrollNotification n) {
     if (n is UserScrollNotification) {
@@ -138,48 +133,62 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
     final location = GoRouterState.of(context).uri.path;
     final showNav = _showBottomNav(location);
 
+    // Hide all navigation chrome while a practice session is active so the
+    // student can focus. The BLoC is app-root-scoped so it's always readable.
+    final isPracticing = context.select<SessionBloc, bool>(
+      (b) => b.state.panel == SessionPanel.practice,
+    );
+
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: c.bgPrimary,
-        title: const BrandLogo(size: 24),
-        elevation: 0,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () {
-              context.read<SoundCubit>().playClick();
-              Scaffold.of(context).openDrawer();
-            },
-          ),
-        ),
-      ),
+      appBar: isPracticing
+          ? null
+          : AppBar(
+              backgroundColor: c.bgPrimary,
+              title: const BrandLogo(size: 24),
+              elevation: 0,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    context.read<SoundCubit>().playClick();
+                    Scaffold.of(context).openDrawer();
+                  },
+                ),
+              ),
+            ),
       drawer: const Drawer(child: SafeArea(child: AppSidebar())),
       // iOS floats the glass bar in the body Stack instead; everyone else uses
       // the standard slot.
       bottomNavigationBar:
-          (_isIOS || !showNav) ? null : const MobileBottomNav(),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: _isIOS
-                ? NotificationListener<ScrollNotification>(
-                    onNotification: _onScroll,
-                    child: widget.child,
-                  )
-                : widget.child,
-          ),
-          if (_isIOS && showNav)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: AnimatedSlide(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeOut,
-                offset: _navVisible ? Offset.zero : const Offset(0, 1),
-                child: const MobileBottomNav(),
-              ),
+          (_isIOS || !showNav || isPracticing) ? null : const MobileBottomNav(),
+      body: SafeArea(
+        // When the AppBar is hidden we need to reserve the status-bar inset
+        // ourselves so content doesn't render behind the system status bar.
+        top: isPracticing,
+        bottom: false,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: _isIOS
+                  ? NotificationListener<ScrollNotification>(
+                      onNotification: _onScroll,
+                      child: widget.child,
+                    )
+                  : widget.child,
             ),
-          // AiAssistantWidget(bottomOffset: _assistantBottomOffset(context)),
-        ],
+            if (_isIOS && showNav && !isPracticing)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  offset: _navVisible ? Offset.zero : const Offset(0, 1),
+                  child: const MobileBottomNav(),
+                ),
+              ),
+            // AiAssistantWidget(bottomOffset: _assistantBottomOffset(context)),
+          ],
+        ),
       ),
     );
   }

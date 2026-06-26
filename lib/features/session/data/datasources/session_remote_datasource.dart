@@ -11,12 +11,14 @@ import '../models/question_model.dart';
 /// Outcome of a single question-batch request. Mirrors the statuses the React
 /// `useQuestionPolling` hook reacts to: a ready batch, the server still
 /// AI-generating (poll again), or a failed generation (retry a few times).
-enum QuestionBatchStatus { ready, generating, failed }
+enum QuestionBatchStatus { ready, generating, failed, mastered }
 
 class QuestionBatchResult {
   const QuestionBatchResult(this.status, this.questions);
   const QuestionBatchResult.generating() : this(QuestionBatchStatus.generating, const []);
   const QuestionBatchResult.failed() : this(QuestionBatchStatus.failed, const []);
+  // Terminal positive state: the chapter is tapped out (React's `mastered`).
+  const QuestionBatchResult.mastered() : this(QuestionBatchStatus.mastered, const []);
 
   final QuestionBatchStatus status;
   final List<QuestionModel> questions;
@@ -31,6 +33,7 @@ abstract class SessionRemoteDataSource {
     required String type,
     required String difficulty,
     required String sessionId,
+    bool retry = false,
   });
   Future<void> submitAnswers(List<Map<String, dynamic>> answers);
   Future<String> createSession(Map<String, dynamic> session);
@@ -63,6 +66,13 @@ abstract class SessionRemoteDataSource {
 
   /// Newly-earned badge ids after a session.
   Future<List<dynamic>> checkNewBadges(String userId, Map<String, dynamic> sessionData);
+
+  /// Submits general feedback (mirrors React's FeedbackForm → POST /feedback).
+  Future<void> submitFeedback({
+    required String name,
+    required String feedback,
+    String? email,
+  });
 }
 
 class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
@@ -136,6 +146,10 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
                   ? (e['number'] ?? e['chapterNumber']).toInt()
                   : null,
               subjectId: subjectId,
+              comingSoon: e['comingSoon'] == true ||
+                  e['coming_soon'] == true ||
+                  e['isAvailable'] == false,
+              isStartable: e['isStartable'] != false,
             ))
         .toList();
   }
@@ -146,6 +160,7 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
     required String type,
     required String difficulty,
     required String sessionId,
+    bool retry = false,
   }) async {
     final res = await _dio.get(
       Endpoints.questionsBatch(
@@ -154,6 +169,9 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
         difficulty: difficulty,
         sessionId: sessionId,
       ),
+      // Mirrors React's `?retry=true` — signals the backend to re-generate
+      // rather than return a cached batch after a `failed` generation status.
+      queryParameters: retry ? {'retry': 'true'} : null,
     );
 
     // The server signals an in-flight AI generation with a `status` field
@@ -161,18 +179,29 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
     final status = _statusOf(res.data);
     if (status == 'generating') return const QuestionBatchResult.generating();
     if (status == 'failed') return const QuestionBatchResult.failed();
+    // Chapter tapped out — terminal positive state (mirrors React's 'mastered').
+    if (status == 'mastered') return const QuestionBatchResult.mastered();
 
     final list = _digList(res.data, const ['data', 'questions', 'results', 'items']);
-    final questions = (list ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map((m) => QuestionModel.fromJson({
-              ...m,
-              // The API sends the format under `questionType`; the model reads
-              // `type`. Bridge it so fill-in-the-blank isn't misread as mcq.
-              if (m['type'] == null && m['questionType'] != null)
-                'type': m['questionType'],
-            }))
-        .toList();
+    final questions = <QuestionModel>[];
+    for (final raw in (list ?? const [])) {
+      if (raw is! Map) continue;
+      try {
+        final m = Map<String, dynamic>.from(raw);
+        // Bridge `questionType` → `type` so fill-in-the-blank isn't misread.
+        if (m['type'] == null && m['questionType'] != null) {
+          m['type'] = m['questionType'];
+        }
+        // Normalize options to List<String> before the generated fromJson runs
+        // its strict `e as String` cast — avoids a throw on non-String elements.
+        if (m['options'] is List) {
+          m['options'] = (m['options'] as List).map((e) => '$e').toList();
+        }
+        questions.add(QuestionModel.fromJson(m));
+      } catch (_) {
+        // Skip a single malformed question rather than killing the whole batch.
+      }
+    }
 
     // An empty list with a 2xx (often "Questions batch fetched successfully")
     // means the bank is still being generated — treat it as `generating` so the
@@ -368,4 +397,16 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
     if (data is List) return data;
     return const [];
   }
+
+  @override
+  Future<void> submitFeedback({
+    required String name,
+    required String feedback,
+    String? email,
+  }) =>
+      _dio.post(Endpoints.feedback, data: {
+        'name': name,
+        'feedback': feedback,
+        if (email != null && email.isNotEmpty) 'email': email,
+      });
 }

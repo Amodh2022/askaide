@@ -57,6 +57,7 @@ class SessionState extends Equatable {
     this.npsHandled = false,
     this.npsEligible = false,
     this.finishing = false,
+    this.mastered = false,
   });
 
   final SessionPanel panel;
@@ -98,6 +99,11 @@ class SessionState extends Equatable {
   /// True while [SessionFinished] is closing the server session (and checking
   /// NPS eligibility) — drives the loader on the End button.
   final bool finishing;
+
+  /// Positive terminal state: the chapter is tapped out and the student has
+  /// answered everything available. Drives the mastery celebration UI (not an
+  /// error). Mirrors React's `mastered` status from useQuestionPolling.
+  final bool mastered;
 
   Question? get currentQuestion =>
       currentIndex >= 0 && currentIndex < questions.length
@@ -152,6 +158,7 @@ class SessionState extends Equatable {
     bool? npsHandled,
     bool? npsEligible,
     bool? finishing,
+    bool? mastered,
   }) {
     return SessionState(
       panel: panel ?? this.panel,
@@ -177,6 +184,7 @@ class SessionState extends Equatable {
       npsHandled: npsHandled ?? this.npsHandled,
       npsEligible: npsEligible ?? this.npsEligible,
       finishing: finishing ?? this.finishing,
+      mastered: mastered ?? this.mastered,
     );
   }
 
@@ -204,5 +212,6 @@ class SessionState extends Equatable {
         npsHandled,
         npsEligible,
         finishing,
+        mastered,
       ];
 }

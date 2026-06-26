@@ -131,6 +131,11 @@ class BackToConfigRequested extends SessionEvent {
   const BackToConfigRequested();
 }
 
+/// Re-fetches the question batch without creating a new session.
+class QuestionBatchRetried extends SessionEvent {
+  const QuestionBatchRetried();
+}
+
 // --- Offline sync -----------------------------------------------------------
 class ConnectivityChanged extends SessionEvent {
   const ConnectivityChanged(this.isOnline);
