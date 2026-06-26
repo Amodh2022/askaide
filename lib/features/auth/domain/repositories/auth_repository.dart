@@ -12,6 +12,8 @@ abstract class AuthRepository {
     required String password,
   });
 
+  Future<Either<Failure, AuthSession>> loginWithGoogle(String idToken);
+
   /// Sends the email-verification OTP. Does NOT create an account.
   Future<Either<Failure, Unit>> sendOtp(String email);
 

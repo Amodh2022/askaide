@@ -70,6 +70,17 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, AuthSession>> loginWithGoogle(String idToken) =>
+      _guard(() async {
+        final session = (await _remote.loginWithGoogle(idToken)).toEntity();
+        if (session.token.isEmpty) {
+          throw ServerException('No token returned by server');
+        }
+        await _persistTokens(session);
+        return session;
+      });
+
+  @override
   Future<Either<Failure, Unit>> sendOtp(String email) => _guard(() async {
         await _remote.sendOtp(email);
         return unit;

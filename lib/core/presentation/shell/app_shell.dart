@@ -111,8 +111,17 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
 
   bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
+  static const _bottomNavPaths = [
+    RoutePaths.study,
+    RoutePaths.dashboard,
+    RoutePaths.progress,
+    RoutePaths.quizzes,
+  ];
+
   bool _showBottomNav(String location) {
-    return location.startsWith(RoutePaths.study);
+    return _bottomNavPaths.any(
+      (p) => location == p || location.startsWith('$p/'),
+    );
   }
 
   /// Hide the floating nav while scrolling down, reveal it while scrolling up.

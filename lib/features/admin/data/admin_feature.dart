@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
@@ -72,6 +74,44 @@ class AdminRecord extends Equatable {
 
   @override
   List<Object?> get props => [id, name, subtitle];
+}
+
+/// Full school record from GET /school. AdminRecord only captured name + code;
+/// this captures all 7 editable fields so the Schools tab can show them.
+class AdminSchool extends Equatable {
+  const AdminSchool({
+    required this.id,
+    required this.name,
+    required this.code,
+    this.address = '',
+    this.board = '',
+    this.phone = '',
+    this.email = '',
+    this.website = '',
+  });
+
+  final String id;
+  final String name;
+  final String code;
+  final String address;
+  final String board;
+  final String phone;
+  final String email;
+  final String website;
+
+  factory AdminSchool.fromJson(Map<dynamic, dynamic> j) => AdminSchool(
+        id: j.str(['_id', 'id']),
+        name: j.str(['schoolName', 'name'], 'School'),
+        code: j.str(['schoolCode']),
+        address: j.str(['schoolAddress']),
+        board: j.str(['schoolBoard']),
+        phone: j.str(['schoolPhone']),
+        email: j.str(['schoolEmail']),
+        website: j.str(['schoolWebsite']),
+      );
+
+  @override
+  List<Object?> get props => [id, name, code, address, board, phone, email, website];
 }
 
 /// A section with strength + active state (mirrors React SectionManagement card).
@@ -155,9 +195,9 @@ class AdminRepository {
   AdminRepository(this._dio);
   final Dio _dio;
 
-  Future<Either<Failure, List<AdminRecord>>> schools() => guardEither(() async {
+  Future<Either<Failure, List<AdminSchool>>> schools() => guardEither(() async {
         final res = await _dio.get(Endpoints.school);
-        return res.dataList().whereType<Map>().map(AdminRecord.school).toList();
+        return res.dataList().whereType<Map>().map(AdminSchool.fromJson).toList();
       });
 
   Future<Either<Failure, List<AdminRecord>>> classes() => guardEither(() async {
@@ -289,11 +329,20 @@ class AdminRepository {
   Future<Either<Failure, Unit>> updateSchool(String id, Map<String, dynamic> data) =>
       guardEither(() async { await _dio.put(Endpoints.schoolById(id), data: data); return unit; });
 
+  Future<Either<Failure, Unit>> deleteSchool(String id) =>
+      guardEither(() async { await _dio.delete(Endpoints.schoolById(id)); return unit; });
+
   Future<Either<Failure, Unit>> updateTeacher(String id, Map<String, dynamic> data) =>
       guardEither(() async { await _dio.put(Endpoints.teacherById(id), data: data); return unit; });
 
   Future<Either<Failure, Unit>> deleteTeacher(String id) =>
       guardEither(() async { await _dio.delete(Endpoints.teacherById(id)); return unit; });
+
+  Future<Either<Failure, Unit>> updateStudent(String id, Map<String, dynamic> data) =>
+      guardEither(() async { await _dio.put(Endpoints.studentById(id), data: data); return unit; });
+
+  Future<Either<Failure, Unit>> deleteStudent(String id) =>
+      guardEither(() async { await _dio.delete(Endpoints.studentById(id)); return unit; });
 
   // ---- Curriculum (Chapters / Topics / Upload) --------------------------
 
@@ -330,6 +379,29 @@ class AdminRepository {
           'subjectId': subjectId,
           'chapterIds': chapterIds,
         });
+        return unit;
+      });
+
+  /// Uploads a PDF and creates a chapter via `POST /chapters/create-with-pdf`.
+  /// The API expects a multipart body with classId, subjectId, chapterName,
+  /// order, and the PDF as a `file` field.
+  Future<Either<Failure, Unit>> createChapterWithPdf({
+    required String classId,
+    required String subjectId,
+    required String chapterName,
+    required int order,
+    required Uint8List bytes,
+    required String filename,
+  }) =>
+      guardEither(() async {
+        final formData = FormData.fromMap({
+          'classId': classId,
+          'subjectId': subjectId,
+          'chapterName': chapterName,
+          'order': order,
+          'file': MultipartFile.fromBytes(bytes, filename: filename),
+        });
+        await _dio.post(Endpoints.chaptersCreateWithPdf, data: formData);
         return unit;
       });
 
@@ -472,7 +544,7 @@ class AdminState extends Equatable {
     this.error,
   });
   final ALoad status;
-  final List<AdminRecord> schools;
+  final List<AdminSchool> schools;
   final List<AdminRecord> classes;
   final List<AdminRecord> teachers;
   final List<AdminRecord> students;
@@ -482,7 +554,7 @@ class AdminState extends Equatable {
 
   AdminState copyWith({
     ALoad? status,
-    List<AdminRecord>? schools,
+    List<AdminSchool>? schools,
     List<AdminRecord>? classes,
     List<AdminRecord>? teachers,
     List<AdminRecord>? students,
@@ -548,6 +620,19 @@ class AdminCubit extends Cubit<AdminState> {
     await _repo.deleteTeacher(id);
     final schoolId = state.selectedSchoolId;
     if (schoolId != null) await selectSchool(schoolId);
+  }
+
+  Future<void> deleteStudent(String id) async {
+    await _repo.deleteStudent(id);
+    final schoolId = state.selectedSchoolId;
+    if (schoolId != null) await selectSchool(schoolId);
+  }
+
+  Future<bool> updateStudent(String id, Map<String, dynamic> data) async {
+    final r = await _repo.updateStudent(id, data);
+    final schoolId = state.selectedSchoolId;
+    if (r.isRight() && schoolId != null) { await selectSchool(schoolId); return true; }
+    return r.isRight();
   }
 
   Future<void> deleteSection(String id) async {
@@ -621,6 +706,16 @@ class AdminCubit extends Cubit<AdminState> {
 
   Future<bool> updateSchool(String id, Map<String, dynamic> data) async {
     final r = await _repo.updateSchool(id, data);
+    if (r.isRight()) {
+      final list = await _repo.schools();
+      emit(state.copyWith(schools: list.getOrElse(() => state.schools)));
+      return true;
+    }
+    return false;
+  }
+
+  Future<bool> deleteSchool(String id) async {
+    final r = await _repo.deleteSchool(id);
     if (r.isRight()) {
       final list = await _repo.schools();
       emit(state.copyWith(schools: list.getOrElse(() => state.schools)));

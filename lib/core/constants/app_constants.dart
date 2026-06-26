@@ -20,6 +20,20 @@ class AppConstants {
     return _defaultApiBaseUrl;
   }
 
+  /// Web (server) client ID for Google Sign-In — used as `serverClientId` so
+  /// the `idToken` in the response is verifiable by the backend.
+  /// Set in `.env` as `GOOGLE_CLIENT_ID`.
+  static String get googleClientId =>
+      dotenv.maybeGet('GOOGLE_CLIENT_ID') ?? '';
+
+  /// iOS OAuth client ID for Google Sign-In — required on iOS when
+  /// `GoogleService-Info.plist` is absent. The reversed form of this value
+  /// must also appear in `Info.plist` under `CFBundleURLTypes`.
+  /// Set in `.env` as `GOOGLE_CLIENT_ID_IOS`. Falls back to the web client ID
+  /// so Android-only builds keep working without it.
+  static String get googleClientIdIos =>
+      dotenv.maybeGet('GOOGLE_CLIENT_ID_IOS') ?? googleClientId;
+
   static const Duration httpTimeout = Duration(seconds: 30);
 
   // Secure-storage keys

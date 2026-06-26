@@ -42,6 +42,7 @@ class SessionState extends Equatable {
     this.chapters = const [],
     this.taxonomyStatus = LoadStatus.idle,
     this.questionStatus = LoadStatus.idle,
+    this.reviewStatus = LoadStatus.idle,
     this.questions = const [],
     this.currentIndex = 0,
     this.answers = const {},
@@ -69,6 +70,7 @@ class SessionState extends Equatable {
   final LoadStatus taxonomyStatus;
 
   final LoadStatus questionStatus;
+  final LoadStatus reviewStatus;
   final List<Question> questions;
   final int currentIndex;
 
@@ -140,6 +142,7 @@ class SessionState extends Equatable {
     List<ChapterOption>? chapters,
     LoadStatus? taxonomyStatus,
     LoadStatus? questionStatus,
+    LoadStatus? reviewStatus,
     List<Question>? questions,
     int? currentIndex,
     Map<String, UserAnswer>? answers,
@@ -168,6 +171,7 @@ class SessionState extends Equatable {
       chapters: chapters ?? this.chapters,
       taxonomyStatus: taxonomyStatus ?? this.taxonomyStatus,
       questionStatus: questionStatus ?? this.questionStatus,
+      reviewStatus: reviewStatus ?? this.reviewStatus,
       questions: questions ?? this.questions,
       currentIndex: currentIndex ?? this.currentIndex,
       answers: answers ?? this.answers,
@@ -197,6 +201,7 @@ class SessionState extends Equatable {
         chapters,
         taxonomyStatus,
         questionStatus,
+        reviewStatus,
         questions,
         currentIndex,
         answers,

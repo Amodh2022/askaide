@@ -117,22 +117,29 @@ class _QuizListViewState extends State<_QuizListView> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1040),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Expanded(
-                    child: PageHeader(
-                      eyebrow: 'QUIZZES',
-                      title: 'My',
+    return RefreshIndicator(
+      onRefresh: () async {
+        if (!widget.isMockMode) {
+          await context.read<QuizListCubit>().loadAvailable(page: 1, limit: 12);
+        }
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1040),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Expanded(
+                      child: PageHeader(
+                        eyebrow: 'QUIZZES',
+                        title: 'My',
                       emphasis: 'Quizzes',
                       subtitle:
                           'Take quizzes assigned to you and track your progress.',
@@ -301,6 +308,7 @@ class _QuizListViewState extends State<_QuizListView> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

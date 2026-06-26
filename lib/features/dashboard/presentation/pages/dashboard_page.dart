@@ -83,8 +83,15 @@ class _DashboardView extends StatelessWidget {
         final id = profile.user?.id ?? '';
         if (id.isNotEmpty) context.read<DashboardCubit>().load(id);
       },
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+      child: RefreshIndicator(
+        onRefresh: () {
+          final id = context.read<ProfileCubit>().state.user?.id ?? '';
+          if (id.isNotEmpty) context.read<DashboardCubit>().load(id);
+          return Future.value();
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 880),
@@ -262,6 +269,7 @@ class _DashboardView extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

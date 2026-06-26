@@ -50,7 +50,7 @@ class AppRouter {
   };
 
   late final GoRouter router = GoRouter(
-    initialLocation: RoutePaths.landing,
+    initialLocation: RoutePaths.login,
     refreshListenable: Listenable.merge([
       GoRouterRefreshStream(authBloc.stream),
       GoRouterRefreshStream(profileCubit.stream),
@@ -76,13 +76,13 @@ class AppRouter {
     final isAuthScreen =
         location == RoutePaths.login || location == RoutePaths.signup;
 
-    // Block protected routes for signed-out users.
-    if (!authed && !isPublic && !RoutePaths.isLanding(location)) {
+    // Unauthenticated: block protected routes and the landing page — both go to
+    // /login so the sign-in screen is always the app's entry point.
+    if (!authed && (!isPublic || RoutePaths.isLanding(location))) {
       return RoutePaths.login;
     }
 
-    // Keep signed-in users out of the login/signup screens AND off the public
-    // landing page (the cold-start initialLocation), landing them straight on
+    // Authenticated users on login/signup or the landing page go straight to
     // the study flow (mirrors the frontend's post-login redirect to /study).
     if (authed && (isAuthScreen || RoutePaths.isLanding(location))) {
       return RoutePaths.study;
@@ -155,14 +155,31 @@ class AppRouter {
               title: 'Chapter ${state.pathParameters['chapterId']}'),
         ),
 
+        // ---- PERSISTENT BOTTOM-NAV TABS (kept alive via StatefulShellRoute) ----
+        // Each branch's widget tree is preserved in an IndexedStack so switching
+        // tabs never remounts the page or re-triggers data loads.
+        StatefulShellRoute.indexedStack(
+          builder: (_, __, navigationShell) => navigationShell,
+          branches: [
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.study, (_, __) => const StudyPage()),
+            ]),
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.dashboard, (_, __) => const DashboardPage()),
+            ]),
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.progress, (_, __) => const ProgressPage()),
+            ]),
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.quizzes, (_, __) => const StudentQuizListPage()),
+            ]),
+          ],
+        ),
+
         // ---- PROTECTED ----
-        _route(RoutePaths.study, (_, __) => const StudyPage()),
-        _route(RoutePaths.dashboard, (_, __) => const DashboardPage()),
         _route(RoutePaths.profile, (_, __) => const ProfilePage()),
         _route(RoutePaths.settings, (_, __) => const SettingsPage()),
-        _route(RoutePaths.progress, (_, __) => const ProgressPage()),
         _route(RoutePaths.referral, (_, __) => const ReferralPage()),
-        _route(RoutePaths.quizzes, (_, __) => const StudentQuizListPage()),
         _route(
           RoutePaths.quizAttempt,
           (_, state) => QuizAttemptPage(

@@ -134,6 +134,7 @@ void _registerAuth() {
     ..registerLazySingleton<AuthRepository>(
         () => AuthRepositoryImpl(remote: sl(), storage: sl()))
     ..registerLazySingleton(() => Login(sl()))
+    ..registerLazySingleton(() => LoginWithGoogle(sl()))
     ..registerLazySingleton(() => SendOtp(sl()))
     ..registerLazySingleton(() => Signup(sl()))
     ..registerLazySingleton(() => RequestPasswordReset(sl()))
@@ -143,6 +144,7 @@ void _registerAuth() {
       () => AuthBloc(
         repository: sl(),
         login: sl(),
+        loginWithGoogle: sl(),
         sendOtp: sl(),
         signup: sl(),
         requestPasswordReset: sl(),

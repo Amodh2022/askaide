@@ -1,8 +1,11 @@
+import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -25,6 +28,7 @@ class _LoginPageState extends State<LoginPage> {
   final _password = TextEditingController();
   bool _showPassword = false;
   bool _keepSignedIn = true;
+  bool _googleLoading = false;
   String? _emailError;
   String? _passwordError;
 
@@ -33,6 +37,72 @@ class _LoginPageState extends State<LoginPage> {
     _email.dispose();
     _password.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _googleLoading = true);
+    try {
+      final webClientId = AppConstants.googleClientId;
+      final iosClientId = AppConstants.googleClientIdIos;
+
+      debugPrint('[GoogleSignIn] platform: $defaultTargetPlatform');
+      debugPrint('[GoogleSignIn] webClientId: ${webClientId.isNotEmpty ? webClientId : "(empty — check GOOGLE_CLIENT_ID in .env)"}');
+
+      final String? platformClientId =
+          defaultTargetPlatform == TargetPlatform.iOS && iosClientId.isNotEmpty
+              ? iosClientId
+              : null;
+
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        debugPrint('[GoogleSignIn] iOS clientId: ${platformClientId ?? "(none — will rely on GoogleService-Info.plist)"}');
+      }
+
+      // DIAGNOSTIC: try without serverClientId first to isolate whether the
+      // issue is the Android client registration (error 10 without serverClientId)
+      // or the web client ID cross-project mismatch (error 10 only with serverClientId).
+      const testWithoutServerClientId = bool.fromEnvironment('GSI_NO_SERVER_ID');
+      debugPrint('[GoogleSignIn] serverClientId mode: ${testWithoutServerClientId ? "DISABLED (diagnostic)" : "enabled"}');
+
+      final googleSignIn = GoogleSignIn(
+        clientId: platformClientId,
+        serverClientId: (!testWithoutServerClientId && webClientId.isNotEmpty) ? webClientId : null,
+      );
+
+      debugPrint('[GoogleSignIn] calling signIn()...');
+      final account = await googleSignIn.signIn();
+
+      if (account == null) {
+        debugPrint('[GoogleSignIn] signIn() returned null — user cancelled or sign-in was aborted');
+        return;
+      }
+
+      debugPrint('[GoogleSignIn] account: ${account.email}, displayName: ${account.displayName}');
+
+      final auth = await account.authentication;
+      debugPrint('[GoogleSignIn] accessToken: ${auth.accessToken != null ? "present" : "null"}');
+      debugPrint('[GoogleSignIn] idToken: ${auth.idToken != null ? "present (${auth.idToken!.length} chars)" : "NULL — serverClientId may be wrong or missing"}');
+
+      final idToken = auth.idToken;
+      if (idToken == null) {
+        debugPrint('[GoogleSignIn] ERROR: idToken is null. The serverClientId must be a valid Web OAuth 2.0 client ID from Google Cloud Console.');
+        if (mounted) {
+          context.read<AuthBloc>().add(const AuthGoogleLoginRequested(idToken: ''));
+        }
+        return;
+      }
+
+      debugPrint('[GoogleSignIn] dispatching AuthGoogleLoginRequested...');
+      if (!mounted) return;
+      context.read<AuthBloc>().add(AuthGoogleLoginRequested(idToken: idToken));
+    } catch (e, st) {
+      debugPrint('[GoogleSignIn] EXCEPTION: $e');
+      debugPrint('[GoogleSignIn] STACKTRACE: $st');
+      if (mounted) {
+        context.read<AuthBloc>().add(AuthGoogleLoginFailed(message: e.toString()));
+      }
+    } finally {
+      if (mounted) setState(() => _googleLoading = false);
+    }
   }
 
   void _submit() {
@@ -133,7 +203,10 @@ class _LoginPageState extends State<LoginPage> {
               _SubmitButton(busy: busy, onPressed: busy ? null : _submit),
 
               const SizedBox(height: 18),
-              const _SsoRow(),
+              _SsoRow(
+                onGoogleTap: busy ? null : _handleGoogleSignIn,
+                googleLoading: _googleLoading,
+              ),
 
               const SizedBox(height: 18),
               Center(
@@ -252,37 +325,56 @@ class _SubmitButton extends StatelessWidget {
   }
 }
 
-/// Disabled Google + School SSO buttons ("coming soon").
+/// Google Sign-In + School SSO row.
 class _SsoRow extends StatelessWidget {
-  const _SsoRow();
+  const _SsoRow({required this.onGoogleTap, required this.googleLoading});
+
+  final VoidCallback? onGoogleTap;
+  final bool googleLoading;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    Widget btn(Widget child) => Expanded(
+
+    Widget btn({required Widget child, VoidCallback? onPressed}) => Expanded(
           child: OutlinedButton(
-            onPressed: null,
+            onPressed: onPressed,
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: c.border),
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: const StadiumBorder(),
-              disabledForegroundColor: c.textPrimary,
+              foregroundColor: c.textPrimary,
+              disabledForegroundColor: c.textMuted,
             ),
             child: child,
           ),
         );
+
     return Row(
       children: [
-        btn(Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text('G', style: TextStyle(color: Color(0xFF4285F4), fontWeight: FontWeight.w700)),
-            const SizedBox(width: 7),
-            Text('Google', style: AppTypography.bodySmall(c.textPrimary)),
-          ],
-        )),
+        btn(
+          onPressed: onGoogleTap,
+          child: googleLoading
+              ? SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: c.accent),
+                )
+              : Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('G',
+                        style: TextStyle(
+                            color: Color(0xFF4285F4),
+                            fontWeight: FontWeight.w700)),
+                    const SizedBox(width: 7),
+                    Text('Continue with Google',
+                        style: AppTypography.bodySmall(c.textPrimary)),
+                  ],
+                ),
+        ),
         const SizedBox(width: 8),
-        btn(Text('🏫 School SSO', style: AppTypography.bodySmall(c.textPrimary))),
+        btn(child: Text('🏫 School SSO', style: AppTypography.bodySmall(c.textPrimary))),
       ],
     );
   }

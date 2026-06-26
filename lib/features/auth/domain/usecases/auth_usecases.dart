@@ -24,6 +24,15 @@ class Login implements UseCase<AuthSession, LoginParams> {
       _repo.login(email: params.email, password: params.password);
 }
 
+class LoginWithGoogle implements UseCase<AuthSession, String> {
+  LoginWithGoogle(this._repo);
+  final AuthRepository _repo;
+
+  @override
+  Future<Either<Failure, AuthSession>> call(String idToken) =>
+      _repo.loginWithGoogle(idToken);
+}
+
 class SendOtp implements UseCase<Unit, String> {
   SendOtp(this._repo);
   final AuthRepository _repo;

@@ -458,23 +458,38 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
           ? state.history.first
           : throw StateError('No session'),
     );
-    // Show the review immediately with whatever answers we have cached.
-    emit(state.copyWith(panel: SessionPanel.review, reviewSession: session));
 
     // Pull the recorded answers from the server on demand (React's
     // fetchUserAnswersBySession), unless we already have them locally.
     if (session.answers.isEmpty && state.isOnline) {
+      // Show the review panel in loading state while we fetch answers.
+      emit(state.copyWith(
+        panel: SessionPanel.review,
+        reviewSession: session,
+        reviewStatus: LoadStatus.loading,
+      ));
       final result = await _repository.fetchSessionAnswers(session.id);
       result.fold(
-        (_) {},
+        (_) {
+          if (state.reviewSession?.id != session.id) return;
+          emit(state.copyWith(reviewStatus: LoadStatus.success));
+        },
         (answers) {
           // Guard against the user navigating away while the fetch was in flight.
           if (state.reviewSession?.id != session.id) return;
           emit(state.copyWith(
             reviewSession: session.copyWith(answers: answers),
+            reviewStatus: LoadStatus.success,
           ));
         },
       );
+    } else {
+      // Answers already cached locally — show immediately.
+      emit(state.copyWith(
+        panel: SessionPanel.review,
+        reviewSession: session,
+        reviewStatus: LoadStatus.success,
+      ));
     }
   }
 

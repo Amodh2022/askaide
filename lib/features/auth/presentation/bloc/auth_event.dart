@@ -53,6 +53,23 @@ class AuthResetPasswordSubmitted extends AuthEvent {
   List<Object?> get props => [password, confirmPassword, token];
 }
 
+class AuthGoogleLoginRequested extends AuthEvent {
+  const AuthGoogleLoginRequested({required this.idToken});
+  final String idToken;
+  @override
+  List<Object?> get props => [idToken];
+}
+
+/// Native Google Sign-In failed before reaching the backend (e.g. plugin
+/// configuration error, no network, missing client ID). Distinct from a
+/// server-side auth failure so the UI can show a meaningful message.
+class AuthGoogleLoginFailed extends AuthEvent {
+  const AuthGoogleLoginFailed({required this.message});
+  final String message;
+  @override
+  List<Object?> get props => [message];
+}
+
 class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();
 }

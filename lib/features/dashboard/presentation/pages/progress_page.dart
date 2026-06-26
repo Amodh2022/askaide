@@ -37,9 +37,17 @@ class _ProgressView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Center(
+    return RefreshIndicator(
+      onRefresh: () async {
+        final userId = context.read<ProfileCubit>().state.user?.id ?? '';
+        if (userId.isNotEmpty) {
+          await context.read<ProgressCubit>().init(userId);
+        }
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 920),
           child: Column(
@@ -101,6 +109,7 @@ class _ProgressView extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

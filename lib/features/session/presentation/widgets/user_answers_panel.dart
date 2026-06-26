@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -27,6 +28,7 @@ class UserAnswersPanel extends StatelessWidget {
               child: Text('Select a session to review.',
                   style: AppTypography.bodyMedium(c.textMuted)));
         }
+        final isLoading = state.reviewStatus == LoadStatus.loading;
         final pct = (session.accuracy * 100).round();
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -66,9 +68,12 @@ class UserAnswersPanel extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  ...session.answers.asMap().entries.map(
-                        (e) => _AnswerThread(index: e.key, answer: e.value),
-                      ),
+                  if (isLoading)
+                    _ReviewShimmer()
+                  else
+                    ...session.answers.asMap().entries.map(
+                          (e) => _AnswerThread(index: e.key, answer: e.value),
+                        ),
                 ],
               ),
             ),
@@ -92,6 +97,124 @@ class UserAnswersPanel extends StatelessWidget {
             Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Shimmer placeholder for the questions list while answers are being fetched.
+class _ReviewShimmer extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Shimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: List.generate(3, (i) => _ShimmerThread(c: c)),
+      ),
+    );
+  }
+}
+
+class _ShimmerThread extends StatelessWidget {
+  const _ShimmerThread({required this.c});
+  final AskAideColors c;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Bot question bubble (left-aligned)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: c.bgRaised, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: c.bgRaised,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SkeletonBox(height: 14, width: double.infinity),
+                      SizedBox(height: 8),
+                      SkeletonBox(height: 12, width: 260),
+                      SizedBox(height: 6),
+                      SkeletonBox(height: 12, width: 220),
+                      SizedBox(height: 6),
+                      SkeletonBox(height: 12, width: 240),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // User answer bubble (right-aligned)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: c.bgRaised,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const SkeletonBox(height: 14, width: 140),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: c.bgRaised, shape: BoxShape.circle),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Feedback bubble (left-aligned)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(color: c.bgRaised, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: c.bgRaised,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SkeletonBox(height: 14, width: 180),
+                      SizedBox(height: 8),
+                      SkeletonBox(height: 12, width: 300),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

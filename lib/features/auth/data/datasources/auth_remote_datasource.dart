@@ -9,6 +9,7 @@ import '../models/auth_response_model.dart';
 
 abstract class AuthRemoteDataSource {
   Future<AuthResponseModel> login(String email, String password);
+  Future<AuthResponseModel> loginWithGoogle(String idToken);
   Future<void> sendOtp(String email);
   Future<AuthResponseModel> signup(SignupData data);
   Future<void> requestPasswordReset(String email);
@@ -34,6 +35,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     final res = await _dio.post(
       Endpoints.login,
       data: {'userName': email, 'password': password},
+    );
+    return AuthResponseModel.fromJson(_asMap(res));
+  }
+
+  @override
+  Future<AuthResponseModel> loginWithGoogle(String idToken) async {
+    final res = await _dio.post(
+      Endpoints.googleLogin,
+      data: {'idToken': idToken},
     );
     return AuthResponseModel.fromJson(_asMap(res));
   }
