@@ -55,7 +55,7 @@ Future<void> configureDependencies(LocalStorageService localStorage) async {
     ..registerLazySingleton<FlutterSecureStorage>(
         () => const FlutterSecureStorage())
     ..registerLazySingleton<SecureStorageService>(
-        () => SecureStorageService(sl()))
+        () => SecureStorageServiceImpl(sl()))
     ..registerLazySingleton<Connectivity>(Connectivity.new)
     ..registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(sl()));
 
