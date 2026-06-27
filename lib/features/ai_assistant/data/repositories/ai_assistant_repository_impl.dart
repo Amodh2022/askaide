@@ -12,7 +12,8 @@ import '../../domain/repositories/ai_assistant_repository.dart';
 
 /// Talks to the AI assistant: single-shot ask, SSE streaming, the
 /// conversation CRUD endpoints, and the teacher content-generation tool.
-class AiAssistantRepositoryImpl implements AiAssistantRepository {
+class AiAssistantRepositoryImpl
+    implements AiChatRepository, AiTeacherToolsRepository {
   AiAssistantRepositoryImpl(this._dio);
   final Dio _dio;
 

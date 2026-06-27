@@ -3,12 +3,10 @@ import 'package:dartz/dartz.dart';
 import '../../../../core/error/failures.dart';
 import '../entities/ai_models.dart';
 
-/// Talks to the AI assistant: single-shot ask, SSE streaming, the
-/// conversation CRUD endpoints, and the teacher content-generation tool.
-abstract class AiAssistantRepository {
-  /// Single-shot answer via `POST /ai-assistant`.
-  Future<Either<Failure, String>> ask(String prompt);
-
+/// Student-facing assistant chat: SSE streaming answers and conversation
+/// history. Consumed by the in-app AI assistant widget. Split from the teacher
+/// tools (ISP) so each consumer depends only on the slice it uses.
+abstract class AiChatRepository {
   /// Streams an answer via `POST /ai-assistant/stream` (SSE). Yields text chunks
   /// as they arrive. Falls back to a single error chunk on failure.
   Stream<String> stream(String prompt);
@@ -23,8 +21,14 @@ abstract class AiAssistantRepository {
       String conversationId, String role, String content);
 
   Future<Either<Failure, Unit>> deleteConversation(String conversationId);
+}
 
-  // ---- Teacher content generation -----------------------------------------
+/// Teacher content-generation tools: single-shot ask, the clarify/generate
+/// agent loop, task/class lookups, a health check, and PDF export. Consumed by
+/// the teacher AI generator.
+abstract class AiTeacherToolsRepository {
+  /// Single-shot answer via `POST /ai-assistant`.
+  Future<Either<Failure, String>> ask(String prompt);
 
   /// Processes a teacher prompt (e.g. "Create a quiz on Newton's Laws"). The
   /// agent may return generated content or a set of clarification questions.

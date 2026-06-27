@@ -14,7 +14,7 @@ class _TeacherAiGeneratorPageState extends State<TeacherAiGeneratorPage> {
   Future<void> _go() async {
     if (_prompt.text.trim().isEmpty) return;
     setState(() { _loading = true; _answer = null; });
-    final r = await sl<AiAssistantRepository>().ask(_prompt.text.trim());
+    final r = await sl<AiTeacherToolsRepository>().ask(_prompt.text.trim());
     if (!mounted) return;
     setState(() {
       _loading = false;

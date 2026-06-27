@@ -62,7 +62,7 @@ class _AiAssistantWidgetState extends State<AiAssistantWidget> {
     // Stream the assistant's reply token-by-token (SSE).
     final buffer = StringBuffer();
     var added = false;
-    await for (final chunk in sl<AiAssistantRepository>().stream(text)) {
+    await for (final chunk in sl<AiChatRepository>().stream(text)) {
       if (!mounted) return;
       buffer.write(chunk);
       setState(() {
