@@ -3,7 +3,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../di/injection.dart';
-import '../../../../features/ai_assistant/ai_assistant_repository.dart';
+import '../../../../features/ai_assistant/domain/repositories/ai_assistant_repository.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_tokens.dart';
 import '../../../theme/app_typography.dart';

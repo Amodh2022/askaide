@@ -3,112 +3,21 @@ import 'dart:convert';
 
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
-import 'package:equatable/equatable.dart';
 
-import '../../core/error/failures.dart';
-import '../../core/network/api_helpers.dart';
-import '../../core/network/endpoints.dart';
-
-/// A conversation in the AI assistant history.
-class AiConversation extends Equatable {
-  const AiConversation({required this.id, required this.title});
-  final String id;
-  final String title;
-
-  factory AiConversation.fromJson(Map<dynamic, dynamic> j) => AiConversation(
-        id: j.str(['_id', 'id']),
-        title: j.str(['title'], 'Conversation'),
-      );
-
-  @override
-  List<Object?> get props => [id, title];
-}
-
-/// A single chat message.
-class AiMessage extends Equatable {
-  const AiMessage({required this.role, required this.content});
-  final String role; // 'user' | 'assistant'
-  final String content;
-
-  bool get fromUser => role == 'user';
-
-  factory AiMessage.fromJson(Map<dynamic, dynamic> j) => AiMessage(
-        role: j.str(['role'], 'assistant'),
-        content: j.str(['content', 'text', 'message']),
-      );
-
-  @override
-  List<Object?> get props => [role, content];
-}
-
-/// A clarification question the AI agent asks before generating content.
-class AiClarification extends Equatable {
-  const AiClarification({required this.id, required this.question, this.options = const []});
-  final String id;
-  final String question;
-  final List<String> options;
-
-  factory AiClarification.fromJson(Map<dynamic, dynamic> j) => AiClarification(
-        id: j.str(['id', 'key', '_id']),
-        question: j.str(['question', 'text', 'label']),
-        options: j.listAt(['options', 'choices']).map((e) => e.toString()).toList(),
-      );
-
-  @override
-  List<Object?> get props => [id, question, options];
-}
-
-/// Result of a teacher content-generation request. Either the agent needs
-/// clarification (carry [sessionId] back via `continueSession`) or it returns
-/// generated [content] addressable by [generationId] (for PDF export).
-class AiGenerationResult extends Equatable {
-  const AiGenerationResult({
-    this.needsClarification = false,
-    this.clarifications = const [],
-    this.message = '',
-    this.content,
-    this.sessionId,
-    this.generationId,
-  });
-
-  final bool needsClarification;
-  final List<AiClarification> clarifications;
-  final String message;
-  final Map<String, dynamic>? content;
-  final String? sessionId;
-  final String? generationId;
-
-  factory AiGenerationResult.fromJson(Map<dynamic, dynamic> j) {
-    final clar = j.listAt(['clarificationQuestions', 'clarifications', 'questions'])
-        .whereType<Map>()
-        .map(AiClarification.fromJson)
-        .toList();
-    final rawContent = j['content'] ?? j['generation'] ?? j['result'];
-    return AiGenerationResult(
-      needsClarification:
-          j.boolean(['needsClarification']) || clar.isNotEmpty,
-      clarifications: clar,
-      message: j.str(['message', 'answer', 'text']),
-      content: rawContent is Map ? Map<String, dynamic>.from(rawContent) : null,
-      sessionId: j.str(['sessionId']).isNotEmpty ? j.str(['sessionId']) : null,
-      generationId: j.str(['generationId', '_id']).isNotEmpty
-          ? j.str(['generationId', '_id'])
-          : null,
-    );
-  }
-
-  @override
-  List<Object?> get props =>
-      [needsClarification, clarifications, message, content, sessionId, generationId];
-}
+import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_helpers.dart';
+import '../../../../core/network/endpoints.dart';
+import '../../domain/entities/ai_models.dart';
+import '../../domain/repositories/ai_assistant_repository.dart';
 
 /// Talks to the AI assistant: single-shot ask, SSE streaming, the
 /// conversation CRUD endpoints, and the teacher content-generation tool.
-class AiAssistantRepository {
-  AiAssistantRepository(this._dio);
+class AiAssistantRepositoryImpl implements AiAssistantRepository {
+  AiAssistantRepositoryImpl(this._dio);
   final Dio _dio;
 
   /// Single-shot answer via `POST /ai-assistant`.
+  @override
   Future<Either<Failure, String>> ask(String prompt) => guardEither(() async {
         final res = await _dio.post(
           Endpoints.aiProcess,
@@ -131,6 +40,7 @@ class AiAssistantRepository {
 
   /// Streams an answer via `POST /ai-assistant/stream` (SSE). Yields text chunks
   /// as they arrive. Falls back to a single error chunk on failure.
+  @override
   Stream<String> stream(String prompt) async* {
     try {
       final res = await _dio.post<ResponseBody>(
@@ -174,6 +84,7 @@ class AiAssistantRepository {
     }
   }
 
+  @override
   Future<Either<Failure, List<AiConversation>>> conversations() =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.aiConversations);
@@ -184,6 +95,7 @@ class AiAssistantRepository {
             .toList();
       });
 
+  @override
   Future<Either<Failure, AiConversation>> createConversation(String title) =>
       guardEither(() async {
         final res = await _dio.post(Endpoints.aiConversations, data: {'title': title});
@@ -191,12 +103,14 @@ class AiAssistantRepository {
         return AiConversation.fromJson(d.isEmpty ? res.dataMap() : d);
       });
 
+  @override
   Future<Either<Failure, List<AiMessage>>> messages(String conversationId) =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.aiConversationMessages(conversationId));
         return res.dataList(['messages']).whereType<Map>().map(AiMessage.fromJson).toList();
       });
 
+  @override
   Future<Either<Failure, Unit>> addMessage(
           String conversationId, String role, String content) =>
       guardEither(() async {
@@ -205,6 +119,7 @@ class AiAssistantRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> deleteConversation(String conversationId) =>
       guardEither(() async {
         await _dio.delete(Endpoints.aiConversation(conversationId));
@@ -218,6 +133,7 @@ class AiAssistantRepository {
   /// Processes a teacher prompt (e.g. "Create a quiz on Newton's Laws"). The
   /// agent may return generated content or a set of clarification questions.
   /// Mirrors React `aiAssistantApi.processRequest`.
+  @override
   Future<Either<Failure, AiGenerationResult>> processRequest({
     required String prompt,
     Map<String, dynamic>? responses,
@@ -238,6 +154,7 @@ class AiAssistantRepository {
 
   /// Continues a clarification session with answers. Mirrors React
   /// `aiAssistantApi.continueSession`.
+  @override
   Future<Either<Failure, AiGenerationResult>> continueSession({
     required String sessionId,
     required Map<String, dynamic> responses,
@@ -252,6 +169,7 @@ class AiAssistantRepository {
       });
 
   /// Classes the teacher can generate content for.
+  @override
   Future<Either<Failure, List<dynamic>>> getTeacherClasses() =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.aiClasses);
@@ -259,6 +177,7 @@ class AiAssistantRepository {
       });
 
   /// Available AI tasks (quiz, paper, assignment, …).
+  @override
   Future<Either<Failure, List<dynamic>>> getAvailableTasks() =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.aiTasks);
@@ -266,6 +185,7 @@ class AiAssistantRepository {
       });
 
   /// AI service health check.
+  @override
   Future<Either<Failure, bool>> checkHealth() => guardEither(() async {
         final res = await _dio.get(Endpoints.aiHealth);
         final d = res.dataMap();
@@ -275,6 +195,7 @@ class AiAssistantRepository {
       });
 
   /// Downloads a generated artefact as PDF bytes (mirrors React `downloadPDF`).
+  @override
   Future<Either<Failure, List<int>>> downloadPdf(String generationId) =>
       guardEither(() async {
         final res = await _dio.get<List<int>>(

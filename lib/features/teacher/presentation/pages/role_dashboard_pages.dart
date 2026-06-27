@@ -8,7 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
-import '../../../ai_assistant/ai_assistant_repository.dart';
+import '../../../ai_assistant/domain/repositories/ai_assistant_repository.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
