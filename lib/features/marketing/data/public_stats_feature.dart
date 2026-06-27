@@ -31,10 +31,15 @@ class PublicStats extends Equatable {
   List<Object?> get props => [totalStudents, totalSessions, totalQuestionsAnswered];
 }
 
-class PublicStatsRepository {
-  PublicStatsRepository(this._dio);
+abstract class PublicStatsRepository {
+  Future<Either<Failure, PublicStats>> fetch();
+}
+
+class PublicStatsRepositoryImpl implements PublicStatsRepository {
+  PublicStatsRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   Future<Either<Failure, PublicStats>> fetch() => guardEither(() async {
         final res = await _dio.get(Endpoints.publicStats);
         return PublicStats.fromJson(res.dataMap());

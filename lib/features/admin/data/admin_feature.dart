@@ -191,20 +191,153 @@ class AdminLink extends Equatable {
       [id, teacherName, teacherEmail, studentName, studentEmail, className, sectionName, subjectName];
 }
 
-class AdminRepository {
-  AdminRepository(this._dio);
+abstract class AdminRepository {
+  Future<Either<Failure, List<AdminSchool>>> schools();
+
+  Future<Either<Failure, List<AdminRecord>>> classes();
+
+  Future<Either<Failure, List<AdminRecord>>> teachers(String schoolId);
+
+  Future<Either<Failure, List<AdminRecord>>> students(String schoolId);
+
+  /// Creates a school. React's create form sends schoolName/schoolCode/
+  /// schoolAddress/schoolBoard (required) plus optional phone/email/website,
+  /// so we pass the assembled map through verbatim.
+  Future<Either<Failure, Unit>> createSchool(Map<String, dynamic> data);
+
+  /// Creates a teacher. `POST /teacher` expects a single teacher **object**
+  /// (the API rejects an array body with "value must be of type object").
+  Future<Either<Failure, Unit>> createTeacher(
+      String name, String email, String password, String phone, String schoolId);
+
+  /// Creates a student. `POST /student/create` accepts a bulk **array** of
+  /// student objects (mirrors React `createStudent`).
+  Future<Either<Failure, Unit>> createStudent(
+      String name, String email, String password, String phone, String schoolId);
+
+  Future<Either<Failure, List<AdminRecord>>> sections(String schoolId);
+
+  Future<Either<Failure, Unit>> createSection(String name, String schoolId,
+      {String? classId, int? maxStrength});
+
+  Future<Either<Failure, Unit>> bulkCreateSections(Map<String, dynamic> data);
+
+  /// Bulk-creates sections from a list of names within a class (React's
+  /// comma-separated "Bulk Add" form → `{schoolId, classId, sections: [names]}`).
+  Future<Either<Failure, Unit>> createSectionsBulk(
+      String schoolId, String classId, List<String> names);
+
+  /// Sections scoped to a school+class with strength/active detail (React lists
+  /// sections only after both school and class are chosen).
+  Future<Either<Failure, List<AdminSection>>> sectionsDetailed(
+      String schoolId, String classId);
+
+  Future<Either<Failure, List<AdminRecord>>> sectionsByClass(
+      String schoolId, String classId);
+
+  Future<Either<Failure, AdminRecord>> sectionById(String sectionId);
+
+  Future<Either<Failure, Unit>> updateSection(
+      String sectionId, Map<String, dynamic> data);
+
+  Future<Either<Failure, Unit>> deleteSection(String id);
+
+  Future<Either<Failure, Unit>> updateSchool(String id, Map<String, dynamic> data);
+
+  Future<Either<Failure, Unit>> deleteSchool(String id);
+
+  Future<Either<Failure, Unit>> updateTeacher(String id, Map<String, dynamic> data);
+
+  Future<Either<Failure, Unit>> deleteTeacher(String id);
+
+  Future<Either<Failure, Unit>> updateStudent(String id, Map<String, dynamic> data);
+
+  Future<Either<Failure, Unit>> deleteStudent(String id);
+
+  Future<Either<Failure, List<AdminRecord>>> subjects(String classId);
+
+  Future<Either<Failure, List<AdminRecord>>> chapters(
+      String classId, String subjectId);
+
+  Future<Either<Failure, Unit>> createChapter(
+      String classId, String subjectId, String name, int order);
+
+  Future<Either<Failure, Unit>> deleteChapters(
+      String classId, String subjectId, List<String> chapterIds);
+
+  /// Uploads a PDF and creates a chapter via `POST /chapters/create-with-pdf`.
+  /// The API expects a multipart body with classId, subjectId, chapterName,
+  /// order, and the PDF as a `file` field.
+  Future<Either<Failure, Unit>> createChapterWithPdf({
+    required String classId,
+    required String subjectId,
+    required String chapterName,
+    required int order,
+    required Uint8List bytes,
+    required String filename,
+  });
+
+  Future<Either<Failure, List<AdminRecord>>> topics(
+      String classId, String subjectId);
+
+  Future<Either<Failure, List<AdminRecord>>> teacherStudentLinks(String schoolId);
+
+  /// Populated teacher↔student links for the Relations table (with class/
+  /// section/subject + emails). Mirrors React RelationView's data source.
+  Future<Either<Failure, List<AdminLink>>> teacherStudentLinksDetailed(String schoolId);
+
+  /// Bulk-links a teacher to students. The backend expects snake_case link
+  /// objects under `data`, one per student (mirrors React `LinkManagement`):
+  /// `{ data: [{ school_id, teacher_id, student_id, class_id?, section_id?,
+  /// _subject_id? }] }`.
+  Future<Either<Failure, Unit>> createTeacherStudentLink(
+      {required String schoolId,
+      required String teacherId,
+      required List<String> studentIds,
+      String? sectionId,
+      String? classId,
+      String? subjectId});
+
+  /// Creates several teachers. `POST /teacher` accepts a single object only, so
+  /// each row `{name,email,password,phone?}` (stamped with [schoolId]) is posted
+  /// individually.
+  Future<Either<Failure, Unit>> createTeachers(
+      List<Map<String, dynamic>> people, String schoolId);
+
+  /// Creates several students at once via `POST /student/create`.
+  Future<Either<Failure, Unit>> createStudents(
+      List<Map<String, dynamic>> people, String schoolId);
+
+  Future<Either<Failure, Map<String, dynamic>>> overviewMetrics();
+
+  Future<Either<Failure, Map<String, dynamic>>> userMetrics({String? from, String? to});
+
+  Future<Either<Failure, Map<String, dynamic>>> contentMetrics(
+      {String? classId, String? subjectId});
+
+  Future<Either<Failure, Map<String, dynamic>>> questionJobMetrics();
+
+  Future<Either<Failure, Map<String, dynamic>>> engagementMetrics(
+      {String? from, String? to, String? classId, String? subjectId});
+}
+
+class AdminRepositoryImpl implements AdminRepository {
+  AdminRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   Future<Either<Failure, List<AdminSchool>>> schools() => guardEither(() async {
         final res = await _dio.get(Endpoints.school);
         return res.dataList().whereType<Map>().map(AdminSchool.fromJson).toList();
       });
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> classes() => guardEither(() async {
         final res = await _dio.get(Endpoints.classes);
         return res.dataList().whereType<Map>().map(AdminRecord.named).toList();
       });
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> teachers(String schoolId) =>
       guardEither(() async {
         final res = await _dio
@@ -212,6 +345,7 @@ class AdminRepository {
         return res.dataList().whereType<Map>().map(AdminRecord.person).toList();
       });
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> students(String schoolId) =>
       guardEither(() async {
         final res = await _dio
@@ -222,6 +356,7 @@ class AdminRepository {
   /// Creates a school. React's create form sends schoolName/schoolCode/
   /// schoolAddress/schoolBoard (required) plus optional phone/email/website,
   /// so we pass the assembled map through verbatim.
+  @override
   Future<Either<Failure, Unit>> createSchool(Map<String, dynamic> data) =>
       guardEither(() async {
         await _dio.post(Endpoints.school, data: data);
@@ -230,6 +365,7 @@ class AdminRepository {
 
   /// Creates a teacher. `POST /teacher` expects a single teacher **object**
   /// (the API rejects an array body with "value must be of type object").
+  @override
   Future<Either<Failure, Unit>> createTeacher(
           String name, String email, String password, String phone, String schoolId) =>
       guardEither(() async {
@@ -245,6 +381,7 @@ class AdminRepository {
 
   /// Creates a student. `POST /student/create` accepts a bulk **array** of
   /// student objects (mirrors React `createStudent`).
+  @override
   Future<Either<Failure, Unit>> createStudent(
           String name, String email, String password, String phone, String schoolId) =>
       guardEither(() async {
@@ -260,12 +397,14 @@ class AdminRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> sections(String schoolId) =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.sectionsBySchool(schoolId));
         return res.dataList().whereType<Map>().map(AdminRecord.named).toList();
       });
 
+  @override
   Future<Either<Failure, Unit>> createSection(String name, String schoolId,
           {String? classId, int? maxStrength}) =>
       guardEither(() async {
@@ -278,6 +417,7 @@ class AdminRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> bulkCreateSections(Map<String, dynamic> data) =>
       guardEither(() async {
         await _dio.post(Endpoints.sectionsBulk, data: data);
@@ -286,6 +426,7 @@ class AdminRepository {
 
   /// Bulk-creates sections from a list of names within a class (React's
   /// comma-separated "Bulk Add" form → `{schoolId, classId, sections: [names]}`).
+  @override
   Future<Either<Failure, Unit>> createSectionsBulk(
           String schoolId, String classId, List<String> names) =>
       guardEither(() async {
@@ -296,6 +437,7 @@ class AdminRepository {
 
   /// Sections scoped to a school+class with strength/active detail (React lists
   /// sections only after both school and class are chosen).
+  @override
   Future<Either<Failure, List<AdminSection>>> sectionsDetailed(
           String schoolId, String classId) =>
       guardEither(() async {
@@ -303,6 +445,7 @@ class AdminRepository {
         return res.dataList().whereType<Map>().map(AdminSection.fromJson).toList();
       });
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> sectionsByClass(
           String schoolId, String classId) =>
       guardEither(() async {
@@ -310,12 +453,14 @@ class AdminRepository {
         return res.dataList().whereType<Map>().map(AdminRecord.named).toList();
       });
 
+  @override
   Future<Either<Failure, AdminRecord>> sectionById(String sectionId) =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.sectionById(sectionId));
         return AdminRecord.named(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, Unit>> updateSection(
           String sectionId, Map<String, dynamic> data) =>
       guardEither(() async {
@@ -323,35 +468,44 @@ class AdminRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> deleteSection(String id) =>
       guardEither(() async { await _dio.delete(Endpoints.sectionById(id)); return unit; });
 
+  @override
   Future<Either<Failure, Unit>> updateSchool(String id, Map<String, dynamic> data) =>
       guardEither(() async { await _dio.put(Endpoints.schoolById(id), data: data); return unit; });
 
+  @override
   Future<Either<Failure, Unit>> deleteSchool(String id) =>
       guardEither(() async { await _dio.delete(Endpoints.schoolById(id)); return unit; });
 
+  @override
   Future<Either<Failure, Unit>> updateTeacher(String id, Map<String, dynamic> data) =>
       guardEither(() async { await _dio.put(Endpoints.teacherById(id), data: data); return unit; });
 
+  @override
   Future<Either<Failure, Unit>> deleteTeacher(String id) =>
       guardEither(() async { await _dio.delete(Endpoints.teacherById(id)); return unit; });
 
+  @override
   Future<Either<Failure, Unit>> updateStudent(String id, Map<String, dynamic> data) =>
       guardEither(() async { await _dio.put(Endpoints.studentById(id), data: data); return unit; });
 
+  @override
   Future<Either<Failure, Unit>> deleteStudent(String id) =>
       guardEither(() async { await _dio.delete(Endpoints.studentById(id)); return unit; });
 
   // ---- Curriculum (Chapters / Topics / Upload) --------------------------
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> subjects(String classId) =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.subjectsByClass(classId));
         return res.dataList().whereType<Map>().map(AdminRecord.named).toList();
       });
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> chapters(
           String classId, String subjectId) =>
       guardEither(() async {
@@ -359,6 +513,7 @@ class AdminRepository {
         return res.dataList().whereType<Map>().map(AdminRecord.chapter).toList();
       });
 
+  @override
   Future<Either<Failure, Unit>> createChapter(
           String classId, String subjectId, String name, int order) =>
       guardEither(() async {
@@ -371,6 +526,7 @@ class AdminRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> deleteChapters(
           String classId, String subjectId, List<String> chapterIds) =>
       guardEither(() async {
@@ -385,6 +541,7 @@ class AdminRepository {
   /// Uploads a PDF and creates a chapter via `POST /chapters/create-with-pdf`.
   /// The API expects a multipart body with classId, subjectId, chapterName,
   /// order, and the PDF as a `file` field.
+  @override
   Future<Either<Failure, Unit>> createChapterWithPdf({
     required String classId,
     required String subjectId,
@@ -405,6 +562,7 @@ class AdminRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> topics(
           String classId, String subjectId) =>
       guardEither(() async {
@@ -414,6 +572,7 @@ class AdminRepository {
 
   // ---- Relations / Mappings ---------------------------------------------
 
+  @override
   Future<Either<Failure, List<AdminRecord>>> teacherStudentLinks(String schoolId) =>
       guardEither(() async {
         final res = await _dio
@@ -423,6 +582,7 @@ class AdminRepository {
 
   /// Populated teacher↔student links for the Relations table (with class/
   /// section/subject + emails). Mirrors React RelationView's data source.
+  @override
   Future<Either<Failure, List<AdminLink>>> teacherStudentLinksDetailed(String schoolId) =>
       guardEither(() async {
         final res = await _dio
@@ -434,6 +594,7 @@ class AdminRepository {
   /// objects under `data`, one per student (mirrors React `LinkManagement`):
   /// `{ data: [{ school_id, teacher_id, student_id, class_id?, section_id?,
   /// _subject_id? }] }`.
+  @override
   Future<Either<Failure, Unit>> createTeacherStudentLink(
           {required String schoolId,
           required String teacherId,
@@ -463,6 +624,7 @@ class AdminRepository {
   /// Creates several teachers. `POST /teacher` accepts a single object only, so
   /// each row `{name,email,password,phone?}` (stamped with [schoolId]) is posted
   /// individually.
+  @override
   Future<Either<Failure, Unit>> createTeachers(
           List<Map<String, dynamic>> people, String schoolId) =>
       guardEither(() async {
@@ -473,6 +635,7 @@ class AdminRepository {
       });
 
   /// Creates several students at once via `POST /student/create`.
+  @override
   Future<Either<Failure, Unit>> createStudents(
           List<Map<String, dynamic>> people, String schoolId) =>
       guardEither(() async {
@@ -486,12 +649,14 @@ class AdminRepository {
   // Each returns the inner `data` object; query params drop empties so we
   // never send blank filters (mirrors React `cleanParams`).
 
+  @override
   Future<Either<Failure, Map<String, dynamic>>> overviewMetrics() =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.adminMetricsOverview);
         return res.dataMap();
       });
 
+  @override
   Future<Either<Failure, Map<String, dynamic>>> userMetrics(
           {String? from, String? to}) =>
       guardEither(() async {
@@ -500,6 +665,7 @@ class AdminRepository {
         return res.dataMap();
       });
 
+  @override
   Future<Either<Failure, Map<String, dynamic>>> contentMetrics(
           {String? classId, String? subjectId}) =>
       guardEither(() async {
@@ -508,12 +674,14 @@ class AdminRepository {
         return res.dataMap();
       });
 
+  @override
   Future<Either<Failure, Map<String, dynamic>>> questionJobMetrics() =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.adminMetricsQuestionJobs);
         return res.dataMap();
       });
 
+  @override
   Future<Either<Failure, Map<String, dynamic>>> engagementMetrics(
           {String? from, String? to, String? classId, String? subjectId}) =>
       guardEither(() async {

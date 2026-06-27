@@ -840,16 +840,43 @@ class _TeacherMock {
 
 // ---- Repository ---------------------------------------------------------------
 
-class TeacherRepository {
-  TeacherRepository(this._dio);
+abstract class TeacherRepository {
+  Future<Either<Failure, TeacherAssignmentsData>> assignments(String teacherId);
+
+  Future<Either<Failure, SubjectDashboard>> subjectDashboard(
+      String teacherId, String subjectId);
+
+  Future<Either<Failure, ({List<StudentRow> students, int totalCount})>> students(
+      String teacherId, String subjectId,
+      {String? status, String? sortBy, String? order});
+
+  Future<Either<Failure, WeakTopicsData>> weakTopics(
+      String teacherId, String subjectId,
+      {String? classId, String? sectionId, double? threshold});
+
+  Future<Either<Failure, List<ActivityItem>>> activity(
+      String teacherId, String subjectId, {int limit = 20});
+
+  Future<Either<Failure, ChapterAnalytics>> chapterAnalytics(
+      String teacherId, String subjectId, String chapterId,
+      {String? classId, String? sectionId});
+
+  Future<Either<Failure, StudentProgressData>> studentProgress(
+      String teacherId, String studentId, String subjectId);
+}
+
+class TeacherRepositoryImpl implements TeacherRepository {
+  TeacherRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   Future<Either<Failure, TeacherAssignmentsData>> assignments(String teacherId) =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.teacherAssignments(teacherId));
         return TeacherAssignmentsData.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, SubjectDashboard>> subjectDashboard(
           String teacherId, String subjectId) =>
       guardEither(() async {
@@ -857,6 +884,7 @@ class TeacherRepository {
         return SubjectDashboard.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, ({List<StudentRow> students, int totalCount})>> students(
           String teacherId, String subjectId,
           {String? status, String? sortBy, String? order}) =>
@@ -874,6 +902,7 @@ class TeacherRepository {
         return (students: list, totalCount: body.intval(['totalCount', 'total']));
       });
 
+  @override
   Future<Either<Failure, WeakTopicsData>> weakTopics(
           String teacherId, String subjectId,
           {String? classId, String? sectionId, double? threshold}) =>
@@ -889,6 +918,7 @@ class TeacherRepository {
         return WeakTopicsData.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, List<ActivityItem>>> activity(
           String teacherId, String subjectId, {int limit = 20}) =>
       guardEither(() async {
@@ -899,6 +929,7 @@ class TeacherRepository {
         return res.dataList(['activities']).whereType<Map>().map(ActivityItem.fromJson).toList();
       });
 
+  @override
   Future<Either<Failure, ChapterAnalytics>> chapterAnalytics(
           String teacherId, String subjectId, String chapterId,
           {String? classId, String? sectionId}) =>
@@ -913,6 +944,7 @@ class TeacherRepository {
         return ChapterAnalytics.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, StudentProgressData>> studentProgress(
           String teacherId, String studentId, String subjectId) =>
       guardEither(() async {

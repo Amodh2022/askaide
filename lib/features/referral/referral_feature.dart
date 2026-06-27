@@ -34,10 +34,16 @@ class ReferralInfo extends Equatable {
   List<Object?> get props => [code, redeemCount, dailyGoal];
 }
 
-class ReferralRepository {
-  ReferralRepository(this._dio);
+abstract class ReferralRepository {
+  Future<Either<Failure, ReferralInfo>> load();
+  Future<Either<Failure, Unit>> setGoal(int dailyGoal);
+}
+
+class ReferralRepositoryImpl implements ReferralRepository {
+  ReferralRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   Future<Either<Failure, ReferralInfo>> load() => guardEither(() async {
         final res = await _dio.get(Endpoints.referralMyCode);
         final d = res.dataMap();
@@ -59,6 +65,7 @@ class ReferralRepository {
         return info;
       });
 
+  @override
   Future<Either<Failure, Unit>> setGoal(int dailyGoal) => guardEither(() async {
         await _dio.put(Endpoints.goals, data: {'dailyGoal': dailyGoal});
         return unit;

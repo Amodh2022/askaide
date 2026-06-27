@@ -77,9 +77,9 @@ Future<void> configureDependencies(LocalStorageService localStorage) async {
   _registerDashboard();
   _registerQuiz();
   sl
-    ..registerLazySingleton<ReferralRepository>(() => ReferralRepository(sl()))
+    ..registerLazySingleton<ReferralRepository>(() => ReferralRepositoryImpl(sl()))
     ..registerFactory<ReferralCubit>(() => ReferralCubit(sl()))
-    ..registerLazySingleton<TeacherRepository>(() => TeacherRepository(sl()))
+    ..registerLazySingleton<TeacherRepository>(() => TeacherRepositoryImpl(sl()))
     ..registerFactory<TeacherHomeCubit>(() => TeacherHomeCubit(sl()))
     ..registerFactory<TeacherSubjectCubit>(() => TeacherSubjectCubit(sl()))
     ..registerFactory<TeacherStudentCubit>(() => TeacherStudentCubit(sl()))
@@ -87,18 +87,18 @@ Future<void> configureDependencies(LocalStorageService localStorage) async {
     ..registerFactory<TeacherChapterCubit>(() => TeacherChapterCubit(sl()))
     ..registerFactory<TeacherWeakTopicsCubit>(() => TeacherWeakTopicsCubit(sl()))
     ..registerFactory<TeacherActivityCubit>(() => TeacherActivityCubit(sl()))
-    ..registerLazySingleton<ParentRepository>(() => ParentRepository(sl()))
+    ..registerLazySingleton<ParentRepository>(() => ParentRepositoryImpl(sl()))
     ..registerFactory<ParentCubit>(() => ParentCubit(sl()))
-    ..registerLazySingleton<AdminRepository>(() => AdminRepository(sl()))
+    ..registerLazySingleton<AdminRepository>(() => AdminRepositoryImpl(sl()))
     ..registerFactory<AdminCubit>(() => AdminCubit(sl()))
     ..registerLazySingleton<TaxonomyRepository>(() => TaxonomyRepository(sl()))
-    ..registerLazySingleton<QuestionPaperRepository>(() => QuestionPaperRepository(sl()))
+    ..registerLazySingleton<QuestionPaperRepository>(() => QuestionPaperRepositoryImpl(sl()))
     ..registerFactory<PaperPreviewCubit>(() => PaperPreviewCubit(sl()))
     ..registerFactory<PaperHistoryCubit>(() => PaperHistoryCubit(sl()))
     ..registerFactory<QpGeneratorCubit>(() => QpGeneratorCubit(sl(), sl(), sl()))
     ..registerFactory<PublicQpCubit>(() => PublicQpCubit(sl(), sl()))
     ..registerLazySingleton<AiAssistantRepository>(() => AiAssistantRepository(sl()))
-    ..registerLazySingleton<PublicStatsRepository>(() => PublicStatsRepository(sl()))
+    ..registerLazySingleton<PublicStatsRepository>(() => PublicStatsRepositoryImpl(sl()))
     ..registerFactory<PublicStatsCubit>(() => PublicStatsCubit(sl()));
 
   // ---- App-global cubits --------------------------------------------------
@@ -110,15 +110,15 @@ Future<void> configureDependencies(LocalStorageService localStorage) async {
 
 void _registerDashboard() {
   sl
-    ..registerLazySingleton<DashboardRepository>(() => DashboardRepository(sl()))
+    ..registerLazySingleton<DashboardRepository>(() => DashboardRepositoryImpl(sl()))
     ..registerFactory<DashboardCubit>(() => DashboardCubit(sl()))
-    ..registerLazySingleton<ProgressRepository>(() => ProgressRepository(sl()))
+    ..registerLazySingleton<ProgressRepository>(() => ProgressRepositoryImpl(sl()))
     ..registerFactory<ProgressCubit>(() => ProgressCubit(sl()));
 }
 
 void _registerQuiz() {
   sl
-    ..registerLazySingleton<QuizRepository>(() => QuizRepository(sl()))
+    ..registerLazySingleton<QuizRepository>(() => QuizRepositoryImpl(sl()))
     ..registerFactory<QuizListCubit>(() => QuizListCubit(sl()))
     ..registerFactory<QuizAttemptCubit>(() => QuizAttemptCubit(sl()))
     ..registerFactory<QuizResultCubit>(() => QuizResultCubit(sl()))

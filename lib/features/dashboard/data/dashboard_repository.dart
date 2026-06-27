@@ -11,10 +11,17 @@ import 'dashboard_models.dart';
 
 /// Remote data source + repository for dashboard stats and progress. Reads the
 /// `/progress/user/:id` and `/streaks/:id` endpoints and merges them.
-class DashboardRepository {
-  DashboardRepository(this._dio);
+abstract class DashboardRepository {
+  Future<Either<Failure, DashboardData>> loadDashboard(String userId);
+  Future<Either<Failure, List<TopicProgressItem>>> loadTopicProgress(
+      String userId, String subjectId);
+}
+
+class DashboardRepositoryImpl implements DashboardRepository {
+  DashboardRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   Future<Either<Failure, DashboardData>> loadDashboard(String userId) =>
       guardEither(() async {
         final progressRes = await _dio.get(Endpoints.userProgress(userId));
@@ -189,6 +196,7 @@ class DashboardRepository {
   static String _dayKey(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  @override
   Future<Either<Failure, List<TopicProgressItem>>> loadTopicProgress(
           String userId, String subjectId) =>
       guardEither(() async {

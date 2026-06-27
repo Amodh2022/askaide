@@ -158,21 +158,41 @@ class ParentStudentLink extends Equatable {
   List<Object?> get props => [id, parentName, studentName];
 }
 
-class ParentRepository {
-  ParentRepository(this._dio);
+abstract class ParentRepository {
+  Future<Either<Failure, List<Child>>> children();
+  Future<Either<Failure, ChildOverview>> overview(String childId);
+  Future<Either<Failure, ChildSubjectProgress>> subjectProgress(
+      String childId, String subjectId);
+  Future<Either<Failure, List<ChildWeakTopic>>> weakTopics(
+      String childId, String subjectId);
+  Future<Either<Failure, List<ChildActivityItem>>> activity(String childId,
+      {int limit = 20});
+  Future<Either<Failure, List<ParentStudentLink>>> links({
+    String? parentId,
+    String? studentId,
+  });
+  Future<Either<Failure, Unit>> linkBulk(Map<String, dynamic> data);
+  Future<Either<Failure, Unit>> unlinkChild(String studentId);
+}
+
+class ParentRepositoryImpl implements ParentRepository {
+  ParentRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   Future<Either<Failure, List<Child>>> children() => guardEither(() async {
         final res = await _dio.get(Endpoints.parentChildren);
         return res.dataList(['children']).whereType<Map>().map(Child.fromJson).toList();
       });
 
+  @override
   Future<Either<Failure, ChildOverview>> overview(String childId) =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.parentChildOverview(childId));
         return ChildOverview.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, ChildSubjectProgress>> subjectProgress(
           String childId, String subjectId) =>
       guardEither(() async {
@@ -181,6 +201,7 @@ class ParentRepository {
         return ChildSubjectProgress.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, List<ChildWeakTopic>>> weakTopics(
           String childId, String subjectId) =>
       guardEither(() async {
@@ -193,6 +214,7 @@ class ParentRepository {
             .toList();
       });
 
+  @override
   Future<Either<Failure, List<ChildActivityItem>>> activity(
           String childId, {int limit = 20}) =>
       guardEither(() async {
@@ -209,6 +231,7 @@ class ParentRepository {
 
   // ---- Parent ↔ Student linking (Admin/Principal + parent self-service) ----
 
+  @override
   Future<Either<Failure, List<ParentStudentLink>>> links({
     String? parentId,
     String? studentId,
@@ -225,12 +248,14 @@ class ParentRepository {
             .toList();
       });
 
+  @override
   Future<Either<Failure, Unit>> linkBulk(Map<String, dynamic> data) =>
       guardEither(() async {
         await _dio.post(Endpoints.parentStudentsBulk, data: data);
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> unlinkChild(String studentId) =>
       guardEither(() async {
         await _dio.delete(Endpoints.parentStudentUnlink(studentId));

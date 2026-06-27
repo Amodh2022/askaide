@@ -8,15 +8,29 @@ import 'progress_models.dart';
 
 /// Backs the `/progress` screen: class/subject configuration, per-subject topic
 /// progress, and best-effort AI insights. Mirrors the frontend `studyApi`.
-class ProgressRepository {
-  ProgressRepository(this._dio);
+abstract class ProgressRepository {
+  Future<Either<Failure, List<ClassConfig>>> configuration();
+  Future<Either<Failure, SubjectProgressData>> topicProgress(
+      String userId, String subjectId);
+
+  /// AI learning-coach insight for a subject; null on any failure.
+  Future<String?> subjectInsight(String userId, String subjectId);
+
+  /// AI learning-coach insight for a chapter; null on any failure.
+  Future<String?> chapterInsight(String userId, String chapterId);
+}
+
+class ProgressRepositoryImpl implements ProgressRepository {
+  ProgressRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   Future<Either<Failure, List<ClassConfig>>> configuration() => guardEither(() async {
         final res = await _dio.get(Endpoints.studyConfiguration);
         return res.dataList().whereType<Map>().map(ClassConfig.fromJson).toList();
       });
 
+  @override
   Future<Either<Failure, SubjectProgressData>> topicProgress(
           String userId, String subjectId) =>
       guardEither(() async {
@@ -25,6 +39,7 @@ class ProgressRepository {
       });
 
   /// AI learning-coach insight for a subject; null on any failure.
+  @override
   Future<String?> subjectInsight(String userId, String subjectId) async {
     try {
       final res = await _dio.get(Endpoints.aiInsightsSubject(userId, subjectId));
@@ -35,6 +50,7 @@ class ProgressRepository {
   }
 
   /// AI learning-coach insight for a chapter; null on any failure.
+  @override
   Future<String?> chapterInsight(String userId, String chapterId) async {
     try {
       final res = await _dio.get(Endpoints.aiInsightsChapter(userId, chapterId));

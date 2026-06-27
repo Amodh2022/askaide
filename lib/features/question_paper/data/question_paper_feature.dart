@@ -145,16 +145,29 @@ class PaperSummary extends Equatable {
       [id, title, questionCount, createdAt, className, subjectName, totalMarks, duration];
 }
 
-class QuestionPaperRepository {
-  QuestionPaperRepository(this._dio);
+abstract class QuestionPaperRepository {
+  String pdfUrl(String paperId);
+  Future<Either<Failure, Uint8List>> downloadPdf(String paperId);
+  Future<Either<Failure, ({List<PaperSummary> papers, int total, int totalPages})>>
+      history({int page = 1, int limit = 10});
+  Future<Either<Failure, PaperPreview>> preview(String paperId);
+  Future<Either<Failure, String>> generate(Map<String, dynamic> body);
+  Future<Either<Failure, Unit>> deletePaper(String paperId);
+  Future<Either<Failure, PaperPreview>> generatePublic(Map<String, dynamic> body);
+}
+
+class QuestionPaperRepositoryImpl implements QuestionPaperRepository {
+  QuestionPaperRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   String pdfUrl(String paperId) =>
       '${AppConstants.apiBaseUrl}${Endpoints.questionPaperPdfUrl(paperId)}';
 
   /// Downloads the server-rendered PDF for [paperId] as raw bytes. Mirrors
   /// React's `downloadPaperPDF` (`GET /question-paper/:id/pdf`, blob response)
   /// so the app shares the exact PDF the web produces.
+  @override
   Future<Either<Failure, Uint8List>> downloadPdf(String paperId) =>
       guardEither(() async {
         final res = await _dio.get<List<int>>(
@@ -164,6 +177,7 @@ class QuestionPaperRepository {
         return Uint8List.fromList(res.data ?? const <int>[]);
       });
 
+  @override
   Future<Either<Failure, ({List<PaperSummary> papers, int total, int totalPages})>>
       history({int page = 1, int limit = 10}) => guardEither(() async {
         final res = await _dio.get(
@@ -188,17 +202,20 @@ class QuestionPaperRepository {
         );
       });
 
+  @override
   Future<Either<Failure, PaperPreview>> preview(String paperId) => guardEither(() async {
         final res = await _dio.get(Endpoints.questionPaperPreview(paperId));
         return PaperPreview.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, String>> generate(Map<String, dynamic> body) =>
       guardEither(() async {
         final res = await _dio.post(Endpoints.questionPaper, data: body);
         return res.dataMap().str(['_id', 'id', 'paperId']);
       });
 
+  @override
   Future<Either<Failure, Unit>> deletePaper(String paperId) =>
       guardEither(() async {
         await _dio.delete(Endpoints.questionPaperDelete(paperId));
@@ -208,6 +225,7 @@ class QuestionPaperRepository {
   /// Guest/public generation (lead magnet). Returns the full paper payload so
   /// the caller can render a PDF without authentication. Mirrors React's
   /// `generatePublicPaper({ leadParams, paperParams })`.
+  @override
   Future<Either<Failure, PaperPreview>> generatePublic(
           Map<String, dynamic> body) =>
       guardEither(() async {

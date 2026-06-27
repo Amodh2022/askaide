@@ -7,10 +7,106 @@ import '../../../core/network/endpoints.dart';
 import 'quiz_models.dart';
 
 /// Remote data source + repository for the student quiz flow.
-class QuizRepository {
-  QuizRepository(this._dio);
+abstract class QuizRepository {
+  Future<Either<Failure, QuizPage<QuizSummary>>> available({
+    int page,
+    int limit,
+    String? status,
+    String? subjectId,
+  });
+
+  Future<Either<Failure, QuizPage<QuizHistoryItem>>> history({
+    int page,
+    int limit,
+    String? subjectId,
+  });
+
+  Future<Either<Failure, QuizAttempt>> start(String quizId);
+
+  Future<Either<Failure, QuizAttempt>> getAttempt(String attemptId);
+
+  Future<Either<Failure, Unit>> answer(
+    String attemptId, {
+    required String quizQuestionId,
+    required String selectedAnswer,
+    required int timeSpent,
+  });
+
+  Future<Either<Failure, Unit>> submit(String attemptId);
+
+  Future<Either<Failure, QuizResult>> result(String attemptId);
+
+  // Teacher-side quiz management endpoints (singular /quiz/* paths).
+
+  Future<Either<Failure, List<TeacherQuiz>>> teacherQuizzes(String teacherId);
+
+  Future<Either<Failure, String>> createQuiz(Map<String, dynamic> body);
+
+  /// Updates a draft quiz. Mirrors React `quizApi.updateQuiz` →
+  /// PUT `/quiz/:quizId` with any of `{ title, description, chapterIds,
+  /// sectionIds, settings }`.
+  Future<Either<Failure, Unit>> updateQuiz(
+      String quizId, Map<String, dynamic> body);
+
+  Future<Either<Failure, Unit>> publishQuiz(String quizId);
+
+  Future<Either<Failure, Unit>> closeQuiz(String quizId);
+
+  Future<Either<Failure, Unit>> cloneQuiz(String quizId);
+
+  Future<Either<Failure, Unit>> deleteQuiz(String quizId, {bool force});
+
+  Future<Either<Failure, List<BankQuestion>>> searchBank({
+    required String classId,
+    required String subjectId,
+    required List<String> chapterIds,
+    String? difficulty,
+    String? questionType,
+    String? search,
+    String? excludeQuizId,
+    int page,
+    int limit,
+  });
+
+  /// Adds questions to a quiz.
+  ///
+  /// Mirrors React `quizApi.addQuestions` body:
+  /// `{ questions: [{ questionId?, marks, customQuestion? }] }`.
+  /// Pass [questionIds] for bank questions (uses [marksById] for per-item
+  /// marks) or pass [rawQuestions] for a pre-built list that may contain
+  /// `customQuestion` entries.
+  Future<Either<Failure, Unit>> addQuestions(
+    String quizId,
+    List<String> questionIds, {
+    Map<String, int> marksById,
+    List<Map<String, dynamic>>? rawQuestions,
+  });
+
+  /// Loads a quiz's currently-attached questions (the teacher manager view).
+  /// Mirrors React `quizApi.getQuiz` → `GET /quiz/:quizId` returning
+  /// `{ quiz, questions }`; we surface the ordered `questions` list.
+  Future<Either<Failure, List<QuizManagedQuestion>>> quizQuestions(
+      String quizId);
+
+  /// Removes a single question from a quiz. Mirrors React `quizApi.removeQuestion`:
+  /// DELETE `/quiz/:quizId/questions/:questionId`.
+  Future<Either<Failure, Unit>> removeQuestion(
+      String quizId, String questionId);
+
+  /// Reorders a quiz's questions. Mirrors React `quizApi.reorderQuestions`:
+  /// PUT `/quiz/:quizId/questions/reorder` with body `{ order: [...quizQuestionIds] }`.
+  Future<Either<Failure, Unit>> reorderQuestions(
+      String quizId, List<String> orderedIds);
+
+  Future<Either<Failure, QuizAnalyticsData>> analytics(String quizId);
+}
+
+/// Remote data source + repository for the student quiz flow.
+class QuizRepositoryImpl implements QuizRepository {
+  QuizRepositoryImpl(this._dio);
   final Dio _dio;
 
+  @override
   Future<Either<Failure, QuizPage<QuizSummary>>> available({
     int page = 1,
     int limit = 12,
@@ -44,6 +140,7 @@ class QuizRepository {
         );
       });
 
+  @override
   Future<Either<Failure, QuizPage<QuizHistoryItem>>> history({
     int page = 1,
     int limit = 10,
@@ -75,18 +172,21 @@ class QuizRepository {
         );
       });
 
+  @override
   Future<Either<Failure, QuizAttempt>> start(String quizId) =>
       guardEither(() async {
         final res = await _dio.post(Endpoints.quizStart(quizId));
         return QuizAttempt.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, QuizAttempt>> getAttempt(String attemptId) =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.quizAttemptGet(attemptId));
         return QuizAttempt.fromJson(res.dataMap());
       });
 
+  @override
   Future<Either<Failure, Unit>> answer(
     String attemptId, {
     required String quizQuestionId,
@@ -102,21 +202,23 @@ class QuizRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> submit(String attemptId) =>
       guardEither(() async {
         await _dio.post(Endpoints.quizAttemptSubmit(attemptId));
         return unit;
       });
 
+  @override
   Future<Either<Failure, QuizResult>> result(String attemptId) =>
       guardEither(() async {
         final res = await _dio.get(Endpoints.quizAttemptResult(attemptId));
         return QuizResult.fromJson(res.dataMap());
       });
-}
 
-/// Teacher-side quiz management endpoints (singular /quiz/* paths).
-extension TeacherQuizApi on QuizRepository {
+  // Teacher-side quiz management endpoints (singular /quiz/* paths).
+
+  @override
   Future<Either<Failure, List<TeacherQuiz>>> teacherQuizzes(String teacherId) =>
       guardEither(() async {
         final res = await _dio.get('/quiz/teacher/$teacherId');
@@ -127,6 +229,7 @@ extension TeacherQuizApi on QuizRepository {
             .toList();
       });
 
+  @override
   Future<Either<Failure, String>> createQuiz(Map<String, dynamic> body) =>
       guardEither(() async {
         final res = await _dio.post('/quiz', data: body);
@@ -136,6 +239,7 @@ extension TeacherQuizApi on QuizRepository {
   /// Updates a draft quiz. Mirrors React `quizApi.updateQuiz` →
   /// PUT `/quiz/:quizId` with any of `{ title, description, chapterIds,
   /// sectionIds, settings }`.
+  @override
   Future<Either<Failure, Unit>> updateQuiz(
           String quizId, Map<String, dynamic> body) =>
       guardEither(() async {
@@ -143,24 +247,28 @@ extension TeacherQuizApi on QuizRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> publishQuiz(String quizId) =>
       guardEither(() async {
         await _dio.post('/quiz/$quizId/publish');
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> closeQuiz(String quizId) =>
       guardEither(() async {
         await _dio.post('/quiz/$quizId/close');
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> cloneQuiz(String quizId) =>
       guardEither(() async {
         await _dio.post('/quiz/$quizId/clone');
         return unit;
       });
 
+  @override
   Future<Either<Failure, Unit>> deleteQuiz(String quizId,
           {bool force = false}) =>
       guardEither(() async {
@@ -169,6 +277,7 @@ extension TeacherQuizApi on QuizRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, List<BankQuestion>>> searchBank({
     required String classId,
     required String subjectId,
@@ -207,6 +316,7 @@ extension TeacherQuizApi on QuizRepository {
   /// Pass [questionIds] for bank questions (uses [marksById] for per-item
   /// marks) or pass [rawQuestions] for a pre-built list that may contain
   /// `customQuestion` entries.
+  @override
   Future<Either<Failure, Unit>> addQuestions(
     String quizId,
     List<String> questionIds, {
@@ -226,6 +336,7 @@ extension TeacherQuizApi on QuizRepository {
   /// Loads a quiz's currently-attached questions (the teacher manager view).
   /// Mirrors React `quizApi.getQuiz` → `GET /quiz/:quizId` returning
   /// `{ quiz, questions }`; we surface the ordered `questions` list.
+  @override
   Future<Either<Failure, List<QuizManagedQuestion>>> quizQuestions(
           String quizId) =>
       guardEither(() async {
@@ -242,6 +353,7 @@ extension TeacherQuizApi on QuizRepository {
 
   /// Removes a single question from a quiz. Mirrors React `quizApi.removeQuestion`:
   /// DELETE `/quiz/:quizId/questions/:questionId`.
+  @override
   Future<Either<Failure, Unit>> removeQuestion(
           String quizId, String questionId) =>
       guardEither(() async {
@@ -251,6 +363,7 @@ extension TeacherQuizApi on QuizRepository {
 
   /// Reorders a quiz's questions. Mirrors React `quizApi.reorderQuestions`:
   /// PUT `/quiz/:quizId/questions/reorder` with body `{ order: [...quizQuestionIds] }`.
+  @override
   Future<Either<Failure, Unit>> reorderQuestions(
           String quizId, List<String> orderedIds) =>
       guardEither(() async {
@@ -259,6 +372,7 @@ extension TeacherQuizApi on QuizRepository {
         return unit;
       });
 
+  @override
   Future<Either<Failure, QuizAnalyticsData>> analytics(String quizId) =>
       guardEither(() async {
         final res = await _dio.get('/quiz/$quizId/analytics');
