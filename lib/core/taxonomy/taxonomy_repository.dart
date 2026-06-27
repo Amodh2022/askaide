@@ -6,19 +6,45 @@ import '../error/failures.dart';
 import '../network/api_helpers.dart';
 import '../network/endpoints.dart';
 
-/// A selectable class / subject / chapter item.
+/// A selectable class / subject / chapter item. The chapter-specific fields
+/// ([number], [comingSoon], [isStartable]) are absent (default) for class and
+/// subject items; they let this serve as the single taxonomy source of truth
+/// for both the generic pickers and the study config funnel.
 class TaxItem extends Equatable {
-  const TaxItem({required this.id, required this.name});
+  const TaxItem({
+    required this.id,
+    required this.name,
+    this.number,
+    this.comingSoon = false,
+    this.isStartable = true,
+  });
   final String id;
   final String name;
+
+  /// Chapter ordering number, when the payload carries one.
+  final int? number;
+
+  /// Chapter is announced but not yet available for practice.
+  final bool comingSoon;
+
+  /// False when the backend marks a chapter as not yet startable (e.g. no
+  /// questions generated) — shown in the list but not selectable.
+  final bool isStartable;
 
   factory TaxItem.fromJson(Map<dynamic, dynamic> j) => TaxItem(
         id: j.str(['_id', 'id']),
         name: j.str(['name', 'subjectName', 'chapterName', 'className'], 'Item'),
+        number: (j['number'] ?? j['chapterNumber']) is num
+            ? (j['number'] ?? j['chapterNumber']).toInt()
+            : null,
+        comingSoon: j['comingSoon'] == true ||
+            j['coming_soon'] == true ||
+            j['isAvailable'] == false,
+        isStartable: j['isStartable'] != false,
       );
 
   @override
-  List<Object?> get props => [id, name];
+  List<Object?> get props => [id, name, number, comingSoon, isStartable];
 }
 
 /// Shared class → subject → chapter lookup, used by the question-paper generator

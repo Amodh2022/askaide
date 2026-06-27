@@ -14,7 +14,8 @@ void registerSession(GetIt sl) {
     ..registerLazySingleton<SessionLocalDataSource>(
         () => SessionLocalDataSourceImpl(sl()))
     ..registerLazySingleton<SessionRepository>(
-      () => SessionRepositoryImpl(remote: sl(), local: sl(), networkInfo: sl()),
+      () => SessionRepositoryImpl(
+          remote: sl(), local: sl(), networkInfo: sl(), taxonomy: sl()),
     )
     ..registerLazySingleton(() => GetClasses(sl()))
     ..registerLazySingleton(() => GetSubjects(sl()))

@@ -4,7 +4,6 @@ import '../../../../core/error/exceptions.dart';
 import '../../../../core/network/endpoints.dart';
 import '../../domain/entities/study_enums.dart';
 import '../../domain/entities/study_session.dart';
-import '../../domain/entities/study_taxonomy.dart';
 import '../../domain/entities/user_answer.dart';
 import '../models/question_model.dart';
 
@@ -25,9 +24,6 @@ class QuestionBatchResult {
 }
 
 abstract class SessionRemoteDataSource {
-  Future<List<ClassOption>> getClasses();
-  Future<List<SubjectOption>> getSubjects(String classId);
-  Future<List<ChapterOption>> getChapters(String classId, String subjectId);
   Future<QuestionBatchResult> fetchQuestionBatch({
     required String chapterId,
     required String type,
@@ -107,51 +103,6 @@ class SessionRemoteDataSourceImpl implements SessionRemoteDataSource {
       }
     }
     return null;
-  }
-
-  @override
-  Future<List<ClassOption>> getClasses() async {
-    final res = await _dio.get(Endpoints.classes);
-    return _list(res)
-        .map((e) => ClassOption(
-              id: (e['_id'] ?? e['id']).toString(),
-              name: (e['name'] ?? e['className'] ?? '').toString(),
-            ))
-        .toList();
-  }
-
-  @override
-  Future<List<SubjectOption>> getSubjects(String classId) async {
-    final res = await _dio.get(Endpoints.subjectsByClass(classId));
-    return _list(res)
-        .map((e) => SubjectOption(
-              id: (e['_id'] ?? e['id']).toString(),
-              name: (e['name'] ?? e['subjectName'] ?? '').toString(),
-              classId: classId,
-            ))
-        .toList();
-  }
-
-  @override
-  Future<List<ChapterOption>> getChapters(
-    String classId,
-    String subjectId,
-  ) async {
-    final res = await _dio.get(Endpoints.chapters(classId, subjectId));
-    return _list(res)
-        .map((e) => ChapterOption(
-              id: (e['_id'] ?? e['id']).toString(),
-              name: (e['name'] ?? e['chapterName'] ?? '').toString(),
-              number: (e['number'] ?? e['chapterNumber']) is num
-                  ? (e['number'] ?? e['chapterNumber']).toInt()
-                  : null,
-              subjectId: subjectId,
-              comingSoon: e['comingSoon'] == true ||
-                  e['coming_soon'] == true ||
-                  e['isAvailable'] == false,
-              isStartable: e['isStartable'] != false,
-            ))
-        .toList();
   }
 
   @override

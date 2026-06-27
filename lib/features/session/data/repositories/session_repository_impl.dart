@@ -5,6 +5,7 @@ import '../../../../core/constants/app_constants.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/network/network_info.dart';
+import '../../../../core/taxonomy/taxonomy_repository.dart';
 import '../../domain/entities/question.dart';
 import '../../domain/entities/study_config.dart';
 import '../../domain/entities/study_session.dart';
@@ -24,13 +25,20 @@ class SessionRepositoryImpl implements SessionRepository {
     required SessionRemoteDataSource remote,
     required SessionLocalDataSource local,
     required NetworkInfo networkInfo,
+    required TaxonomyRepository taxonomy,
   })  : _remote = remote,
         _local = local,
-        _network = networkInfo;
+        _network = networkInfo,
+        _taxonomy = taxonomy;
 
   final SessionRemoteDataSource _remote;
   final SessionLocalDataSource _local;
   final NetworkInfo _network;
+
+  /// Shared taxonomy source of truth (also used by the quiz builder and
+  /// question-paper generator). The study funnel maps its [TaxItem]s onto the
+  /// richer study domain entities below.
+  final TaxonomyRepository _taxonomy;
 
   Future<Either<Failure, T>> _guard<T>(Future<T> Function() body) async {
     try {
@@ -56,20 +64,35 @@ class SessionRepositoryImpl implements SessionRepository {
     }
   }
 
+  // The class → subject → chapter funnel delegates to the shared
+  // [TaxonomyRepository] (same endpoints the quiz builder / paper generator
+  // use) and maps the generic TaxItems onto the study domain entities.
   @override
   Future<Either<Failure, List<ClassOption>>> getClasses() =>
-      _guard(_remote.getClasses);
+      _taxonomy.classes().then((e) => e.map((items) =>
+          items.map((t) => ClassOption(id: t.id, name: t.name)).toList()));
 
   @override
   Future<Either<Failure, List<SubjectOption>>> getSubjects(String classId) =>
-      _guard(() => _remote.getSubjects(classId));
+      _taxonomy.subjects(classId).then((e) => e.map((items) => items
+          .map((t) => SubjectOption(id: t.id, name: t.name, classId: classId))
+          .toList()));
 
   @override
   Future<Either<Failure, List<ChapterOption>>> getChapters(
     String classId,
     String subjectId,
   ) =>
-      _guard(() => _remote.getChapters(classId, subjectId));
+      _taxonomy.chapters(classId, subjectId).then((e) => e.map((items) => items
+          .map((t) => ChapterOption(
+                id: t.id,
+                name: t.name,
+                number: t.number,
+                subjectId: subjectId,
+                comingSoon: t.comingSoon,
+                isStartable: t.isStartable,
+              ))
+          .toList()));
 
   @override
   Future<Either<Failure, String>> createSession({
