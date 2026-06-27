@@ -1,6 +1,9 @@
+import 'dart:developer' as developer;
+
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/error/failures.dart';
@@ -42,10 +45,17 @@ class ReferralRepository {
           code: d.str(['code', 'referralCode']),
           redeemCount: d.intval(['redeemCount', 'referrals', 'totalReferrals']),
         );
+        // Daily goal is supplementary to the referral code; best-effort. A
+        // failure must not fail the referral load, but it's logged in debug.
         try {
           final g = await _dio.get(Endpoints.goals);
           info = info.copyWith(dailyGoal: g.dataMap().intval(['dailyGoal']));
-        } catch (_) {}
+        } catch (e, st) {
+          if (kDebugMode) {
+            developer.log('best-effort goal fetch failed',
+                name: 'ReferralRepository', error: e, stackTrace: st);
+          }
+        }
         return info;
       });
 

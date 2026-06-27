@@ -1,5 +1,8 @@
+import 'dart:developer' as developer;
+
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/error/failures.dart';
 import '../../../core/network/api_helpers.dart';
@@ -58,14 +61,17 @@ class DashboardRepository {
         );
 
         // Streak endpoint is the source of truth (the frontend's StreakDisplay
-        // reads it via fetchStreak); best-effort, ignore failures. The payload
-        // is sometimes nested under a `streak` object, so check both levels.
-        try {
+        // reads it via fetchStreak); best-effort, a failure here must not blank
+        // the dashboard. The payload is sometimes nested under a `streak`
+        // object, so check both levels.
+        final s = await _maybe(() async {
           final streakRes = await _dio.get(Endpoints.streak(userId));
           final outer = streakRes.dataMap();
-          final s = outer['streak'] is Map
+          return outer['streak'] is Map
               ? Map<String, dynamic>.from(outer['streak'] as Map)
               : outer;
+        });
+        if (s != null) {
           // Freezes can be a flat count or `streakFreezes: { available }`.
           final freezesObj = s['streakFreezes'] is Map
               ? Map<String, dynamic>.from(s['streakFreezes'] as Map)
@@ -83,7 +89,7 @@ class DashboardRepository {
                 .whereType<DateTime>()
                 .toList(),
           );
-        } catch (_) {}
+        }
 
         // The remaining sources are all best-effort — a 404 on any one of them
         // must not blank the whole dashboard.
@@ -113,10 +119,17 @@ class DashboardRepository {
       });
 
   /// Runs [fn], returning its value or null if it throws (best-effort fetch).
+  /// Failures are intentionally non-fatal — an optional sub-resource (streak,
+  /// goal, leaderboard…) must not blank the whole dashboard — but they are
+  /// logged in debug builds so a swallowed error is still observable.
   Future<T?> _maybe<T>(Future<T> Function() fn) async {
     try {
       return await fn();
-    } catch (_) {
+    } catch (e, st) {
+      if (kDebugMode) {
+        developer.log('best-effort dashboard fetch failed',
+            name: 'DashboardRepository', error: e, stackTrace: st);
+      }
       return null;
     }
   }
