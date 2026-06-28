@@ -171,9 +171,7 @@ class _DashboardView extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 if (loading)
-                  const SkeletonListLoader(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                  )
+                  const _DashboardSkeleton()
                 else ...[
                   // ── Continue session banner ──
                   if (data.continueSession != null) ...[

@@ -1,5 +1,298 @@
 part of '../role_dashboard_pages.dart';
 
+/// Shimmer skeleton matching the teacher home panel's subject-card grid layout.
+class _TeacherHomeSkeleton extends StatelessWidget {
+  const _TeacherHomeSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 24),
+          const SkeletonBox(width: 100, height: 10),
+          const SizedBox(height: 8),
+          const SkeletonBox(width: 240, height: 22),
+          const SizedBox(height: 6),
+          const SkeletonBox(width: 200, height: 12),
+          const SizedBox(height: 16),
+          // Action buttons row
+          Row(
+            children: List.generate(
+              4,
+              (_) => Padding(
+                padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
+                child: Container(
+                  width: 100,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: context.colors.bgCard,
+                    border: Border.all(color: context.colors.border),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Subject cards grid (2 columns)
+          LayoutBuilder(
+            builder: (context, cons) {
+              final w = (cons.maxWidth - 12) / 2;
+              return Column(
+                children: List.generate(
+                  2,
+                  (i) => Padding(
+                    padding: EdgeInsets.only(bottom: i < 1 ? 12 : 0),
+                    child: Row(
+                      children: [
+                        SizedBox(width: w, child: const _TeacherSubjectCardSkeleton()),
+                        const SizedBox(width: 12),
+                        SizedBox(width: w, child: const _TeacherSubjectCardSkeleton()),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A subject card skeleton matching [_SubjectCard] (colored top strip, emoji, text).
+class _TeacherSubjectCardSkeleton extends StatelessWidget {
+  const _TeacherSubjectCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: c.bgCard,
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 60,
+            color: c.bgRaised,
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            alignment: Alignment.bottomLeft,
+            child: Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: c.bgCard,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  width: 60,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: c.bgCard,
+                    border: Border.all(color: c.border),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SkeletonBox(width: 140, height: 16),
+                const SizedBox(height: 10),
+                ...List.generate(
+                  2,
+                  (_) => const Padding(
+                    padding: EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        SkeletonBox(width: 16, height: 16, radius: 4),
+                        SizedBox(width: 8),
+                        Expanded(child: SkeletonBox(height: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shimmer skeleton matching the teacher subject panel's KPI cards + chapter list.
+class _TeacherSubjectSkeleton extends StatelessWidget {
+  const _TeacherSubjectSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 24),
+          // Back button + header
+          const SkeletonBox(width: 140, height: 14),
+          const SizedBox(height: 16),
+          const SkeletonBox(width: 100, height: 10),
+          const SizedBox(height: 6),
+          const SkeletonBox(width: 200, height: 24),
+          const SizedBox(height: 16),
+          // Action buttons row
+          Row(
+            children: List.generate(
+              3,
+              (_) => Padding(
+                padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
+                child: Container(
+                  width: 100,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: context.colors.bgCard,
+                    border: Border.all(color: context.colors.border),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // KPI cards 2x2
+          ...List.generate(
+            2,
+            (row) => Padding(
+              padding: EdgeInsets.only(bottom: row < 1 ? 8 : 0),
+              child: Row(
+                children: List.generate(
+                  2,
+                  (_) => Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
+                      child: const _TeacherKpiCardSkeleton(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Chapter progress cards
+          ...List.generate(
+            3,
+            (_) => const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: _TeacherChapterCardSkeleton(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A KPI card skeleton matching [_KpiCard].
+class _TeacherKpiCardSkeleton extends StatelessWidget {
+  const _TeacherKpiCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.bgCard,
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(color: c.bgRaised, borderRadius: BorderRadius.circular(6)),
+          ),
+          const SizedBox(height: 8),
+          const SkeletonBox(width: 80, height: 20),
+          const SizedBox(height: 4),
+          const SkeletonBox(width: 60, height: 9),
+        ],
+      ),
+    );
+  }
+}
+
+/// A chapter progress card skeleton matching [_ChapterProgressCard].
+class _TeacherChapterCardSkeleton extends StatelessWidget {
+  const _TeacherChapterCardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.bgCard,
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: c.bgRaised, borderRadius: BorderRadius.circular(4)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SkeletonBox(width: 200, height: 14),
+                const SizedBox(height: 8),
+                const SkeletonBox(width: double.infinity, height: 4, radius: 99),
+                const SizedBox(height: 6),
+                Row(
+                  children: List.generate(
+                    3,
+                    (_) => const Padding(
+                      padding: EdgeInsets.only(right: 10),
+                      child: Row(
+                        children: [
+                          SkeletonCircle(size: 6),
+                          SizedBox(width: 3),
+                          SkeletonBox(width: 40, height: 10),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 String _subjectEmoji(String name) {

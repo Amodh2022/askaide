@@ -10,6 +10,15 @@ class UserAnswer extends Equatable {
     required this.isCorrect,
     required this.answeredAtMillis,
     this.synced = false,
+    this.userId,
+    this.subjectId,
+    this.chapterId,
+    this.subject,
+    this.chapter,
+    this.difficulty,
+    this.questionType,
+    this.batchNumber,
+    this.sessionSequence,
     this.questionText,
     this.options = const [],
     this.correctAnswer,
@@ -23,6 +32,20 @@ class UserAnswer extends Equatable {
   final bool isCorrect;
   final int answeredAtMillis;
   final bool synced;
+
+  /// Context the backend needs to persist the answer and aggregate progress.
+  /// The React client sends all of these with every `POST /user-answers/batch`;
+  /// omitting them (notably [userId]) makes the backend reject/ignore the
+  /// answer, so the session reads back with no recorded answers and a 0 score.
+  final String? userId;
+  final String? subjectId;
+  final String? chapterId;
+  final String? subject; // display name
+  final String? chapter; // display name
+  final String? difficulty; // lowercase api value, e.g. 'medium'
+  final String? questionType; // e.g. 'mcq'
+  final int? batchNumber; // 1-based, mirrors React's BATCH_SIZE grouping
+  final int? sessionSequence; // 1-based answer index within the session
 
   /// Question detail loaded for the session-review transcript (mirrors the
   /// React `UserAnswers` view, which renders the question, its options, the
@@ -43,6 +66,15 @@ class UserAnswer extends Equatable {
         isCorrect: isCorrect,
         answeredAtMillis: answeredAtMillis,
         synced: synced ?? this.synced,
+        userId: userId,
+        subjectId: subjectId,
+        chapterId: chapterId,
+        subject: subject,
+        chapter: chapter,
+        difficulty: difficulty,
+        questionType: questionType,
+        batchNumber: batchNumber,
+        sessionSequence: sessionSequence,
         questionText: questionText,
         options: options,
         correctAnswer: correctAnswer,
@@ -50,8 +82,9 @@ class UserAnswer extends Equatable {
         timeSpentSeconds: timeSpentSeconds,
       );
 
-  /// Local (Hive) serialization — keeps queue-only fields (`answeredAt`,
-  /// `synced`) used by the offline answer queue.
+  /// Local (Hive) serialization for the offline answer queue. Persists the
+  /// context fields too so a queued answer resyncs with the FULL wire payload
+  /// (and isn't rejected again on reconnect for missing fields).
   Map<String, dynamic> toJson() => {
         'questionId': questionId,
         'sessionId': sessionId,
@@ -59,18 +92,39 @@ class UserAnswer extends Equatable {
         'isCorrect': isCorrect,
         'answeredAt': answeredAtMillis,
         'synced': synced,
+        if (userId != null) 'userId': userId,
+        if (subjectId != null) 'subjectId': subjectId,
+        if (chapterId != null) 'chapterId': chapterId,
+        if (subject != null) 'subject': subject,
+        if (chapter != null) 'chapter': chapter,
+        if (difficulty != null) 'difficulty': difficulty,
+        if (questionType != null) 'questionType': questionType,
+        if (batchNumber != null) 'batchNumber': batchNumber,
+        if (sessionSequence != null) 'sessionSequence': sessionSequence,
+        if (timeSpentSeconds != null) 'timeSpent': timeSpentSeconds,
       };
 
-  /// Wire payload for `POST /user-answers/batch`. The backend records the
-  /// chosen answer under `selectedAnswer`/`selectedOption` (the React client
-  /// sends both) — not `answer` — so emit those keys and drop the local-only
-  /// queue fields (`answeredAt`, `synced`).
+  /// Wire payload for `POST /user-answers/batch`. Mirrors the React client's
+  /// `submitUserAnswers` answer object: the chosen value goes under both
+  /// `selectedAnswer` and `selectedOption`, alongside the user/subject/chapter
+  /// context the backend uses to store the answer and roll up progress.
   Map<String, dynamic> toWireJson() => {
-        'questionId': questionId,
         'sessionId': sessionId,
+        'questionId': questionId,
         'selectedAnswer': answer,
         'selectedOption': answer,
         'isCorrect': isCorrect,
+        if (userId != null && userId!.isNotEmpty) 'userId': userId,
+        if (subjectId != null && subjectId!.isNotEmpty) 'subjectId': subjectId,
+        if (chapterId != null && chapterId!.isNotEmpty) 'chapterId': chapterId,
+        if (subject != null && subject!.isNotEmpty) 'subject': subject,
+        if (chapter != null && chapter!.isNotEmpty) 'chapter': chapter,
+        if (difficulty != null && difficulty!.isNotEmpty) 'difficulty': difficulty,
+        if (questionType != null && questionType!.isNotEmpty)
+          'questionType': questionType,
+        if (batchNumber != null) 'batchNumber': batchNumber,
+        if (sessionSequence != null) 'sessionSequence': sessionSequence,
+        if (timeSpentSeconds != null) 'timeSpent': timeSpentSeconds,
       };
 
   factory UserAnswer.fromJson(Map<String, dynamic> json) => UserAnswer(
@@ -80,6 +134,16 @@ class UserAnswer extends Equatable {
         isCorrect: json['isCorrect'] == true,
         answeredAtMillis: (json['answeredAt'] as num?)?.toInt() ?? 0,
         synced: json['synced'] == true,
+        userId: json['userId']?.toString(),
+        subjectId: json['subjectId']?.toString(),
+        chapterId: json['chapterId']?.toString(),
+        subject: json['subject']?.toString(),
+        chapter: json['chapter']?.toString(),
+        difficulty: json['difficulty']?.toString(),
+        questionType: json['questionType']?.toString(),
+        batchNumber: (json['batchNumber'] as num?)?.toInt(),
+        sessionSequence: (json['sessionSequence'] as num?)?.toInt(),
+        timeSpentSeconds: (json['timeSpent'] as num?)?.toInt(),
       );
 
   @override
@@ -90,6 +154,15 @@ class UserAnswer extends Equatable {
         isCorrect,
         answeredAtMillis,
         synced,
+        userId,
+        subjectId,
+        chapterId,
+        subject,
+        chapter,
+        difficulty,
+        questionType,
+        batchNumber,
+        sessionSequence,
         questionText,
         options,
         correctAnswer,

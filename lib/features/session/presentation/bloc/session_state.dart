@@ -45,6 +45,8 @@ class SessionState extends Equatable {
     this.reviewStatus = LoadStatus.idle,
     this.questions = const [],
     this.currentIndex = 0,
+    this.questionOffset = 0,
+    this.seenQuestionIds = const {},
     this.answers = const {},
     this.feedback,
     this.sessionStarted = false,
@@ -59,6 +61,7 @@ class SessionState extends Equatable {
     this.npsEligible = false,
     this.finishing = false,
     this.mastered = false,
+    this.originRoute,
   });
 
   final SessionPanel panel;
@@ -73,6 +76,14 @@ class SessionState extends Equatable {
   final LoadStatus reviewStatus;
   final List<Question> questions;
   final int currentIndex;
+
+  /// Running total of questions shown in all completed batches (so the counter
+  /// displays as a continuous sequence across batch boundaries).
+  final int questionOffset;
+
+  /// IDs of every question already shown this session — used to filter the
+  /// next batch so the same question never appears twice.
+  final Set<String> seenQuestionIds;
 
   /// questionId → recorded answer for the active session.
   final Map<String, UserAnswer> answers;
@@ -106,6 +117,11 @@ class SessionState extends Equatable {
   /// answered everything available. Drives the mastery celebration UI (not an
   /// error). Mirrors React's `mastered` status from useQuestionPolling.
   final bool mastered;
+
+  /// When this session was launched from another screen (e.g. the Progress
+  /// page's "Practice this chapter"), the route to return to once the session
+  /// is dismissed. Null for sessions started from the in-study config funnel.
+  final String? originRoute;
 
   Question? get currentQuestion =>
       currentIndex >= 0 && currentIndex < questions.length
@@ -145,6 +161,8 @@ class SessionState extends Equatable {
     LoadStatus? reviewStatus,
     List<Question>? questions,
     int? currentIndex,
+    int? questionOffset,
+    Set<String>? seenQuestionIds,
     Map<String, UserAnswer>? answers,
     AnswerFeedback? feedback,
     bool clearFeedback = false,
@@ -162,6 +180,8 @@ class SessionState extends Equatable {
     bool? npsEligible,
     bool? finishing,
     bool? mastered,
+    String? originRoute,
+    bool clearOrigin = false,
   }) {
     return SessionState(
       panel: panel ?? this.panel,
@@ -174,6 +194,8 @@ class SessionState extends Equatable {
       reviewStatus: reviewStatus ?? this.reviewStatus,
       questions: questions ?? this.questions,
       currentIndex: currentIndex ?? this.currentIndex,
+      questionOffset: questionOffset ?? this.questionOffset,
+      seenQuestionIds: seenQuestionIds ?? this.seenQuestionIds,
       answers: answers ?? this.answers,
       feedback: clearFeedback ? null : (feedback ?? this.feedback),
       sessionStarted: sessionStarted ?? this.sessionStarted,
@@ -189,6 +211,7 @@ class SessionState extends Equatable {
       npsEligible: npsEligible ?? this.npsEligible,
       finishing: finishing ?? this.finishing,
       mastered: mastered ?? this.mastered,
+      originRoute: clearOrigin ? null : (originRoute ?? this.originRoute),
     );
   }
 
@@ -204,6 +227,8 @@ class SessionState extends Equatable {
         reviewStatus,
         questions,
         currentIndex,
+        questionOffset,
+        seenQuestionIds,
         answers,
         feedback,
         sessionStarted,
@@ -218,5 +243,6 @@ class SessionState extends Equatable {
         npsEligible,
         finishing,
         mastered,
+        originRoute,
       ];
 }

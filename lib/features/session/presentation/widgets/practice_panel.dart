@@ -134,12 +134,11 @@ class _PracticePanelState extends State<PracticePanel> {
                               // Between batches the index runs past the current
                               // batch while the next one generates — show a
                               // loading label instead of an overflow like 21/20.
-                              : q == null &&
-                                      state.questionStatus == LoadStatus.loading
+                              : state.questionStatus == LoadStatus.loading
                                   ? 'Generating…'
                                   : q == null
                                       ? 'Practice'
-                                      : 'Question ${state.currentIndex + 1} of $total',
+                                      : 'Question ${state.questionOffset + state.currentIndex + 1}',
                           style: AppTypography.labelLarge(c.textPrimary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -242,15 +241,46 @@ class _PracticePanelState extends State<PracticePanel> {
                       _DifficultyChip(difficulty: state.config.difficulty),
                     ],
                   ),
+                  // Row 3: compact session-progress bar + counter. Mirrors
+                  // React QuestionPractice's `Q{i+1}/{n}` progress indicator,
+                  // which the Flutter header was missing. Batch-relative, like
+                  // React (currentIndex within the current questions batch).
+                  if (total > 0) ...[
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: (state.currentIndex / total).clamp(0.0, 1.0),
+                              minHeight: 3,
+                              backgroundColor: c.bgRaised,
+                              valueColor: AlwaysStoppedAnimation(c.accent),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Q${(state.currentIndex + 1).clamp(1, total)}/$total',
+                          style: AppTypography.mono(c.textMuted, size: 9),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
             Expanded(
               child: state.mastered
                   ? const _MasteredView()
-                  : state.questionStatus == LoadStatus.loading && q == null
+                  // Show the generating loader for EVERY batch fetch (first batch
+                  // and each subsequent one) — questionStatus is only `loading`
+                  // while a batch is in flight, so the previous question must not
+                  // linger on screen. A failed fetch shows the retry view.
+                  : state.questionStatus == LoadStatus.loading
                   ? const _GeneratingView()
-                  : state.questionStatus == LoadStatus.failure && q == null
+                  : state.questionStatus == LoadStatus.failure
                       ? _QuestionErrorView(
                           message: state.errorMessage ??
                               'Could not load questions. Please try again.',

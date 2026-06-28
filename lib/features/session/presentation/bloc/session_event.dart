@@ -67,6 +67,31 @@ class PracticeStarted extends SessionEvent {
   List<Object?> get props => [userId];
 }
 
+/// Starts practice for a pre-resolved class/subject/chapter (e.g. tapping
+/// "Practice this chapter" on the Progress page), skipping the config funnel and
+/// jumping straight into the question loop. Question type and difficulty fall
+/// back to [StudyConfig]'s defaults.
+class ChapterPracticeStarted extends SessionEvent {
+  const ChapterPracticeStarted({
+    required this.userId,
+    required this.classOption,
+    required this.subject,
+    required this.chapter,
+    this.returnRoute,
+  });
+  final String userId;
+  final ClassOption classOption;
+  final SubjectOption subject;
+  final ChapterOption chapter;
+
+  /// Route to return to when the session is dismissed (e.g. the Progress page),
+  /// so the user lands back where they launched practice from.
+  final String? returnRoute;
+  @override
+  List<Object?> get props =>
+      [userId, classOption, subject, chapter, returnRoute];
+}
+
 class AnswerSubmitted extends SessionEvent {
   const AnswerSubmitted(this.answer);
   final String answer;

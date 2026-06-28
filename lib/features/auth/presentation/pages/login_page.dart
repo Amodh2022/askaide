@@ -118,16 +118,19 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        // Suppress the form during the cold-start token check so it doesn't
+        // flash before the router redirects authenticated users to /study.
+        if (state.status == AuthStatus.unknown) return const Scaffold();
 
-    return AuthScaffold(
-      tag: 'SIGN IN',
-      child: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          final busy = state.action == AuthAction.loading;
-          final failed = state.action == AuthAction.failure;
+        final c = context.colors;
+        final busy = state.action == AuthAction.loading;
+        final failed = state.action == AuthAction.failure;
 
-          return Column(
+        return AuthScaffold(
+          tag: 'SIGN IN',
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const AuthEyebrow('WELCOME BACK'),
@@ -232,9 +235,9 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 8),
             ],
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -39,7 +39,7 @@ class _TeacherHomeView extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   if (state.status == TLoad.loading) ...[
-                    const SkeletonListLoader(padding: EdgeInsets.all(24)),
+                    const _TeacherHomeSkeleton(),
                   ] else ...[
                     // Quick actions
                     Wrap(

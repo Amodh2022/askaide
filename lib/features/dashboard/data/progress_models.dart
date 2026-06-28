@@ -4,7 +4,8 @@ import '../../../core/network/api_helpers.dart';
 
 /// A class option (with its subjects) from `/study/configuration`.
 class ClassConfig extends Equatable {
-  const ClassConfig({required this.id, required this.name, required this.subjects});
+  const ClassConfig(
+      {required this.id, required this.name, required this.subjects});
   final String id;
   final String name;
   final List<SubjectOption> subjects;
@@ -24,17 +25,47 @@ class ClassConfig extends Equatable {
 }
 
 class SubjectOption extends Equatable {
-  const SubjectOption({required this.id, required this.name});
+  const SubjectOption(
+      {required this.id, required this.name, this.chapters = const []});
   final String id;
   final String name;
+
+  /// Chapters as listed by `/study/configuration` — the only source that
+  /// carries [ConfigChapter.isStartable] (the per-subject topic-progress payload
+  /// does not), so the Progress page reads startability from here.
+  final List<ConfigChapter> chapters;
 
   factory SubjectOption.fromJson(Map<dynamic, dynamic> j) => SubjectOption(
         id: j.str(['_id', 'id']),
         name: j.str(['name', 'subjectName'], 'Subject'),
+        chapters: j
+            .listAt(['chapters'])
+            .whereType<Map>()
+            .map(ConfigChapter.fromJson)
+            .toList(),
       );
 
   @override
-  List<Object?> get props => [id, name];
+  List<Object?> get props => [id, name, chapters];
+}
+
+/// A chapter as listed by `/study/configuration`, carrying the [isStartable]
+/// flag that gates whether a practice session can be started for it.
+class ConfigChapter extends Equatable {
+  const ConfigChapter(
+      {required this.id, required this.name, required this.isStartable});
+  final String id;
+  final String name;
+  final bool isStartable;
+
+  factory ConfigChapter.fromJson(Map<dynamic, dynamic> j) => ConfigChapter(
+        id: j.str(['_id', 'id', 'chapterId']),
+        name: j.str(['name', 'chapterName'], 'Chapter'),
+        isStartable: j['isStartable'] == true,
+      );
+
+  @override
+  List<Object?> get props => [id, name, isStartable];
 }
 
 /// A topic row inside a chapter detail view.
@@ -61,7 +92,8 @@ class TopicItem extends Equatable {
       );
 
   @override
-  List<Object?> get props => [topicId, name, state, masteryScore, lastPracticedAt];
+  List<Object?> get props =>
+      [topicId, name, state, masteryScore, lastPracticedAt];
 }
 
 /// A chapter row with coverage + mastery + topic counts.
@@ -96,12 +128,25 @@ class ChapterProgress extends Equatable {
         attemptedTopics: j.intval(['attemptedTopics']),
         coveragePercent: j.dbl(['coveragePercentage', 'coverage']),
         masteryScore: j.dbl(['masteryScore', 'mastery']),
-        topics: j.listAt(['topics']).whereType<Map>().map(TopicItem.fromJson).toList(),
+        topics: j
+            .listAt(['topics'])
+            .whereType<Map>()
+            .map(TopicItem.fromJson)
+            .toList(),
       );
 
   @override
-  List<Object?> get props =>
-      [chapterId, name, order, status, totalTopics, attemptedTopics, coveragePercent, masteryScore, topics];
+  List<Object?> get props => [
+        chapterId,
+        name,
+        order,
+        status,
+        totalTopics,
+        attemptedTopics,
+        coveragePercent,
+        masteryScore,
+        topics
+      ];
 }
 
 /// The full topic-progress payload for a subject.
@@ -120,16 +165,27 @@ class SubjectProgressData extends Equatable {
   final List<ChapterProgress> chapters;
 
   factory SubjectProgressData.fromJson(Map<dynamic, dynamic> j) {
-    final bd = j['chapterBreakdown'] is Map ? j['chapterBreakdown'] as Map : const {};
+    final bd =
+        j['chapterBreakdown'] is Map ? j['chapterBreakdown'] as Map : const {};
     return SubjectProgressData(
       subjectId: j.str(['subjectId']),
       subjectCoverage: j.dbl(['subjectCoverage']),
       subjectMastery: j.dbl(['subjectMastery']),
       chapterBreakdown: {
-        for (final k in ['not_started', 'weak', 'needs_revision', 'good', 'strong'])
+        for (final k in [
+          'not_started',
+          'weak',
+          'needs_revision',
+          'good',
+          'strong'
+        ])
           k: (bd[k] is num ? (bd[k] as num).toInt() : 0),
       },
-      chapters: j.listAt(['chapters']).whereType<Map>().map(ChapterProgress.fromJson).toList(),
+      chapters: j
+          .listAt(['chapters'])
+          .whereType<Map>()
+          .map(ChapterProgress.fromJson)
+          .toList(),
     );
   }
 

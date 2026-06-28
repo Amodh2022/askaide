@@ -10,6 +10,126 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/admin_feature.dart';
 
+/// Shimmer skeleton mirroring the admin overview's metric cards + charts layout.
+class _AdminOverviewSkeleton extends StatelessWidget {
+  const _AdminOverviewSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Shimmer(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Toolbar row
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: List.generate(
+              4,
+              (_) => Container(
+                width: 100,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: c.bgCard,
+                  border: Border.all(color: c.border),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Section label
+          const SkeletonBox(width: 140, height: 11),
+          const SizedBox(height: 8),
+          const SkeletonBox(width: 200, height: 10),
+          const SizedBox(height: 12),
+          // Metric card grid
+          LayoutBuilder(
+            builder: (context, cons) {
+              final cols = (cons.maxWidth / 150).floor().clamp(1, 6);
+              final gap = 8.0;
+              final rows = <Widget>[];
+              for (var i = 0; i < 6; i += cols) {
+                rows.add(Padding(
+                  padding: EdgeInsets.only(top: rows.isEmpty ? 0 : gap),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: List.generate(
+                      cols,
+                      (j) {
+                        if (i + j >= 6) return const SizedBox.shrink();
+                        return Expanded(
+                          child: Padding(
+                            padding: EdgeInsets.only(left: j > 0 ? gap : 0),
+                            child: const SkeletonAdminMetricCard(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ));
+              }
+              return Column(children: rows);
+            },
+          ),
+          const SizedBox(height: 24),
+          // Section label
+          const SkeletonBox(width: 120, height: 11),
+          const SizedBox(height: 8),
+          const SkeletonBox(width: 180, height: 10),
+          const SizedBox(height: 12),
+          // Stats row
+          Row(
+            children: List.generate(
+              4,
+              (_) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
+                  child: const SkeletonAdminMetricCard(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Chart boxes row (2)
+          Row(
+            children: List.generate(
+              2,
+              (_) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: _ > 0 ? 12 : 0),
+                  child: const SkeletonChartBox(height: 220),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Section label
+          const SkeletonBox(width: 130, height: 11),
+          const SizedBox(height: 8),
+          const SkeletonBox(width: 200, height: 10),
+          const SizedBox(height: 10),
+          // More stats rows
+          Row(
+            children: List.generate(
+              5,
+              (_) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
+                  child: const SkeletonAdminMetricCard(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const SkeletonChartBox(height: 200),
+        ],
+      ),
+    );
+  }
+}
+
 /// `/admin` → **Overview** tab. SuperAdmin metrics dashboard mirroring React
 /// `AdminOverview`: platform KPIs + Users / Content / Question-jobs /
 /// Engagement sections with real charts (donut/bar/line/stacked) and the
@@ -141,7 +261,7 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    if (_loading) return const SkeletonListLoader();
+    if (_loading) return const _AdminOverviewSkeleton();
     if (_error) {
       return Center(
         child: Column(

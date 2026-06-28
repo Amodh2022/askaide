@@ -56,13 +56,13 @@ class Endpoints {
   static String progress(String userId) => '/progress/user/$userId';
 
   static String topicProgress(String userId, String subjectId) =>
-      '/topic-progress/progress/$userId/subject/$subjectId';
+      '/topic-progress/progress/subject/$subjectId';
 
   static String aiInsightsSubject(String userId, String subjectId) =>
-      '/topic-progress/ai-insights/userid/$userId/subject/$subjectId';
+      '/topic-progress/ai-insights/subject/$subjectId';
 
   static String aiInsightsChapter(String userId, String chapterId) =>
-      '/topic-progress/ai-insights/userid/$userId/chapter/$chapterId';
+      '/topic-progress/ai-insights/chapter/$chapterId';
 
   // ---- CHAPTERS ----------------------------------------------------------
   static String chapters(String classId, String subjectId) =>
@@ -116,7 +116,7 @@ class Endpoints {
   static String userProgress(String userId) => '/progress/user/$userId';
   static String streak(String userId) => '/streaks/$userId';
   static String masterySummary(String userId) =>
-      '/topic-progress/mastery-summary/$userId';
+      '/topic-progress/mastery-summary';
   static String sessionsByUser(String userId) => '/sessions/user/$userId';
   static String userAnswersBySession(String sessionId) =>
       '/user-answers/session/$sessionId';

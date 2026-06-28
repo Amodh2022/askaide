@@ -51,7 +51,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ResetPassword _resetPassword;
   final Logout _logout;
 
-  Future<void> _onCheck(AuthCheckRequested event, Emitter<AuthState> emit) async {
+  Future<void> _onCheck(
+      AuthCheckRequested event, Emitter<AuthState> emit) async {
     final token = await _repository.cachedToken();
     if (token != null && token.isNotEmpty) {
       emit(state.copyWith(status: AuthStatus.authenticated, token: token));
@@ -60,7 +61,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
-  Future<void> _onLogin(AuthLoginRequested event, Emitter<AuthState> emit) async {
+  Future<void> _onLogin(
+      AuthLoginRequested event, Emitter<AuthState> emit) async {
     emit(state.copyWith(action: AuthAction.loading, clearError: true));
     final result = await _login(
       LoginParams(email: event.email, password: event.password),
@@ -117,7 +119,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     ));
   }
 
-  Future<void> _onSendOtp(AuthOtpRequested event, Emitter<AuthState> emit) async {
+  Future<void> _onSendOtp(
+      AuthOtpRequested event, Emitter<AuthState> emit) async {
     emit(state.copyWith(action: AuthAction.loading, clearError: true));
     final result = await _sendOtp(event.email);
     result.fold(
@@ -129,7 +132,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
-  Future<void> _onSignup(AuthSignupSubmitted event, Emitter<AuthState> emit) async {
+  Future<void> _onSignup(
+      AuthSignupSubmitted event, Emitter<AuthState> emit) async {
     emit(state.copyWith(action: AuthAction.loading, clearError: true));
     final result = await _signup(event.data);
     result.fold(
@@ -189,7 +193,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 
-  Future<void> _onLogout(AuthLogoutRequested event, Emitter<AuthState> emit) async {
+  Future<void> _onLogout(
+      AuthLogoutRequested event, Emitter<AuthState> emit) async {
     await _logout(const NoParams());
     emit(const AuthState(status: AuthStatus.unauthenticated));
   }

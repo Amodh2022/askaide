@@ -1,5 +1,137 @@
 part of '../dashboard_page.dart';
 
+/// Shimmer skeleton that mirrors the dashboard's actual card/box layout.
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Shimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Greeting area
+          const SkeletonBox(width: 120, height: 11),
+          const SizedBox(height: 8),
+          const SkeletonBox(width: 220, height: 26),
+          const SizedBox(height: 12),
+          // Streak skeleton + share button row
+          Row(
+            children: [
+              Container(
+                width: 120,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: c.bgCard,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: c.border),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: c.bgCard,
+                  border: Border.all(color: c.border),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Quick start CTA
+          Container(
+            width: 180,
+            height: 44,
+            decoration: BoxDecoration(
+              color: c.bgRaised,
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 28),
+          // Stats grid (3 across)
+          LayoutBuilder(
+            builder: (context, cons) {
+              final w = (cons.maxWidth - 20) / 3;
+              return Row(
+                children: List.generate(
+                  3,
+                  (_) => Padding(
+                    padding: EdgeInsets.only(left: _ > 0 ? 10 : 0),
+                    child: SizedBox(
+                      width: w,
+                      child: const SkeletonStatCard(),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          // Card grid (2 columns)
+          LayoutBuilder(
+            builder: (context, cons) {
+              final w = (cons.maxWidth - 12) / 2;
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(width: w, child: const SkeletonShellCard(showSubtitle: false)),
+                      const SizedBox(width: 12),
+                      SizedBox(width: w, child: const SkeletonShellCard(showSubtitle: false)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      SizedBox(width: w, child: const SkeletonShellCard(height: 180, child: SkeletonBox(height: 90))),
+                      const SizedBox(width: 12),
+                      SizedBox(width: w, child: const SkeletonShellCard(height: 180, child: SkeletonBox(height: 50))),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      SizedBox(width: w, child: const SkeletonShellCard(height: 214, child: SkeletonBox(height: 130))),
+                      const SizedBox(width: 12),
+                      SizedBox(width: w, child: const SkeletonShellCard(height: 214, child: SkeletonBox(height: 50))),
+                    ],
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 28),
+          // Quick actions label
+          const SkeletonBox(width: 100, height: 11),
+          const SizedBox(height: 12),
+          // Quick action cards
+          ...List.generate(3, (_) => const Padding(
+            padding: EdgeInsets.only(bottom: 10),
+            child: SkeletonActionCard(),
+          )),
+          const SizedBox(height: 20),
+          // Achievements + leaderboard grid (2 columns)
+          LayoutBuilder(
+            builder: (context, cons) {
+              final w = (cons.maxWidth - 12) / 2;
+              return Row(
+                children: [
+                  SizedBox(width: w, child: const SkeletonShellCard(showIcon: true, height: 260)),
+                  const SizedBox(width: 12),
+                  SizedBox(width: w, child: const SkeletonShellCard(showIcon: true, height: 260)),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ShellCard extends StatelessWidget {
   const _ShellCard({
     required this.icon,

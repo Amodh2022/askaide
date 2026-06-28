@@ -30,6 +30,17 @@ class ProgressState extends Equatable {
     return cls.isEmpty ? const [] : cls.first.subjects;
   }
 
+  /// Whether [chapterId] (within the selected subject) has questions ready and
+  /// can be practised. The flag comes from `/study/configuration`; chapters not
+  /// listed there are treated as not startable. Defaults to true when the
+  /// configuration hasn't loaded so we don't wrongly block practice.
+  bool isChapterStartable(String chapterId) {
+    final subj = subjects.where((s) => s.id == selectedSubjectId);
+    if (subj.isEmpty || subj.first.chapters.isEmpty) return true;
+    final ch = subj.first.chapters.where((c) => c.id == chapterId);
+    return ch.isEmpty ? false : ch.first.isStartable;
+  }
+
   ProgressState copyWith({
     ProgressStatus? status,
     List<ClassConfig>? classes,
@@ -47,13 +58,21 @@ class ProgressState extends Equatable {
         selectedClassId: selectedClassId ?? this.selectedClassId,
         selectedSubjectId: selectedSubjectId ?? this.selectedSubjectId,
         data: clearData ? null : (data ?? this.data),
-        selectedChapter: clearChapter ? null : (selectedChapter ?? this.selectedChapter),
+        selectedChapter:
+            clearChapter ? null : (selectedChapter ?? this.selectedChapter),
         error: error,
       );
 
   @override
-  List<Object?> get props =>
-      [status, classes, selectedClassId, selectedSubjectId, data, selectedChapter, error];
+  List<Object?> get props => [
+        status,
+        classes,
+        selectedClassId,
+        selectedSubjectId,
+        data,
+        selectedChapter,
+        error
+      ];
 }
 
 class ProgressCubit extends Cubit<ProgressState> {
@@ -63,10 +82,12 @@ class ProgressCubit extends Cubit<ProgressState> {
 
   Future<void> init(String userId) async {
     _userId = userId;
+    if (userId.isEmpty) return;
     emit(state.copyWith(status: ProgressStatus.loading));
     final r = await _repo.configuration();
     r.fold(
-      (f) => emit(state.copyWith(status: ProgressStatus.error, error: f.message)),
+      (f) =>
+          emit(state.copyWith(status: ProgressStatus.empty, classes: const [])),
       (classes) {
         if (classes.isEmpty) {
           emit(state.copyWith(status: ProgressStatus.empty, classes: const []));
@@ -76,7 +97,8 @@ class ProgressCubit extends Cubit<ProgressState> {
         emit(state.copyWith(
           classes: classes,
           selectedClassId: first.id,
-          selectedSubjectId: first.subjects.isNotEmpty ? first.subjects.first.id : null,
+          selectedSubjectId:
+              first.subjects.isNotEmpty ? first.subjects.first.id : null,
         ));
         if (first.subjects.isNotEmpty) {
           _loadProgress(first.subjects.first.id);
@@ -111,7 +133,8 @@ class ProgressCubit extends Cubit<ProgressState> {
 
   Future<void> _loadProgress(String subjectId) async {
     if (_userId.isEmpty) return;
-    emit(state.copyWith(status: ProgressStatus.loading, clearData: true, clearChapter: true));
+    emit(state.copyWith(
+        status: ProgressStatus.loading, clearData: true, clearChapter: true));
     final r = await _repo.topicProgress(_userId, subjectId);
     r.fold(
       (f) => emit(state.copyWith(status: ProgressStatus.empty)),
@@ -122,4 +145,29 @@ class ProgressCubit extends Cubit<ProgressState> {
   void openChapter(ChapterProgress chapter) =>
       emit(state.copyWith(selectedChapter: chapter));
   void closeChapter() => emit(state.copyWith(clearChapter: true));
+
+  /// Reloads the selected subject's topic progress in place (no loading flicker)
+  /// and, if a chapter detail is open, re-selects the freshly-loaded version of
+  /// it so its updated coverage/mastery shows. Used after a practice session
+  /// launched from this page finishes. Keeps the current data on failure.
+  Future<void> refreshSelectedSubject() async {
+    final subjectId = state.selectedSubjectId;
+    if (_userId.isEmpty || subjectId == null) return;
+    final openChapterId = state.selectedChapter?.chapterId;
+    final r = await _repo.topicProgress(_userId, subjectId);
+    r.fold(
+      (f) {}, // keep the current view on failure
+      (data) {
+        final match =
+            data.chapters.where((ch) => ch.chapterId == openChapterId);
+        final reopened = match.isEmpty ? null : match.first;
+        emit(state.copyWith(
+          status: ProgressStatus.loaded,
+          data: data,
+          selectedChapter: reopened,
+          clearChapter: reopened == null,
+        ));
+      },
+    );
+  }
 }

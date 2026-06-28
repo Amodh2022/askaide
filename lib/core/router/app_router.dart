@@ -23,6 +23,7 @@ import '../../features/quiz/presentation/pages/quiz_pages.dart';
 import '../../features/quiz/presentation/pages/quiz_teacher_pages.dart';
 import '../../features/session/presentation/pages/study_page.dart';
 import '../../features/teacher/presentation/pages/role_dashboard_pages.dart';
+import '../presentation/pages/splash_page.dart';
 import '../presentation/shell/app_shell.dart';
 import 'go_router_refresh_stream.dart';
 import 'route_paths.dart';
@@ -50,7 +51,7 @@ class AppRouter {
   };
 
   late final GoRouter router = GoRouter(
-    initialLocation: RoutePaths.login,
+    initialLocation: RoutePaths.splash,
     refreshListenable: Listenable.merge([
       GoRouterRefreshStream(authBloc.stream),
       GoRouterRefreshStream(profileCubit.stream),
@@ -68,10 +69,18 @@ class AppRouter {
     final status = authBloc.state.status;
     final location = state.uri.path;
 
-    // Wait until the cold-start check resolves.
-    if (status == AuthStatus.unknown) return null;
+    // Cold start: hold on the splash screen until the persisted-token check
+    // resolves, so the sign-in page never flashes for an authenticated user.
+    if (status == AuthStatus.unknown) {
+      return location == RoutePaths.splash ? null : RoutePaths.splash;
+    }
 
     final authed = status == AuthStatus.authenticated;
+
+    // Token check resolved — leave the splash for the right destination.
+    if (location == RoutePaths.splash) {
+      return authed ? RoutePaths.study : RoutePaths.login;
+    }
     final isPublic = RoutePaths.isPublic(location);
     final isAuthScreen =
         location == RoutePaths.login || location == RoutePaths.signup;
@@ -105,6 +114,8 @@ class AppRouter {
   }
 
   static List<RouteBase> get _routes => [
+        // ---- BOOTSTRAP ----
+        _route(RoutePaths.splash, (_, __) => const SplashPage()),
         // ---- PUBLIC ----
         _route(RoutePaths.landing, (_, __) => const LandingPage()),
         _route(RoutePaths.login, (_, __) => const LoginPage()),

@@ -9,7 +9,7 @@ class _TeacherSubjectView extends StatelessWidget {
     final c = context.colors;
     return BlocBuilder<TeacherSubjectCubit, TeacherSubjectState>(
       builder: (context, state) {
-        if (state.status == TLoad.loading) return const SkeletonListLoader();
+        if (state.status == TLoad.loading) return const _TeacherSubjectSkeleton();
         final d = state.dashboard;
         final inactiveCount = d.totalStudents - d.activeThisWeek;
         final atRisk = d.studentsNeedingHelp;

@@ -4,6 +4,9 @@ class RoutePaths {
   RoutePaths._();
 
   // ---- PUBLIC ------------------------------------------------------------
+  /// Cold-start holding screen shown while the persisted token is checked, so
+  /// the sign-in page never flashes for an already-authenticated user.
+  static const String splash = '/splash';
   static const String landing = '/';
   static const String login = '/login';
   static const String signup = '/signup';
@@ -64,7 +67,7 @@ class RoutePaths {
   /// Routes that hide ALL chrome (no navbar, sidebar, or bottom nav).
   /// Mirrors the frontend, which hides the navbar only on /login and /signup;
   /// forgot-password / update-password / verify-email keep the public navbar.
-  static const List<String> bareRoutes = [login, signup];
+  static const List<String> bareRoutes = [splash, login, signup];
 
   static bool isLanding(String location) => location == landing;
 

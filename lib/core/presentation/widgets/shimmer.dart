@@ -73,6 +73,8 @@ class _SlideGradient extends GradientTransform {
       Matrix4.translationValues(dx, 0, 0);
 }
 
+// ── Primitives ──────────────────────────────────────────────────────────────
+
 /// A solid rounded placeholder block. Its colour is irrelevant — the enclosing
 /// [Shimmer]'s `srcATop` shader repaints it — but it gives the band a shape.
 class SkeletonBox extends StatelessWidget {
@@ -163,6 +165,273 @@ class SkeletonListLoader extends StatelessWidget {
         itemCount: itemCount,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (_, __) => SkeletonCard(height: cardHeight, lines: lines),
+      ),
+    );
+  }
+}
+
+// ── Structured skeletons for boxes across the app ─────────────────────────
+
+/// A circle skeleton placeholder (for avatars / badge spots).
+class SkeletonCircle extends StatelessWidget {
+  const SkeletonCircle({super.key, this.size = 32});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: context.colors.bgRaised,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+/// Matches a [_ShellCard]-style card: icon row header + optional subtitle + content area.
+class SkeletonShellCard extends StatelessWidget {
+  const SkeletonShellCard({
+    super.key,
+    this.showIcon = true,
+    this.showSubtitle = false,
+    this.child,
+    this.height,
+  });
+
+  final bool showIcon;
+  final bool showSubtitle;
+  final Widget? child;
+  final double? height;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      height: height,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.bgCard,
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (showIcon) ...[
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: c.bgRaised,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SkeletonBox(width: 120, height: 14),
+                    if (showSubtitle) ...[
+                      const SizedBox(height: 4),
+                      const SkeletonBox(width: 80, height: 10),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (child != null) ...[
+            const SizedBox(height: 14),
+            child!,
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Matches the dashboard/profile stat cards: a medium value + mono label.
+class SkeletonStatCard extends StatelessWidget {
+  const SkeletonStatCard({super.key, this.aspectRatio});
+
+  final double? aspectRatio;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return AspectRatio(
+      aspectRatio: aspectRatio ?? 1.05,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: c.bgCard,
+          border: Border.all(color: c.border),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SkeletonBox(width: 60, height: 24),
+            SizedBox(height: 6),
+            SkeletonBox(width: 80, height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Matches [_ActionCard]: a row with icon + text + trailing icon tile.
+class SkeletonActionCard extends StatelessWidget {
+  const SkeletonActionCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: c.bgCard,
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SkeletonBox(width: 100, height: 14),
+                SizedBox(height: 4),
+                SkeletonBox(width: 140, height: 12),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: c.bgRaised,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Matches the admin _chartBox: a bordered container with title bar + chart area.
+class SkeletonChartBox extends StatelessWidget {
+  const SkeletonChartBox({super.key, this.height = 200});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: c.bgCard,
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SkeletonBox(width: 160, height: 14),
+          const SizedBox(height: 12),
+          Container(
+            height: height - 60,
+            decoration: BoxDecoration(
+              color: c.bgRaised,
+              borderRadius: BorderRadius.circular(6),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Matches the admin _Stat card inside _cardGrid.
+class SkeletonAdminMetricCard extends StatelessWidget {
+  const SkeletonAdminMetricCard({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: c.bgCard,
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonBox(width: 60, height: 10),
+          SizedBox(height: 8),
+          SkeletonBox(width: 80, height: 20),
+          SizedBox(height: 4),
+          SkeletonBox(width: 100, height: 10),
+        ],
+      ),
+    );
+  }
+}
+
+/// Matches the profile header card: avatar circle + text lines.
+class SkeletonProfileHeader extends StatelessWidget {
+  const SkeletonProfileHeader({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: context.colors.bgCard,
+        border: Border.all(color: context.colors.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          const SkeletonCircle(size: 88),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SkeletonBox(width: 180, height: 18),
+                const SizedBox(height: 8),
+                const SkeletonBox(width: 140, height: 12),
+                const SizedBox(height: 6),
+                const SkeletonBox(width: 120, height: 12),
+                const SizedBox(height: 10),
+                Container(
+                  width: 70,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: context.colors.bgRaised,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

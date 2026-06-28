@@ -15,6 +15,92 @@ import '../../../dashboard/presentation/cubit/dashboard_cubit.dart';
 import '../../../dashboard/presentation/widgets/dashboard_shared_widgets.dart';
 import '../cubit/profile_cubit.dart';
 
+/// Shimmer skeleton matching the profile page's box layout.
+class _ProfileSkeleton extends StatelessWidget {
+  const _ProfileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Shimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SkeletonProfileHeader(),
+          const SizedBox(height: 20),
+          // Streak placeholder
+          Center(
+            child: Container(
+              width: 120,
+              height: 46,
+              decoration: BoxDecoration(
+                color: c.bgCard,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: c.border),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Section label
+          const SkeletonBox(width: 80, height: 11),
+          const SizedBox(height: 12),
+          // Stats grid (4 across)
+          LayoutBuilder(
+            builder: (context, cons) {
+              final w = (cons.maxWidth - 36) / 4;
+              return Row(
+                children: List.generate(
+                  4,
+                  (_) => Padding(
+                    padding: EdgeInsets.only(left: _ > 0 ? 12 : 0),
+                    child: SizedBox(width: w, child: const SkeletonStatCard(aspectRatio: 1.05)),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          // Section label
+          const SkeletonBox(width: 60, height: 11),
+          const SizedBox(height: 12),
+          // Badges area
+          const SkeletonShellCard(
+            showIcon: true,
+            height: 220,
+            child: Column(
+              children: [
+                SkeletonBox(width: double.infinity, height: 6, radius: 99),
+                SizedBox(height: 14),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    SkeletonCircle(size: 48),
+                    SkeletonCircle(size: 48),
+                    SkeletonCircle(size: 48),
+                    SkeletonCircle(size: 48),
+                    SkeletonCircle(size: 48),
+                    SkeletonCircle(size: 48),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Section label
+          const SkeletonBox(width: 100, height: 11),
+          const SizedBox(height: 12),
+          // Referral card
+          const SkeletonShellCard(
+            showIcon: true,
+            showSubtitle: true,
+            height: 200,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// `/profile` — mirrors the frontend Profile page: identity header (avatar,
 /// name, email, join date), the full streak display, an activity stats grid
 /// (study hours / sessions / avg score ring / questions), the achievements
@@ -104,7 +190,7 @@ class _ProfileView extends StatelessWidget {
                 const SizedBox(height: 24),
 
                 if (loading)
-                  const SkeletonListLoader(padding: EdgeInsets.zero)
+                  const _ProfileSkeleton()
                 else ...[
                   // ── Activity stats ──
                   const _SectionLabel('Activity'),

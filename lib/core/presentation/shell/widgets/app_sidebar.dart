@@ -177,12 +177,17 @@ class _UserCard extends StatelessWidget {
         CircleAvatar(
           radius: 18,
           backgroundColor: c.accentLight,
-          backgroundImage:
-              (image != null && image!.isNotEmpty) ? NetworkImage(image!) : null,
+          backgroundImage: (image != null && image!.isNotEmpty)
+              ? NetworkImage(image!)
+              : null,
+          onBackgroundImageError: (image != null && image!.isNotEmpty)
+              ? (_, __) {}
+              : null,
           child: (image == null || image!.isEmpty)
               ? Text(initials,
                   style: AppTypography.labelLarge(c.accent).copyWith(fontSize: 13))
-              : null,
+              : Text(initials,
+                  style: AppTypography.labelLarge(c.accent).copyWith(fontSize: 13)),
         ),
         const SizedBox(width: AppSpacing.sm),
         Expanded(
@@ -219,16 +224,19 @@ class _ThemeToggleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return ListTile(
-      dense: true,
-      leading: Icon(isDark ? LucideIcons.sun : LucideIcons.moon,
-          size: 18, color: c.textSecondary),
-      title: Text(isDark ? 'Light mode' : 'Dark mode',
-          style: AppTypography.bodyMedium(c.textSecondary)),
-      onTap: () {
-        context.read<SoundCubit>().playClick();
-        context.read<ThemeCubit>().toggle(Theme.of(context).brightness);
-      },
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        dense: true,
+        leading: Icon(isDark ? LucideIcons.sun : LucideIcons.moon,
+            size: 18, color: c.textSecondary),
+        title: Text(isDark ? 'Light mode' : 'Dark mode',
+            style: AppTypography.bodyMedium(c.textSecondary)),
+        onTap: () {
+          context.read<SoundCubit>().playClick();
+          context.read<ThemeCubit>().toggle(Theme.of(context).brightness);
+        },
+      ),
     );
   }
 }
@@ -237,23 +245,26 @@ class _SignOutTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return ListTile(
-      dense: true,
-      leading: Icon(LucideIcons.logOut, size: 18, color: c.danger),
-      title: Text('Sign out', style: AppTypography.bodyMedium(c.danger)),
-      onTap: () async {
-        context.read<SoundCubit>().playClick();
-        final confirmed = await showConfirmDialog(
-          context,
-          title: 'Sign out',
-          message: 'Do you want to sign out?',
-          confirmLabel: 'Sign Out',
-          destructive: true,
-        );
-        if (!confirmed || !context.mounted) return;
-        context.read<ProfileCubit>().clear();
-        context.read<AuthBloc>().add(const AuthLogoutRequested());
-      },
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        dense: true,
+        leading: Icon(LucideIcons.logOut, size: 18, color: c.danger),
+        title: Text('Sign out', style: AppTypography.bodyMedium(c.danger)),
+        onTap: () async {
+          context.read<SoundCubit>().playClick();
+          final confirmed = await showConfirmDialog(
+            context,
+            title: 'Sign out',
+            message: 'Do you want to sign out?',
+            confirmLabel: 'Sign Out',
+            destructive: true,
+          );
+          if (!confirmed || !context.mounted) return;
+          context.read<ProfileCubit>().clear();
+          context.read<AuthBloc>().add(const AuthLogoutRequested());
+        },
+      ),
     );
   }
 }

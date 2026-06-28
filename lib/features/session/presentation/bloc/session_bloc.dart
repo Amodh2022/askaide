@@ -52,6 +52,7 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     on<QuestionTypeSelected>(_onQuestionType);
     on<DifficultySelected>(_onDifficulty);
     on<PracticeStarted>(_onStartPractice);
+    on<ChapterPracticeStarted>(_onStartChapterPractice);
     on<AnswerSubmitted>(_onAnswer);
     on<NextQuestionRequested>(_onNext);
     on<SessionFinished>(_onFinish);
@@ -80,6 +81,14 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
 
   /// Answers collected since the last batch submit.
   final List<UserAnswer> _pending = [];
+
+  /// The user whose session this is — stamped onto each answer's wire payload
+  /// (the backend needs it to persist the answer and roll up progress).
+  String _userId = '';
+
+  /// When the current question was first shown, used to derive each answer's
+  /// `timeSpent` (mirrors React's `questionStartTime`).
+  int? _questionShownAtMillis;
 
   @override
   Future<void> close() {
@@ -207,6 +216,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     if (!state.config.isComplete) return;
     final cfg = state.config;
     _pending.clear();
+    _userId = e.userId;
+    _questionShownAtMillis = null;
     // Switch to the practice panel in a loading state while we create the
     // server-side session and fetch the first batch.
     emit(state.copyWith(
@@ -214,6 +225,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       sessionStarted: true,
       questions: const [],
       currentIndex: 0,
+      questionOffset: 0,
+      seenQuestionIds: const {},
       answers: const {},
       clearFeedback: true,
       questionStatus: LoadStatus.loading,
@@ -253,16 +266,19 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   /// ~10 questions). Dedup is the backend's job, keyed by sessionId + the
   /// answers we submit before each fetch; nothing is appended, so a stale dupe
   /// can't accumulate across the session.
-  Future<void> _loadBatch(Emitter<SessionState> emit, {bool retry = false}) async {
+  Future<void> _loadBatch(Emitter<SessionState> emit,
+      {bool retry = false}) async {
     final hadQuestions = state.questions.isNotEmpty;
     final sessionId = state.activeSession?.id ?? '';
     final result = await _fetchQuestionBatch(
-      FetchBatchParams(config: state.config, sessionId: sessionId, retry: retry),
+      FetchBatchParams(
+          config: state.config, sessionId: sessionId, retry: retry),
     );
     // The user may have pressed End (or dismissed the result modal) while the
     // batch was still polling. Emitting into an already-concluded session would
     // corrupt the state shown in the result modal or on the config screen.
-    if (state.panel != SessionPanel.practice || state.resultSummary != null) return;
+    if (state.panel != SessionPanel.practice || state.resultSummary != null)
+      return;
     if (result.isLeft()) {
       emit(state.copyWith(
         questionStatus: LoadStatus.failure,
@@ -271,14 +287,18 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       return;
     }
 
-    final batch = result.getOrElse(() => const []);
+    final raw = result.getOrElse(() => const []);
+    // Filter out questions the student has already seen this session.
+    final batch =
+        raw.where((q) => !state.seenQuestionIds.contains(q.id)).toList();
     if (batch.isEmpty) {
       // An empty terminal batch means the chapter is tapped out. If we'd already
       // shown questions this session, that's mastery (celebrate); otherwise the
       // selection had nothing to offer at all (error). Mirrors React's
       // mastered-vs-no-questions branch keyed on `everLoaded`.
       if (hadQuestions) {
-        emit(state.copyWith(questionStatus: LoadStatus.success, mastered: true));
+        emit(
+            state.copyWith(questionStatus: LoadStatus.success, mastered: true));
       } else {
         emit(state.copyWith(
           questionStatus: LoadStatus.failure,
@@ -289,12 +309,40 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       return;
     }
 
+    // Advance the running question number by the size of the PREVIOUS batch so
+    // the counter shows "Question 11, 12, …" instead of resetting to 1.
+    final newOffset = retry
+        ? state.questionOffset
+        : state.questionOffset + state.questions.length;
+
     emit(state.copyWith(
       questionStatus: LoadStatus.success,
       questions: batch, // REPLACE — not append
       currentIndex: 0, // reset to the first question of the new batch
+      questionOffset: newOffset,
+      seenQuestionIds: {...state.seenQuestionIds, ...batch.map((q) => q.id)},
       mastered: false,
     ));
+    _questionShownAtMillis =
+        _now(); // first question of the new batch is now visible
+  }
+
+  /// Pre-fills the config from a chapter chosen elsewhere (the Progress page)
+  /// and reuses the normal start path, so the user lands straight on the
+  /// question loop instead of the config funnel.
+  Future<void> _onStartChapterPractice(
+    ChapterPracticeStarted e,
+    Emitter<SessionState> emit,
+  ) async {
+    emit(state.copyWith(
+      config: StudyConfig(
+        selectedClass: e.classOption,
+        selectedSubject: e.subject,
+        selectedChapter: e.chapter,
+      ),
+      originRoute: e.returnRoute,
+    ));
+    await _onStartPractice(PracticeStarted(userId: e.userId), emit);
   }
 
   Future<void> _onAnswer(AnswerSubmitted e, Emitter<SessionState> emit) async {
@@ -302,12 +350,33 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     if (q == null || state.hasAnsweredCurrent) return;
 
     final correct = q.isCorrect(e.answer);
+    final cfg = state.config;
+    // 0-based count of answers already given this session, used to derive the
+    // 1-based sequence/batch numbers the backend expects (mirrors React).
+    final seq = state.answers.length;
+    final now = _now();
+    final timeSpent = _questionShownAtMillis == null
+        ? 1
+        : ((now - _questionShownAtMillis!) / 1000).round().clamp(1, 1 << 30);
     final answer = UserAnswer(
       questionId: q.id,
       sessionId: state.activeSession?.id ?? '',
       answer: e.answer,
       isCorrect: correct,
-      answeredAtMillis: _now(),
+      answeredAtMillis: now,
+      // Context the backend needs to persist the answer (mirrors React's
+      // `submitUserAnswers` payload). Without these the answer is dropped and
+      // the session reads back empty with a 0 score.
+      userId: _userId,
+      subjectId: cfg.selectedSubject?.id,
+      chapterId: cfg.selectedChapter?.id ?? q.chapterId,
+      subject: cfg.selectedSubject?.name,
+      chapter: cfg.selectedChapter?.name,
+      difficulty: cfg.difficulty.apiValue.toLowerCase(),
+      questionType: cfg.questionType.apiValue,
+      batchNumber: (seq ~/ AppConstants.answerSubmitBatchSize) + 1,
+      sessionSequence: seq + 1,
+      timeSpentSeconds: timeSpent,
     );
     _pending.add(answer);
 
@@ -334,7 +403,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     final batch = List<UserAnswer>.from(_pending);
     _pending.clear();
     await _submitAnswers(batch);
-    final queued = state.isOnline ? state.queuedCount : state.queuedCount + batch.length;
+    final queued =
+        state.isOnline ? state.queuedCount : state.queuedCount + batch.length;
     emit(state.copyWith(queuedCount: queued));
   }
 
@@ -344,7 +414,9 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   ) async {
     // Within the current batch → just advance the index.
     if (state.currentIndex < state.questions.length - 1) {
-      emit(state.copyWith(currentIndex: state.currentIndex + 1, clearFeedback: true));
+      emit(state.copyWith(
+          currentIndex: state.currentIndex + 1, clearFeedback: true));
+      _questionShownAtMillis = _now();
       return;
     }
 
@@ -352,13 +424,15 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     // then fetch the next batch (which REPLACES the list + resets the index).
     // Mirrors React: submitAnswerBatch(...) then loadQuestions(true).
     if (state.questionStatus == LoadStatus.loading) return;
-    emit(state.copyWith(questionStatus: LoadStatus.loading, clearFeedback: true));
+    emit(state.copyWith(
+        questionStatus: LoadStatus.loading, clearFeedback: true));
     await _flushPending(emit);
     await _loadBatch(emit);
   }
 
   Future<void> _onFinish(SessionFinished e, Emitter<SessionState> emit) async {
-    if (state.resultSummary != null || state.finishing) return; // already finishing
+    if (state.resultSummary != null || state.finishing)
+      return; // already finishing
     // Surface the loader on the End button for the duration of the close calls.
     emit(state.copyWith(finishing: true));
     // Flush any answers collected since the last batch (mirrors React's
@@ -406,6 +480,22 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       npsEligible: npsEligible,
       finishing: false,
     ));
+
+    // With the modal now up, refresh history from the server so the full
+    // session list shows (not just locally-saved sessions) and the
+    // just-finished session is server-sourced — its review then lazy-loads
+    // answers with question detail from `user-answers/session/:id` instead of
+    // showing the bare local answers. Mirrors React re-fetching
+    // `fetchSessionsByUserId` on returning to the dashboard. The instant local
+    // emit above keeps the list correct offline; this updates it underneath the
+    // modal when online. Best-effort: keep the local list on failure.
+    if (state.isOnline && e.userId.isNotEmpty) {
+      final remote = await _repository.fetchRemoteSessionHistory(e.userId);
+      remote.fold(
+        (_) {}, // keep the locally-emitted history on failure
+        (sessions) => emit(state.copyWith(history: sessions)),
+      );
+    }
   }
 
   void _onResultDismissed(
@@ -423,12 +513,17 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
       chapters: const [],
       questions: const [],
       currentIndex: 0,
+      questionOffset: 0,
+      seenQuestionIds: const {},
       answers: const {},
       clearFeedback: true,
       clearError: true,
       clearResultSummary: true,
       finishing: false,
       mastered: false,
+      // Clearing the origin is the signal the launching screen (e.g. Progress)
+      // listens for to return to itself and refresh.
+      clearOrigin: true,
     ));
   }
 
@@ -503,7 +598,8 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   }
 
   void _onBackToConfig(BackToConfigRequested e, Emitter<SessionState> emit) {
-    emit(state.copyWith(panel: SessionPanel.config, clearFeedback: true));
+    emit(state.copyWith(
+        panel: SessionPanel.config, clearFeedback: true, clearOrigin: true));
   }
 
   Future<void> _onRetryBatch(

@@ -1,5 +1,191 @@
 part of '../quiz_pages.dart';
 
+/// Shimmer skeleton matching the quiz list layout: stat cards + search + card grid.
+class _QuizListSkeleton extends StatelessWidget {
+  const _QuizListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Shimmer(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Stat cards row
+          Row(
+            children: List.generate(
+              3,
+              (_) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: _ > 0 ? 12 : 0),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: c.bgCard,
+                      border: Border.all(color: c.border),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(color: c.bgRaised, borderRadius: BorderRadius.circular(4)),
+                        ),
+                        const SizedBox(height: 8),
+                        const SkeletonBox(width: 40, height: 22),
+                        const SizedBox(height: 4),
+                        const SkeletonBox(width: 60, height: 10),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Search + filter bar
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: c.bgCard,
+                    border: Border.all(color: c.border),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 140,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: c.bgCard,
+                  border: Border.all(color: c.border),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Quiz card grid (2 columns)
+          LayoutBuilder(
+            builder: (context, cons) {
+              final cols = cons.maxWidth >= 600 ? 2 : 1;
+              final gap = 16.0;
+              final w = (cons.maxWidth - gap * (cols - 1)) / cols;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: List.generate(
+                  4,
+                  (_) => SizedBox(
+                    width: w,
+                    child: _QuizCardSkeleton(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A quiz card skeleton matching the [_QuizCard] layout.
+class _QuizCardSkeleton extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      decoration: BoxDecoration(
+        color: c.bgCard,
+        border: Border.all(color: c.border),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(child: SkeletonBox(height: 16)),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 70,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: c.bgRaised,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const SkeletonBox(width: double.infinity, height: 12),
+                const SizedBox(height: 12),
+                Row(
+                  children: List.generate(
+                    3,
+                    (_) => const Padding(
+                      padding: EdgeInsets.only(right: 16),
+                      child: Row(
+                        children: [
+                          SkeletonBox(width: 14, height: 14),
+                          SizedBox(width: 4),
+                          SkeletonBox(width: 50, height: 11),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      height: 24,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: c.bgRaised,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      height: 24,
+                      width: 70,
+                      decoration: BoxDecoration(
+                        color: c.bgRaised,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Container(
+            height: 48,
+            decoration: BoxDecoration(
+              color: c.bgPrimary,
+              border: Border(top: BorderSide(color: c.border)),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(4)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _QuizListView extends StatefulWidget {
   const _QuizListView({this.isMockMode = false});
   final bool isMockMode;
@@ -122,8 +308,7 @@ class _QuizListViewState extends State<_QuizListView> {
               BlocBuilder<QuizListCubit, QuizListState>(
                 builder: (context, state) {
                   if (!widget.isMockMode && state.status == Load.loading) {
-                    return const SkeletonListLoader(
-                        padding: EdgeInsets.all(24));
+                    return const _QuizListSkeleton();
                   }
                   final all =
                       widget.isMockMode ? _mockQuizzes : state.available;
