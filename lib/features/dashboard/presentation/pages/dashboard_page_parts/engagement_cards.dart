@@ -17,7 +17,7 @@ class _ContinueBannerState extends State<_ContinueBanner> {
     final session = widget.session;
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(color: c.accent, borderRadius: AppRadii.modalR),
       child: Stack(
         children: [
           Row(
@@ -26,7 +26,7 @@ class _ContinueBannerState extends State<_ContinueBanner> {
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: const Icon(LucideIcons.bookOpen, size: 18, color: Colors.white),
               ),
@@ -67,12 +67,12 @@ class _ContinueBannerState extends State<_ContinueBanner> {
             right: -6,
             child: InkWell(
               onTap: () => setState(() => _dismissed = true),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: const Icon(LucideIcons.x, size: 14, color: Colors.white),
               ),
@@ -107,7 +107,7 @@ class _DailyChallengeCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppRadii.modalR,
       ),
       child: Column(
         children: [
@@ -149,7 +149,7 @@ class _DailyChallengeCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: c.successBg,
-                          borderRadius: BorderRadius.circular(99),
+                          borderRadius: AppRadii.pillR,
                         ),
                         child: Text('${challenge.score}/${challenge.totalQuestions}',
                             style: AppTypography.mono(c.success, size: 11)),
@@ -162,7 +162,7 @@ class _DailyChallengeCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: c.bgSecondary,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadii.sectionR,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

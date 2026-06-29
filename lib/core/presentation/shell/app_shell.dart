@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../features/profile/domain/entities/account_type.dart';
+import '../../../features/profile/domain/entities/user.dart';
 import '../../../features/profile/presentation/cubit/profile_cubit.dart';
 import '../../../features/session/presentation/bloc/session_bloc.dart';
 import '../../router/route_paths.dart';
@@ -16,6 +17,7 @@ import '../../theme/app_typography.dart';
 import '../../theme/theme_cubit.dart';
 import '../../utils/responsive.dart';
 import '../widgets/brand_logo.dart';
+import '../widgets/confirm_dialog.dart';
 import 'nav_items.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/mobile_bottom_nav.dart';
@@ -80,10 +82,6 @@ class _AuthenticatedScaffold extends StatefulWidget {
 class _AuthenticatedScaffoldState extends State<_AuthenticatedScaffold> {
   bool _sidebarOpen = true;
 
-  /// Sidebar collapsible on tablet-width screens (768–1024px).
-  /// On larger desktops the sidebar is always pinned open.
-  bool get _isCollapsible => context.screenWidth < 1024;
-
   @override
   Widget build(BuildContext context) {
     if (context.isDesktop) {
@@ -92,13 +90,10 @@ class _AuthenticatedScaffoldState extends State<_AuthenticatedScaffold> {
           bottom: false,
           child: Row(
             children: [
-              if (_isCollapsible)
-                _CollapsibleSidebar(
-                  open: _sidebarOpen,
-                  onToggle: () => setState(() => _sidebarOpen = !_sidebarOpen),
-                )
-              else
-                const AppSidebar(),
+              _CollapsibleSidebar(
+                open: _sidebarOpen,
+                onToggle: () => setState(() => _sidebarOpen = !_sidebarOpen),
+              ),
               Expanded(
                 child: Stack(
                   children: [
@@ -116,7 +111,7 @@ class _AuthenticatedScaffoldState extends State<_AuthenticatedScaffold> {
   }
 }
 
-/// Animated sidebar that collapses to icon-only mode (~64px) on tablets.
+/// Animated sidebar that collapses to icon-only mode (~64px) on all desktop sizes.
 class _CollapsibleSidebar extends StatelessWidget {
   const _CollapsibleSidebar({required this.open, required this.onToggle});
   final bool open;
@@ -130,7 +125,11 @@ class _CollapsibleSidebar extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
       width: open ? AppSpacing.sidebarWidth : _collapsedWidth,
-      child: open ? const AppSidebar() : _CollapsedSidebar(onToggle: onToggle),
+      child: RepaintBoundary(
+        child: open
+            ? AppSidebar(onCollapse: onToggle)
+            : _CollapsedSidebar(onToggle: onToggle),
+      ),
     );
   }
 }
@@ -143,7 +142,7 @@ class _CollapsedSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final user = context.watch<ProfileCubit>().state.user;
+    final user = context.select<ProfileCubit, User?>((cu) => cu.state.user);
     final role = user?.accountType ?? AccountType.student;
     final items = navItemsFor(role);
     final location = GoRouterState.of(context).uri.path;
@@ -158,9 +157,30 @@ class _CollapsedSidebar extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 18),
-          // Logo
-          const BrandLogo(size: 22),
-          const SizedBox(height: 16),
+          // Brand mark only (full wordmark doesn't fit in 64px rail)
+          Builder(builder: (context) {
+            final c = context.colors;
+            final isDarkMark =
+                Theme.of(context).brightness == Brightness.dark;
+            return Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: c.accent,
+                borderRadius: BorderRadius.circular(28 * 0.28),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'a',
+                style: AppTypography.h4(
+                  isDarkMark
+                      ? const Color(0xFF14140F)
+                      : Colors.white,
+                ).copyWith(fontSize: 28 * 0.62, height: 1),
+              ),
+            );
+          }),
+          const SizedBox(height: AppSpacing.md),
           // User avatar only
           CircleAvatar(
             radius: 16,
@@ -170,9 +190,9 @@ class _CollapsedSidebar extends StatelessWidget {
               style: AppTypography.labelLarge(c.accent).copyWith(fontSize: 11),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Divider(height: 1, color: c.borderSubtle),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           // Nav items
           Expanded(
             child: ListView(
@@ -188,7 +208,7 @@ class _CollapsedSidebar extends StatelessWidget {
             ),
           ),
           Divider(height: 1, color: c.borderSubtle),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           // Theme toggle
           _CollapsedIcon(
             icon: isDark ? LucideIcons.sun : LucideIcons.moon,
@@ -206,7 +226,7 @@ class _CollapsedSidebar extends StatelessWidget {
             color: c.accent,
             onTap: onToggle,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
         ],
       ),
     );
@@ -231,9 +251,23 @@ class _CollapsedNavIcon extends StatelessWidget {
           borderRadius: AppRadii.modalR,
           child: InkWell(
             borderRadius: AppRadii.modalR,
-            onTap: () {
+            onTap: () async {
               context.read<SoundCubit>().playClick();
-              context.go(item.path);
+              final sessionBloc = context.read<SessionBloc>();
+              if (sessionBloc.state.panel == SessionPanel.practice) {
+                final confirmed = await showConfirmDialog(
+                  context,
+                  title: 'End Session?',
+                  message: 'Do you want to end your current practice session?',
+                  confirmLabel: 'End Session',
+                  destructive: true,
+                );
+                if (!confirmed || !context.mounted) return;
+                // End session: reset to config panel, stay on study.
+                sessionBloc.add(const BackToConfigRequested());
+                return;
+              }
+              if (context.mounted) context.go(item.path);
             },
             child: SizedBox(
               height: 40,

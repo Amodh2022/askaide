@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../profile/presentation/cubit/profile_cubit.dart';
@@ -69,19 +70,22 @@ class _StudyPageState extends State<StudyPage> {
           decoration: BoxDecoration(
             color: c.bgCard,
             border: Border.all(color: c.border),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadii.modalR,
           ),
           child: _panel(state.panel),
         );
 
         if (context.isDesktop) {
+          final showHistory = state.panel != SessionPanel.practice;
           return Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const StudyHistorySidebar(),
-                const SizedBox(width: 16),
+                if (showHistory) ...[
+                  const StudyHistorySidebar(),
+                  const SizedBox(width: 16),
+                ],
                 Expanded(child: mainCard),
               ],
             ),
@@ -91,13 +95,16 @@ class _StudyPageState extends State<StudyPage> {
         // Mobile: header + panel; history opens in a drawer.
         // The header (and its Sessions button) is hidden during practice so the
         // student gets a distraction-free full-screen question view.
+        final inPractice = state.panel == SessionPanel.practice;
         return Scaffold(
           backgroundColor: c.bgPrimary,
-          drawer: Drawer(
-            child: SafeArea(
-              child: StudyHistorySidebar(onSelect: () => Navigator.of(context).pop()),
-            ),
-          ),
+          drawer: inPractice
+              ? null
+              : Drawer(
+                  child: SafeArea(
+                    child: StudyHistorySidebar(onSelect: () => Navigator.of(context).pop()),
+                  ),
+                ),
           body: Column(
             children: [
               if (state.panel != SessionPanel.practice)
@@ -117,7 +124,7 @@ class _StudyPageState extends State<StudyPage> {
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(color: c.border),
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(borderRadius: AppRadii.componentR),
                           ),
                           child: Text('Sessions', style: AppTypography.bodySmall(c.textPrimary)),
                         ),

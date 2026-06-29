@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_colors.dart';
+import '../../theme/app_tokens.dart';
 
 /// A self-contained shimmer effect: sweeps a soft highlight band across its
 /// child to signal "content loading". Hand-rolled (no package) and themed from
@@ -119,7 +120,7 @@ class SkeletonCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -163,7 +164,7 @@ class SkeletonListLoader extends StatelessWidget {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: itemCount,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (_, __) => const SizedBox(height: AppSpacing.sm),
         itemBuilder: (_, __) => SkeletonCard(height: cardHeight, lines: lines),
       ),
     );
@@ -215,7 +216,7 @@ class SkeletonShellCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -228,10 +229,10 @@ class SkeletonShellCard extends StatelessWidget {
                   height: 38,
                   decoration: BoxDecoration(
                     color: c.bgRaised,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadii.sectionR,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
               ],
               Expanded(
                 child: Column(
@@ -239,7 +240,7 @@ class SkeletonShellCard extends StatelessWidget {
                   children: [
                     const SkeletonBox(width: 120, height: 14),
                     if (showSubtitle) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: AppSpacing.xxs),
                       const SkeletonBox(width: 80, height: 10),
                     ],
                   ],
@@ -273,7 +274,7 @@ class SkeletonStatCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.bgCard,
           border: Border.all(color: c.border),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,7 +302,7 @@ class SkeletonActionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Row(
         children: [
@@ -310,18 +311,18 @@ class SkeletonActionCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SkeletonBox(width: 100, height: 14),
-                SizedBox(height: 4),
+                SizedBox(height: AppSpacing.xxs),
                 SkeletonBox(width: 140, height: 12),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Container(
             width: 38,
             height: 38,
             decoration: BoxDecoration(
               color: c.bgRaised,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
           ),
         ],
@@ -344,18 +345,18 @@ class SkeletonChartBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SkeletonBox(width: 160, height: 14),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Container(
             height: height - 60,
             decoration: BoxDecoration(
               color: c.bgRaised,
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: AppRadii.modalR,
             ),
           ),
         ],
@@ -376,15 +377,15 @@ class SkeletonAdminMetricCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SkeletonBox(width: 60, height: 10),
-          SizedBox(height: 8),
+          SizedBox(height: AppSpacing.xs),
           SkeletonBox(width: 80, height: 20),
-          SizedBox(height: 4),
+          SizedBox(height: AppSpacing.xxs),
           SkeletonBox(width: 100, height: 10),
         ],
       ),
@@ -404,7 +405,7 @@ class SkeletonProfileHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: context.colors.bgCard,
         border: Border.all(color: context.colors.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Row(
         children: [
@@ -415,7 +416,7 @@ class SkeletonProfileHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SkeletonBox(width: 180, height: 18),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 const SkeletonBox(width: 140, height: 12),
                 const SizedBox(height: 6),
                 const SkeletonBox(width: 120, height: 12),
@@ -425,7 +426,7 @@ class SkeletonProfileHeader extends StatelessWidget {
                   height: 24,
                   decoration: BoxDecoration(
                     color: context.colors.bgRaised,
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                   ),
                 ),
               ],

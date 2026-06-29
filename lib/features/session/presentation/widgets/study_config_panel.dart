@@ -66,14 +66,14 @@ class StudyConfigPanel extends StatelessWidget {
                   const SizedBox(height: 10),
                   Text('Pick a chapter and start working.',
                       style: AppTypography.bodyMedium(c.textMuted)),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.lg),
 
                   _StepBar(currentStep: step),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.lg),
 
                   if (state.errorMessage != null) ...[
                     _ErrorAlert(message: state.errorMessage!),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                   ],
 
                   // Configuration card
@@ -95,7 +95,7 @@ class StudyConfigPanel extends StatelessWidget {
                               context.read<SessionBloc>().add(ClassSelected(o)),
                         ),
                         if (step >= 2) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.sm),
                           _SearchableDropdown<SubjectOption>(
                             label: 'Subject',
                             hint: 'Select subject',
@@ -109,7 +109,7 @@ class StudyConfigPanel extends StatelessWidget {
                           ),
                         ],
                         if (step >= 3) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.sm),
                           _SearchableDropdown<ChapterOption>(
                             label: 'Chapter',
                             hint: 'Choose a chapter',
@@ -126,7 +126,7 @@ class StudyConfigPanel extends StatelessWidget {
                           ),
                         ],
                         if (step >= 4) ...[
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.md),
                           Row(
                             children: [
                               Expanded(
@@ -140,7 +140,7 @@ class StudyConfigPanel extends StatelessWidget {
                                       .add(QuestionTypeSelected(t)),
                                 ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: AppSpacing.sm),
                               Expanded(
                                 child: _EnumDropdown<Difficulty>(
                                   label: 'Difficulty',
@@ -158,7 +158,7 @@ class StudyConfigPanel extends StatelessWidget {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSpacing.lg),
                           _StartButton(
                             enabled: cfg.isComplete,
                             loading: state.questionStatus == LoadStatus.loading,
@@ -178,7 +178,7 @@ class StudyConfigPanel extends StatelessWidget {
                     ),
                   ),
 
-                  const SizedBox(height: 32),
+                  const SizedBox(height: AppSpacing.xl),
                   // Quick tips
                   const Wrap(
                     alignment: WrapAlignment.center,
@@ -254,7 +254,7 @@ class _SearchableDropdown<T> extends StatelessWidget {
     final fieldDecoration = BoxDecoration(
       color: c.bgRaised,
       border: Border.all(color: c.border),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: AppRadii.cardR,
     );
     const fieldPadding =
         EdgeInsets.symmetric(horizontal: 12, vertical: 14);
@@ -428,15 +428,15 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                   filled: true,
                   fillColor: c.bgSecondary,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppRadii.modalR,
                     borderSide: BorderSide(color: c.border),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppRadii.modalR,
                     borderSide: BorderSide(color: c.border),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppRadii.modalR,
                     borderSide: BorderSide(color: c.accent),
                   ),
                   contentPadding:
@@ -445,7 +445,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                 onChanged: (v) => setState(() => _query = v),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Divider(height: 1, color: c.border),
             // Flexible absorbs whatever space the fixed elements leave, so
             // the Column never overflows even when the keyboard is showing.
@@ -514,13 +514,13 @@ class _PickerItem extends StatelessWidget {
               ),
             ),
             if (badgeLabel != null) ...[
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
                   color: c.textMuted.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                 ),
                 child: Text(
                   badgeLabel!,
@@ -554,7 +554,7 @@ class _StepBar extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         children: [
@@ -565,7 +565,7 @@ class _StepBar extends StatelessWidget {
               Text('STEP $currentStep OF 4', style: AppTypography.mono(c.textMuted, size: 9)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             children: List.generate(labels.length * 2 - 1, (i) {
               if (i.isOdd) {
@@ -640,7 +640,7 @@ class _EnumDropdown<T> extends StatelessWidget {
           decoration: BoxDecoration(
             color: c.bgRaised,
             border: Border.all(color: c.border),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadii.cardR,
           ),
           padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
           child: DropdownButtonHideUnderline(
@@ -684,7 +684,7 @@ class _StartButton extends StatelessWidget {
           disabledBackgroundColor: c.border,
           disabledForegroundColor: c.textMuted,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: AppRadii.sectionR),
         ),
         child: loading
             ? Row(
@@ -701,10 +701,10 @@ class _StartButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(LucideIcons.sparkles, size: 18, color: active ? c.bgPrimary : c.textMuted),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text('Start Learning',
                       style: AppTypography.button(active ? c.bgPrimary : c.textMuted)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Icon(LucideIcons.arrowRight, size: 18, color: active ? c.bgPrimary : c.textMuted),
                 ],
               ),
@@ -725,12 +725,12 @@ class _ErrorAlert extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.danger.withValues(alpha: 0.08),
         border: Border.all(color: c.danger),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Row(
         children: [
           Icon(LucideIcons.circleAlert, size: 16, color: c.danger),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(child: Text(message, style: AppTypography.bodySmall(c.danger))),
         ],
       ),

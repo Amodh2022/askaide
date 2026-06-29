@@ -23,7 +23,7 @@ class _TodayActivityCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                 decoration: BoxDecoration(
                   color: c.accentLight,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: Column(
                   children: [
@@ -51,7 +51,7 @@ class _ContinueLearningCard extends StatelessWidget {
     final c = context.colors;
     return InkWell(
       onTap: () => context.go(RoutePaths.study),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: AppRadii.cardR,
       child: _ShellCard(
         icon: LucideIcons.play,
         title: 'Continue Learning',
@@ -61,7 +61,7 @@ class _ContinueLearningCard extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: c.accentLight,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: Row(
                   children: [
@@ -95,7 +95,7 @@ class _ContinueLearningCard extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: c.accentLight,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: Column(
                   children: [
@@ -308,7 +308,7 @@ class _PracticeCalendarCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: c.accentLight,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: AppRadii.componentR,
                 ),
                 child: Text('${practiceDates.length} days practiced',
                     style: AppTypography.bodySmall(c.accent)),
@@ -415,7 +415,7 @@ class _DailyGoalCard extends StatelessWidget {
               if (goal.completed)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(color: c.accentLight, borderRadius: BorderRadius.circular(99)),
+                  decoration: BoxDecoration(color: c.accentLight, borderRadius: AppRadii.pillR),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Icon(LucideIcons.check, size: 10, color: c.accent),
                     const SizedBox(width: 4),
@@ -428,7 +428,7 @@ class _DailyGoalCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           ClipRRect(
-            borderRadius: BorderRadius.circular(99),
+            borderRadius: AppRadii.pillR,
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0, end: (goal.percentComplete / 100).clamp(0, 1)),
               duration: const Duration(milliseconds: 900),

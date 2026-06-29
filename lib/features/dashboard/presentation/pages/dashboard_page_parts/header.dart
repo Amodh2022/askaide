@@ -17,35 +17,13 @@ class _GradientIcon extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [base, dark],
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Icon(icon, size: 18, color: Colors.white),
     );
   }
 }
 
-/// A responsive grid of equal-width cards (auto-fit, min [minWidth] wide).
-class _CardGrid extends StatelessWidget {
-  const _CardGrid({required this.children, this.minWidth = 280});
-  final List<Widget> children;
-  final double minWidth;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, cons) {
-      final cols = (cons.maxWidth / minWidth).floor().clamp(1, children.length).toInt();
-      const gap = 12.0;
-      final width = (cons.maxWidth - gap * (cols - 1)) / cols;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [
-          for (final child in children) SizedBox(width: cols == 1 ? cons.maxWidth : width, child: child),
-        ],
-      );
-    });
-  }
-}
 
 /// The full streak display from the frontend: current streak (gradient flame
 /// number + milestone bar), best streak, freeze count, and next milestone —
@@ -71,7 +49,7 @@ class _StreakDisplay extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           color: c.bgCard,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
           border: Border.all(color: c.border),
         ),
       );
@@ -92,7 +70,7 @@ class _StreakDisplay extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: c.bgCard,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
         border: Border.all(color: atRisk ? _flame.withValues(alpha: 0.5) : c.border),
       ),
       child: Row(
@@ -134,7 +112,7 @@ class _StreakDisplay extends StatelessWidget {
                 SizedBox(
                   width: 36,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                     child: LinearProgressIndicator(
                       value: milestoneProgress,
                       minHeight: 3,
@@ -238,13 +216,13 @@ class _IconButton extends StatelessWidget {
       message: tooltip ?? '',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: AppRadii.modalR,
         child: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: c.bgCard,
             border: Border.all(color: c.border),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadii.modalR,
           ),
           child: Icon(icon, size: 14, color: c.textMuted),
         ),

@@ -113,7 +113,7 @@ class _TeacherSubjectView extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: c.danger.withValues(alpha: 0.08),
                         border: Border.all(color: c.danger.withValues(alpha: 0.4)),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadii.cardR,
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,7 +151,7 @@ class _TeacherSubjectView extends StatelessWidget {
                               onTap: () => context.go('/teacher/subject/$subjectId/students'),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                decoration: BoxDecoration(color: c.danger, borderRadius: BorderRadius.circular(4)),
+                                decoration: BoxDecoration(color: c.danger, borderRadius: AppRadii.cardR),
                                 child: Text('View', style: AppTypography.mono(Colors.white, size: 10)),
                               ),
                             ),
@@ -269,7 +269,7 @@ class _ChapterProgressCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: c.bgCard,
                 border: Border.all(color: c.border),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
               ),
               alignment: Alignment.center,
               child: Text(
@@ -304,7 +304,7 @@ class _ChapterProgressCard extends StatelessWidget {
                   const SizedBox(height: 6),
                   // Single mastery bar (mirrors the frontend's ProgressBar).
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                     child: Container(
                       height: 4,
                       color: c.border,
@@ -372,7 +372,7 @@ class _WeakTopicChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: AppRadii.pillR,
       ),
       child: Row(
         children: [
@@ -413,7 +413,7 @@ class _ClassSummaryRow extends StatelessWidget {
         children: [
           Container(
             width: 28, height: 28,
-            decoration: BoxDecoration(color: c.accentLight, borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(color: c.accentLight, borderRadius: AppRadii.cardR),
             child: Icon(LucideIcons.users, size: 14, color: c.accent),
           ),
           const SizedBox(width: 10),

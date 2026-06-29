@@ -37,7 +37,7 @@ class _TeacherChapterView extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: c.bgCard,
                       border: Border.all(color: c.border),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: AppRadii.modalR,
                     ),
                     child: Text('Chapter ${d.chapterOrder}',
                         style: AppTypography.bodySmall(c.textMuted).copyWith(fontWeight: FontWeight.w500)),
@@ -144,7 +144,7 @@ class _TopicAnalyticsCard extends StatelessWidget {
           if (total > 0) ...[
             const SizedBox(height: 8),
             ClipRRect(
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: AppRadii.pillR,
               child: SizedBox(
                 height: 8,
                 child: Row(
@@ -210,7 +210,7 @@ class _StrugglingStudentCard extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: c.danger.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
       ),
       child: Row(
         children: [

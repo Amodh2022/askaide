@@ -1,7 +1,7 @@
 part of '../admin_dashboard_page.dart';
 
 class _TopicsPanel extends StatefulWidget {
-  const _TopicsPanel();
+  const _TopicsPanel({super.key});
   @override
   State<_TopicsPanel> createState() => _TopicsPanelState();
 }
@@ -56,16 +56,18 @@ class _TopicsPanelState extends State<_TopicsPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final classes = context.watch<AdminCubit>().state.classes;
+    final classes = context.select<AdminCubit, List<AdminRecord>>((c) => c.state.classes);
 
     final query = _search.trim().toLowerCase();
     final visible = query.isEmpty
         ? _topics
         : _topics.where((t) => t.name.toLowerCase().contains(query)).toList();
 
-    return ListView(
+    return Padding(
       padding: const EdgeInsets.all(20),
-      children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         // ── Header ──────────────────────────────────────────────────────────
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -93,6 +95,7 @@ class _TopicsPanelState extends State<_TopicsPanel> {
         // ── Topics card ──────────────────────────────────────────────────────
         if (_subjectId != null) _topicsCard(c, visible),
       ],
+      ),
     );
   }
 
@@ -103,7 +106,7 @@ class _TopicsPanelState extends State<_TopicsPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: mobile
           ? Column(
@@ -158,7 +161,7 @@ class _TopicsPanelState extends State<_TopicsPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -179,7 +182,7 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                         horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: c.accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(99),
+                      borderRadius: AppRadii.pillR,
                     ),
                     child: Text(
                       _search.isEmpty
@@ -217,13 +220,13 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 10),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide: BorderSide(color: c.border)),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide: BorderSide(color: c.border)),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide:
                           BorderSide(color: c.accent, width: 1.5)),
                 ),
@@ -264,7 +267,7 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                       height: 32,
                       decoration: BoxDecoration(
                         color: c.accent.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppRadii.componentR,
                       ),
                       alignment: Alignment.center,
                       child: Text(

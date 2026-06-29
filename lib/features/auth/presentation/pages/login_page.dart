@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../bloc/auth_bloc.dart';
 import '../widgets/auth_field.dart';
@@ -120,124 +121,172 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
-        // Suppress the form during the cold-start token check so it doesn't
-        // flash before the router redirects authenticated users to /study.
         if (state.status == AuthStatus.unknown) return const Scaffold();
+        return _LoginForm(
+          state: state,
+          emailController: _email,
+          passwordController: _password,
+          showPassword: _showPassword,
+          keepSignedIn: _keepSignedIn,
+          googleLoading: _googleLoading,
+          emailError: _emailError,
+          passwordError: _passwordError,
+          onSubmit: _submit,
+          onGoogleSignIn: _handleGoogleSignIn,
+          onTogglePassword: () => setState(() => _showPassword = !_showPassword),
+          onToggleKeepSignedIn: (v) => setState(() => _keepSignedIn = v),
+        );
+      },
+    );
+  }
+}
 
-        final c = context.colors;
-        final busy = state.action == AuthAction.loading;
-        final failed = state.action == AuthAction.failure;
+/// The login form extracted into its own widget so [BlocBuilder] doesn't
+/// depend on [Theme] through its builder context — prevents infinite widget
+/// mounting recursion on web.
+class _LoginForm extends StatelessWidget {
+  const _LoginForm({
+    required this.state,
+    required this.emailController,
+    required this.passwordController,
+    required this.showPassword,
+    required this.keepSignedIn,
+    required this.googleLoading,
+    required this.emailError,
+    required this.passwordError,
+    required this.onSubmit,
+    required this.onGoogleSignIn,
+    required this.onTogglePassword,
+    required this.onToggleKeepSignedIn,
+  });
 
-        return AuthScaffold(
-          tag: 'SIGN IN',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const AuthEyebrow('WELCOME BACK'),
-              const AuthHeading(lead: 'Sign', emphasis: 'in.'),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 36),
-                child: Text(
-                  'The next 10 minutes of practice are waiting.',
-                  style: AppTypography.bodyMedium(c.textMuted),
+  final AuthState state;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final bool showPassword;
+  final bool keepSignedIn;
+  final bool googleLoading;
+  final String? emailError;
+  final String? passwordError;
+  final VoidCallback onSubmit;
+  final VoidCallback onGoogleSignIn;
+  final VoidCallback onTogglePassword;
+  final void Function(bool) onToggleKeepSignedIn;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final busy = state.action == AuthAction.loading;
+    final failed = state.action == AuthAction.failure;
+
+    return AuthScaffold(
+      tag: 'SIGN IN',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AuthEyebrow('WELCOME BACK'),
+          const AuthHeading(lead: 'Sign', emphasis: 'in.'),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 36),
+            child: Text(
+              'The next 10 minutes of practice are waiting.',
+              style: AppTypography.bodyMedium(c.textMuted),
+            ),
+          ),
+
+          AuthField(
+            label: 'EMAIL ADDRESS',
+            controller: emailController,
+            hintText: 'you@school.in',
+            autofocus: true,
+            keyboardType: TextInputType.emailAddress,
+            errorText: emailError,
+          ),
+          const SizedBox(height: 18),
+
+          AuthField(
+            label: 'PASSWORD',
+            controller: passwordController,
+            hintText: '••••••••',
+            obscureText: !showPassword,
+            errorText: passwordError,
+            onSubmitted: (_) => onSubmit(),
+            trailingLabel: GestureDetector(
+              onTap: () => context.go(RoutePaths.forgotPassword),
+              child: Text('Forgot password?',
+                  style: AppTypography.bodySmall(c.accent).copyWith(fontSize: 12)),
+            ),
+            trailing: IconButton(
+              onPressed: onTogglePassword,
+              icon: Icon(showPassword ? LucideIcons.eye : LucideIcons.eyeOff,
+                  size: 18, color: c.textMuted),
+              tooltip: showPassword ? 'Hide password' : 'Show password',
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // Keep me signed in
+          GestureDetector(
+            onTap: () => onToggleKeepSignedIn(!keepSignedIn),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: Checkbox(
+                    value: keepSignedIn,
+                    onChanged: (v) => onToggleKeepSignedIn(v ?? true),
+                    activeColor: c.accent,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.xs),
+                Text('Keep me signed in',
+                    style: AppTypography.bodySmall(c.textMuted)),
+              ],
+            ),
+          ),
 
-              AuthField(
-                label: 'EMAIL ADDRESS',
-                controller: _email,
-                hintText: 'you@school.in',
-                autofocus: true,
-                keyboardType: TextInputType.emailAddress,
-                errorText: _emailError,
-              ),
-              const SizedBox(height: 18),
+          if (failed) ...[
+            const SizedBox(height: 18),
+            _ErrorBanner(message: state.errorMessage),
+          ],
 
-              AuthField(
-                label: 'PASSWORD',
-                controller: _password,
-                hintText: '••••••••',
-                obscureText: !_showPassword,
-                errorText: _passwordError,
-                onSubmitted: (_) => _submit(),
-                trailingLabel: GestureDetector(
-                  onTap: () => context.go(RoutePaths.forgotPassword),
-                  child: Text('Forgot password?',
-                      style: AppTypography.bodySmall(c.accent).copyWith(fontSize: 12)),
-                ),
-                trailing: IconButton(
-                  onPressed: () => setState(() => _showPassword = !_showPassword),
-                  icon: Icon(_showPassword ? LucideIcons.eye : LucideIcons.eyeOff,
-                      size: 18, color: c.textMuted),
-                  tooltip: _showPassword ? 'Hide password' : 'Show password',
-                ),
-              ),
-              const SizedBox(height: 18),
+          const SizedBox(height: 18),
+          _SubmitButton(busy: busy, onPressed: busy ? null : onSubmit),
 
-              // Keep me signed in
-              GestureDetector(
-                onTap: () => setState(() => _keepSignedIn = !_keepSignedIn),
-                child: Row(
+          const SizedBox(height: 18),
+          _SsoRow(
+            onGoogleTap: busy ? null : onGoogleSignIn,
+            googleLoading: googleLoading,
+          ),
+
+          const SizedBox(height: 18),
+          Center(
+            child: Text('🔒 Your data is encrypted and secure',
+                style: AppTypography.bodySmall(c.textMuted).copyWith(fontSize: 12)),
+          ),
+
+          const SizedBox(height: 18),
+          Center(
+            child: GestureDetector(
+              onTap: () => context.go(RoutePaths.signup),
+              child: RichText(
+                text: TextSpan(
+                  style: AppTypography.bodyMedium(c.textPrimary)
+                      .copyWith(fontWeight: FontWeight.w500),
                   children: [
-                    SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: Checkbox(
-                        value: _keepSignedIn,
-                        onChanged: (v) => setState(() => _keepSignedIn = v ?? true),
-                        activeColor: c.accent,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text('Keep me signed in',
-                        style: AppTypography.bodySmall(c.textMuted)),
+                    const TextSpan(text: 'New to AskAide? Create an account '),
+                    TextSpan(text: '→', style: AppTypography.serifEmphasis(c.textPrimary, size: 16)),
                   ],
                 ),
               ),
-
-              if (failed) ...[
-                const SizedBox(height: 18),
-                _ErrorBanner(message: state.errorMessage),
-              ],
-
-              const SizedBox(height: 18),
-              _SubmitButton(busy: busy, onPressed: busy ? null : _submit),
-
-              const SizedBox(height: 18),
-              _SsoRow(
-                onGoogleTap: busy ? null : _handleGoogleSignIn,
-                googleLoading: _googleLoading,
-              ),
-
-              const SizedBox(height: 18),
-              Center(
-                child: Text('🔒 Your data is encrypted and secure',
-                    style: AppTypography.bodySmall(c.textMuted).copyWith(fontSize: 12)),
-              ),
-
-              const SizedBox(height: 18),
-              Center(
-                child: GestureDetector(
-                  onTap: () => context.go(RoutePaths.signup),
-                  child: RichText(
-                    text: TextSpan(
-                      style: AppTypography.bodyMedium(c.textPrimary)
-                          .copyWith(fontWeight: FontWeight.w500),
-                      children: [
-                        const TextSpan(text: 'New to AskAide? Create an account '),
-                        TextSpan(text: '→', style: AppTypography.serifEmphasis(c.textPrimary, size: 16)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
+            ),
           ),
-        );
-      },
+          const SizedBox(height: AppSpacing.xs),
+        ],
+      ),
     );
   }
 }
@@ -256,7 +305,7 @@ class _ErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.danger.withValues(alpha: 0.08),
         border: Border.all(color: c.danger),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -267,7 +316,7 @@ class _ErrorBanner extends StatelessWidget {
                 : "Couldn't sign in — check your email and password.",
             style: AppTypography.bodySmall(c.danger),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           GestureDetector(
             onTap: () => context.go(RoutePaths.forgotPassword),
             child: Text('Forgot password?',
@@ -319,7 +368,7 @@ class _SubmitButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text('Sign in to your account', style: AppTypography.button(c.bgPrimary)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text('→', style: AppTypography.serifEmphasis(c.bgPrimary, size: 16)),
                 ],
               ),
@@ -376,7 +425,7 @@ class _SsoRow extends StatelessWidget {
                   ],
                 ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.xs),
         btn(child: Text('🏫 School SSO', style: AppTypography.bodySmall(c.textPrimary))),
       ],
     );

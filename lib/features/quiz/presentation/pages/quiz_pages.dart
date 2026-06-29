@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
+import '../../../../core/presentation/widgets/stat_card.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';

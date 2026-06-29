@@ -121,9 +121,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
             hintStyle: AppTypography.bodyMedium(c.textMuted),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: c.border)),
+                borderRadius: AppRadii.cardR, borderSide: BorderSide(color: c.border)),
             focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: c.accent)),
+                borderRadius: AppRadii.cardR, borderSide: BorderSide(color: c.accent)),
           ),
         ),
       ],

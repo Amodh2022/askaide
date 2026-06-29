@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 
 /// Shared chrome for the bare auth screens (login / signup / verify / reset).
@@ -78,7 +79,7 @@ class _Wordmark extends StatelessWidget {
           height: 22,
           decoration: BoxDecoration(
             color: c.accent,
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadii.cardR,
           ),
           alignment: Alignment.center,
           child: Text(

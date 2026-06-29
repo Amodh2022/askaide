@@ -1,7 +1,7 @@
 part of '../admin_dashboard_page.dart';
 
 class _MappingsPanel extends StatefulWidget {
-  const _MappingsPanel();
+  const _MappingsPanel({super.key});
   @override
   State<_MappingsPanel> createState() => _MappingsPanelState();
 }
@@ -86,6 +86,7 @@ class _MappingsPanelState extends State<_MappingsPanel> {
         _subjectId != null && _studentIds.isNotEmpty && !_saving;
 
     return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,7 +185,7 @@ class _MappingsPanelState extends State<_MappingsPanel> {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: c.accent,
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                   ),
                   child: Text('${_studentIds.length} selected',
                       style: AppTypography.mono(Colors.white, size: 9)),
@@ -215,7 +216,7 @@ class _MappingsPanelState extends State<_MappingsPanel> {
             Container(
               decoration: BoxDecoration(
                 border: Border.all(color: c.border),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadii.componentR,
               ),
               child: Column(
                 children: [
@@ -251,9 +252,7 @@ class _MappingsPanelState extends State<_MappingsPanel> {
             child: FilledButton.icon(
               onPressed: canSubmit ? () => _submit(state) : null,
               icon: _saving
-                  ? const SizedBox(
-                      width: 14, height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const BtnSpinner()
                   : const Icon(Icons.link, size: 16),
               label: Text(_saving
                   ? 'Linking…'

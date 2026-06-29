@@ -103,9 +103,9 @@ class _TeacherStudentsViewState extends State<_TeacherStudentsView> {
                       prefixIcon: Icon(LucideIcons.search, size: 16, color: c.textMuted),
                       contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                       enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: c.border)),
+                          borderRadius: AppRadii.cardR, borderSide: BorderSide(color: c.border)),
                       focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: c.accent)),
+                          borderRadius: AppRadii.cardR, borderSide: BorderSide(color: c.accent)),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -144,7 +144,7 @@ class _TeacherStudentsViewState extends State<_TeacherStudentsView> {
                           decoration: BoxDecoration(
                             color: c.bgCard,
                             border: Border.all(color: c.border),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: AppRadii.cardR,
                           ),
                           child: Icon(LucideIcons.arrowUpDown, size: 16, color: c.textMuted),
                         ),
@@ -264,7 +264,7 @@ class _StudentTableRow extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                 ),
                 child: Text(statusLabel,
                     style: AppTypography.mono(statusColor, size: 8), textAlign: TextAlign.center),

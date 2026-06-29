@@ -135,7 +135,7 @@ class _CurriculumPanelState extends State<_CurriculumPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final classes = context.watch<AdminCubit>().state.classes;
+    final classes = context.select<AdminCubit, List<AdminRecord>>((c) => c.state.classes);
     final isTopics = widget.mode == _CurriculumMode.topics;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -137,7 +137,7 @@ class _ActivityCard extends StatelessWidget {
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: typeColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppRadii.modalR,
                 ),
                 child: Icon(typeIcon, size: 14, color: typeColor),
               ),

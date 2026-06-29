@@ -1,7 +1,7 @@
 part of '../admin_dashboard_page.dart';
 
 class _ChaptersPanel extends StatefulWidget {
-  const _ChaptersPanel();
+  const _ChaptersPanel({super.key});
   @override
   State<_ChaptersPanel> createState() => _ChaptersPanelState();
 }
@@ -126,10 +126,12 @@ class _ChaptersPanelState extends State<_ChaptersPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final classes = context.watch<AdminCubit>().state.classes;
-    return ListView(
+    final classes = context.select<AdminCubit, List<AdminRecord>>((c) => c.state.classes);
+    return Padding(
       padding: const EdgeInsets.all(20),
-      children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -159,6 +161,7 @@ class _ChaptersPanelState extends State<_ChaptersPanel> {
           _chaptersCard(c),
         ],
       ],
+      ),
     );
   }
 
@@ -169,7 +172,7 @@ class _ChaptersPanelState extends State<_ChaptersPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: mobile
           ? Column(
@@ -225,7 +228,7 @@ class _ChaptersPanelState extends State<_ChaptersPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -347,7 +350,7 @@ class _ChaptersPanelState extends State<_ChaptersPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -368,7 +371,7 @@ class _ChaptersPanelState extends State<_ChaptersPanel> {
                         horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: c.accent.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(99),
+                      borderRadius: AppRadii.pillR,
                     ),
                     child: Text(
                       query.isEmpty
@@ -482,13 +485,13 @@ class _ChaptersPanelState extends State<_ChaptersPanel> {
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 10),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide: BorderSide(color: c.border)),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide: BorderSide(color: c.border)),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide:
                           BorderSide(color: c.accent, width: 1.5)),
                 ),

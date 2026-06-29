@@ -1,7 +1,7 @@
 part of '../admin_dashboard_page.dart';
 
 class _SchoolsPanel extends StatefulWidget {
-  const _SchoolsPanel();
+  const _SchoolsPanel({super.key});
   @override
   State<_SchoolsPanel> createState() => _SchoolsPanelState();
 }
@@ -94,10 +94,13 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final state = context.watch<AdminCubit>().state;
-    return ListView(
+    final status = context.select<AdminCubit, ALoad>((c) => c.state.status);
+    final schools = context.select<AdminCubit, List<AdminSchool>>((c) => c.state.schools);
+    return Padding(
       padding: const EdgeInsets.all(20),
-      children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -119,11 +122,12 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
           _formCard(c),
         ],
         const SizedBox(height: 16),
-        if (state.status == ALoad.loading && state.schools.isEmpty)
+        if (status == ALoad.loading && schools.isEmpty)
           const SkeletonListLoader()
         else
-          _grid(c, state.schools),
+          _grid(c, schools),
       ],
+      ),
     );
   }
 
@@ -133,7 +137,7 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Form(
         key: _formKey,
@@ -177,7 +181,7 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
                 FilledButton.icon(
                   onPressed: _saving ? null : _submit,
                   icon: _saving
-                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const BtnSpinner()
                       : const Icon(Icons.save, size: 18),
                   label: Text(_editing != null ? 'Update School' : 'Create School'),
                   style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
@@ -260,7 +264,7 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

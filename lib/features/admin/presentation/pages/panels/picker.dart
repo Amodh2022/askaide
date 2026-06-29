@@ -48,7 +48,7 @@ class _PickerSheetState extends State<_PickerSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                  color: c.border, borderRadius: BorderRadius.circular(99)),
+                  color: c.border, borderRadius: AppRadii.pillR),
             ),
             const SizedBox(height: 16),
             Padding(
@@ -86,13 +86,13 @@ class _PickerSheetState extends State<_PickerSheet> {
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide: BorderSide(color: c.border)),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide: BorderSide(color: c.border)),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                       borderSide: BorderSide(color: c.accent, width: 1.5)),
                 ),
               ),
@@ -216,7 +216,7 @@ class _PickerField extends StatelessWidget {
               border: Border.all(
                   color: hasValue ? c.accent : c.border,
                   width: hasValue ? 1.5 : 1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppRadii.componentR,
             ),
             child: Row(
               children: [

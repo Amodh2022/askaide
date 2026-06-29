@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/page_scroll_scaffold.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -35,15 +36,15 @@ class _ProfileSkeleton extends StatelessWidget {
               height: 46,
               decoration: BoxDecoration(
                 color: c.bgCard,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
                 border: Border.all(color: c.border),
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
           // Section label
           const SkeletonBox(width: 80, height: 11),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           // Stats grid (4 across)
           LayoutBuilder(
             builder: (context, cons) {
@@ -59,10 +60,10 @@ class _ProfileSkeleton extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
           // Section label
           const SkeletonBox(width: 60, height: 11),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           // Badges area
           const SkeletonShellCard(
             showIcon: true,
@@ -85,10 +86,10 @@ class _ProfileSkeleton extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
           // Section label
           const SkeletonBox(width: 100, height: 11),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           // Referral card
           const SkeletonShellCard(
             showIcon: true,
@@ -147,19 +148,15 @@ class _ProfileView extends StatelessWidget {
         final id = profile.user?.id ?? '';
         if (id.isNotEmpty) context.read<DashboardCubit>().load(id);
       },
-      child: SingleChildScrollView(
+      child: PageScrollScaffold(
+        maxWidth: 720,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        children: [
                 // ── Profile header ──
                 const _SectionLabel('Profile'),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 _HeaderCard(user: user),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.lg),
 
                 // ── Streak ──
                 Center(
@@ -171,13 +168,13 @@ class _ProfileView extends StatelessWidget {
                 ),
                 // Loss-aversion nudge when the streak is at risk.
                 if (!loading && !practicedToday && data.currentStreak > 0) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8722A).withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadii.cardR,
                       border: Border.all(color: const Color(0xFFE8722A).withValues(alpha: 0.25)),
                     ),
                     child: Text(
@@ -187,14 +184,14 @@ class _ProfileView extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.lg),
 
                 if (loading)
                   const _ProfileSkeleton()
                 else ...[
                   // ── Activity stats ──
                   const _SectionLabel('Activity'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   LayoutBuilder(builder: (context, cons) {
                     final cols = cons.maxWidth > 540 ? 4 : 2;
                     return GridView.count(
@@ -221,19 +218,19 @@ class _ProfileView extends StatelessWidget {
                       ],
                     );
                   }),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // ── Badges ──
                   const _SectionLabel('Badges'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   AchievementsCard(earned: data.badges),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // ── Referral ──
                   const _SectionLabel('Refer a friend'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   _ReferralCard(referral: data.referral),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
 
                   Center(
                     child: OutlinedButton.icon(
@@ -249,9 +246,6 @@ class _ProfileView extends StatelessWidget {
                   ),
                 ],
               ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -288,7 +282,7 @@ class _HeaderCard extends StatelessWidget {
             height: 88,
             decoration: BoxDecoration(
               color: c.accentLight,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppRadii.componentR,
               border: Border.all(color: c.border),
               image: (image != null && image.isNotEmpty)
                   ? DecorationImage(image: NetworkImage(image), fit: BoxFit.cover)
@@ -308,7 +302,7 @@ class _HeaderCard extends StatelessWidget {
                     style: AppTypography.h2(c.textPrimary).copyWith(fontSize: 26)),
                 const SizedBox(height: 6),
                 _IconLine(icon: LucideIcons.mail, text: user?.email ?? '—'),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 // The frontend shows the join month; the Flutter user model has
                 // no createdAt yet, so this mirrors its "Recently" fallback.
                 const _IconLine(icon: LucideIcons.calendar, text: 'Joined Recently'),
@@ -317,7 +311,7 @@ class _HeaderCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: c.accentLight,
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                   ),
                   child: Text(user?.accountType.label ?? 'Student',
                       style: AppTypography.mono(c.accent, size: 11)),
@@ -383,7 +377,7 @@ class _StatCard extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: c.accentLight,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
                 border: Border.all(color: c.border),
               ),
               child: Icon(icon, size: 20, color: c.accent),
@@ -430,7 +424,7 @@ class _ReferralCard extends StatelessWidget {
                 Row(
                   children: [
                     const GradientIcon(LucideIcons.gift, secondary: true),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,11 +441,11 @@ class _ReferralCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: c.accentLight,
-                          borderRadius: BorderRadius.circular(99),
+                          borderRadius: AppRadii.pillR,
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           Icon(LucideIcons.users, size: 13, color: c.accent),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: AppSpacing.xxs),
                           Text('${referral!.totalReferrals}',
                               style: AppTypography.mono(c.accent, size: 11)),
                         ]),
@@ -465,13 +459,13 @@ class _ReferralCard extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: c.bgSecondary,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadii.sectionR,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Your referral code', style: AppTypography.bodySmall(c.textMuted)),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: AppSpacing.xs),
                         DottedBorderBox(
                           color: c.border,
                           child: Center(
@@ -483,7 +477,7 @@ class _ReferralCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                 ] else
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),

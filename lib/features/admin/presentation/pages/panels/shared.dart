@@ -13,24 +13,6 @@ class _PersonRow {
   }
 }
 
-/// Pins the tab chip strip to the top of the scroll view.
-class _PinnedTabBar extends SliverPersistentHeaderDelegate {
-  _PinnedTabBar({required this.height, required this.child});
-  final double height;
-  final Widget child;
-
-  @override
-  double get minExtent => height;
-  @override
-  double get maxExtent => height;
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
-      SizedBox.expand(child: child);
-  @override
-  bool shouldRebuild(covariant _PinnedTabBar old) =>
-      old.height != height || old.child != child;
-}
-
 /// A small class → subject selector header shared by the curriculum tabs.
 class _ClassSubjectSelector extends StatelessWidget {
   const _ClassSubjectSelector({

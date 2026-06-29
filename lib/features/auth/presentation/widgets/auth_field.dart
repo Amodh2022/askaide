@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 
 /// A labeled text field matching the frontend's auth inputs: a small mono
@@ -88,7 +89,7 @@ class AuthField extends StatelessWidget {
   }
 
   OutlineInputBorder _border(Color color, {double width = 1.5}) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
         borderSide: BorderSide(color: color, width: width),
       );
 }

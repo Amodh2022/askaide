@@ -7,11 +7,14 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/card_grid.dart';
+import '../../../../core/presentation/widgets/page_scroll_scaffold.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../profile/domain/entities/user.dart';
 import '../../../profile/presentation/cubit/profile_cubit.dart';
 import '../../data/dashboard_models.dart';
 import '../cubit/dashboard_cubit.dart';
@@ -64,9 +67,9 @@ class _DashboardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final profile = context.watch<ProfileCubit>().state;
-    final firstName = profile.user?.firstName ?? 'Learner';
-    final userId = profile.user?.id ?? '';
+    final profileUser = context.select<ProfileCubit, User?>((c) => c.state.user);
+    final firstName = profileUser?.firstName ?? 'Learner';
+    final userId = profileUser?.id ?? '';
     final dashState = context.watch<DashboardCubit>().state;
     final data = dashState.data;
     // First load (no data yet): show a loader, mirroring the frontend which
@@ -97,21 +100,15 @@ class _DashboardView extends StatelessWidget {
           if (id.isNotEmpty) context.read<DashboardCubit>().load(id);
           return Future.value();
         },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 880),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: PageScrollScaffold(
+          maxWidth: 880,
               children: [
                 // ── Hero greeting ──
                 Text(g.label, style: AppTypography.sectionLabel(c.textMuted)),
                 const SizedBox(height: 6),
                 Text('Good ${g.timeOfDay}, $firstName!',
                     style: AppTypography.h1(c.textPrimary).copyWith(fontSize: 30)),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 Wrap(
                   alignment: WrapAlignment.spaceBetween,
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -134,7 +131,7 @@ class _DashboardView extends StatelessWidget {
                           ),
                         ),
                         if (userId.isNotEmpty) ...[
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.xs),
                           _IconButton(
                             icon: LucideIcons.share2,
                             tooltip: 'Share your profile',
@@ -151,13 +148,13 @@ class _DashboardView extends StatelessWidget {
                 ),
                 // Loss-aversion nudge when the streak is at risk.
                 if (!practicedToday && data.currentStreak > 0) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8722A).withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadii.cardR,
                       border: Border.all(color: const Color(0xFFE8722A).withValues(alpha: 0.25)),
                     ),
                     child: Text(
@@ -168,7 +165,7 @@ class _DashboardView extends StatelessWidget {
                     ),
                   ),
                 ],
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.lg),
 
                 if (loading)
                   const _DashboardSkeleton()
@@ -176,13 +173,13 @@ class _DashboardView extends StatelessWidget {
                   // ── Continue session banner ──
                   if (data.continueSession != null) ...[
                     _ContinueBanner(session: data.continueSession!),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                   ],
 
                   // ── Daily challenge ──
                   if (data.challenge != null) ...[
                     _DailyChallengeCard(challenge: data.challenge!),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                   ],
 
                   // ── Quick start CTA ──
@@ -220,10 +217,10 @@ class _DashboardView extends StatelessWidget {
                       ],
                     );
                   }),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
 
                   // ── Activity / continue / weekly / calendar / goal / referral grid ──
-                  _CardGrid(children: [
+                  CardGrid(children: [
                     _TodayActivityCard(data: data),
                     _ContinueLearningCard(lastStudied: data.lastStudied),
                     _WeeklyActivityChart(weekly: data.weekly),
@@ -236,7 +233,7 @@ class _DashboardView extends StatelessWidget {
                   // ── Quick actions ──
                   Text('QUICK ACTIONS', style: AppTypography.sectionLabel(c.textMuted)),
                   const SizedBox(height: 10),
-                  _CardGrid(minWidth: 200, children: [
+                  CardGrid(minWidth: 200, children: [
                     _ActionCard(
                       icon: LucideIcons.bookOpen,
                       title: 'Quick Practice',
@@ -260,7 +257,7 @@ class _DashboardView extends StatelessWidget {
                   const SizedBox(height: 28),
 
                   // ── Achievements + leaderboard ──
-                  _CardGrid(children: [
+                  CardGrid(children: [
                     _AchievementsCard(earned: data.badges),
                     _LeaderboardCard(entries: data.leaderboard),
                   ]),
@@ -272,9 +269,6 @@ class _DashboardView extends StatelessWidget {
                   ],
                 ],
               ],
-            ),
-          ),
-        ),
       ),
       ),
     );

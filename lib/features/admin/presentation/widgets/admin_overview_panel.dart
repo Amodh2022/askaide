@@ -20,6 +20,8 @@ class _AdminOverviewSkeleton extends StatelessWidget {
     return Shimmer(
       child: ListView(
         padding: const EdgeInsets.all(16),
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         children: [
           // Toolbar row
           Wrap(
@@ -54,7 +56,7 @@ class _AdminOverviewSkeleton extends StatelessWidget {
                 rows.add(Padding(
                   padding: EdgeInsets.only(top: rows.isEmpty ? 0 : gap),
                   child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: List.generate(
                       cols,
                       (j) {
@@ -284,6 +286,8 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
     }
     return ListView(
       padding: const EdgeInsets.all(16),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       children: [
         _toolbar(c),
         const SizedBox(height: 16),
@@ -748,15 +752,31 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
       children: [
         SizedBox(
           height: 180,
-          child: LineChart(LineChartData(
-            minY: 0,
-            maxY: maxY <= 0 ? 1 : maxY * 1.2,
-            gridData: FlGridData(
+            child: LineChart(LineChartData(
+              minY: 0,
+              maxY: maxY <= 0 ? 1 : maxY * 1.2,
+              clipData: const FlClipData.all(),
+              gridData: FlGridData(
               show: true,
               drawVerticalLine: false,
               getDrawingHorizontalLine: (_) => FlLine(color: c.borderSubtle, strokeWidth: 1),
             ),
             borderData: FlBorderData(show: false),
+            lineTouchData: LineTouchData(
+              enabled: true,
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipItems: (touchedSpots) => touchedSpots.map((s) {
+                  return LineTooltipItem(
+                    s.y.toStringAsFixed(0),
+                    TextStyle(
+                      color: s.bar.color ?? Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
             titlesData: FlTitlesData(
               topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
@@ -786,6 +806,7 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
                 LineChartBarData(
                   spots: [for (var i = 0; i < s.values.length; i++) FlSpot(i.toDouble(), s.values[i])],
                   isCurved: true,
+                  preventCurveOverShooting: true,
                   color: s.color,
                   barWidth: 2,
                   dotData: const FlDotData(show: false),
@@ -957,14 +978,16 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
         ]);
       }
       final w = (box.maxWidth - 12) / 2;
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (var i = 0; i < boxes.length; i++) ...[
-            if (i > 0) const SizedBox(width: 12),
-            SizedBox(width: w, child: boxes[i]),
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < boxes.length; i++) ...[
+              if (i > 0) const SizedBox(width: 12),
+              SizedBox(width: w, child: boxes[i]),
+            ],
           ],
-        ],
+        ),
       );
     });
   }

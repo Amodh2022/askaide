@@ -185,7 +185,7 @@ class _TeacherStudentViewState extends State<_TeacherStudentView> {
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: c.danger.withValues(alpha: 0.07),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: AppRadii.componentR,
                               ),
                               child: Row(
                                 children: [
@@ -216,7 +216,7 @@ class _TeacherStudentViewState extends State<_TeacherStudentView> {
                       decoration: BoxDecoration(
                         color: c.accentLight,
                         border: Border.all(color: c.border),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadii.cardR,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -265,7 +265,7 @@ class _ChapterAccordion extends StatelessWidget {
     final c = context.colors;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(border: Border.all(color: c.border), borderRadius: AppRadii.componentR),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -281,7 +281,7 @@ class _ChapterAccordion extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: c.bgCard,
                       border: Border.all(color: c.border),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: AppRadii.modalR,
                     ),
                     alignment: Alignment.center,
                     child: Text('${chapter.order}',
@@ -352,7 +352,7 @@ class _TopicRow extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: c.bgCard, borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: c.bgCard, borderRadius: AppRadii.componentR),
       child: Row(
         children: [
           Icon(stateIcon, size: 16, color: stateColor),

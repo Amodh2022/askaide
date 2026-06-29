@@ -48,9 +48,9 @@ class _TeacherAiGeneratorPageState extends State<TeacherAiGeneratorPage> {
                   hintText: 'e.g. Generate 5 medium MCQs on photosynthesis',
                   hintStyle: AppTypography.bodyMedium(c.textMuted),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: c.border)),
+                      borderRadius: AppRadii.cardR, borderSide: BorderSide(color: c.border)),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(4), borderSide: BorderSide(color: c.accent)),
+                      borderRadius: AppRadii.cardR, borderSide: BorderSide(color: c.accent)),
                 ),
               ),
               const SizedBox(height: 12),

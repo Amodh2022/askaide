@@ -51,7 +51,7 @@ class _TeacherWeakTopicsView extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: c.danger.withValues(alpha: 0.1),
                             border: Border.all(color: c.danger),
-                            borderRadius: BorderRadius.circular(99),
+                            borderRadius: AppRadii.pillR,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -69,7 +69,7 @@ class _TeacherWeakTopicsView extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: c.warning.withValues(alpha: 0.1),
                             border: Border.all(color: c.warning),
-                            borderRadius: BorderRadius.circular(99),
+                            borderRadius: AppRadii.pillR,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -92,7 +92,7 @@ class _TeacherWeakTopicsView extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: c.accentLight,
                         border: Border.all(color: c.border),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadii.cardR,
                       ),
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +162,7 @@ class _WeakTopicDetailCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         border: Border.all(color: borderColor.withValues(alpha: 0.4)),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(
@@ -266,7 +266,7 @@ class _DiffBar extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         ClipRRect(
-          borderRadius: BorderRadius.circular(99),
+          borderRadius: AppRadii.pillR,
           child: LinearProgressIndicator(
             value: value.clamp(0.0, 1.0),
             minHeight: 3,

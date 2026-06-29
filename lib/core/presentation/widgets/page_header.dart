@@ -23,10 +23,11 @@ class PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final label = '— ${eyebrow.toUpperCase()}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('— ${eyebrow.toUpperCase()}', style: AppTypography.sectionLabel(c.accent)),
+        Text(label, style: AppTypography.sectionLabel(c.accent)),
         const SizedBox(height: 8),
         Text.rich(
           TextSpan(

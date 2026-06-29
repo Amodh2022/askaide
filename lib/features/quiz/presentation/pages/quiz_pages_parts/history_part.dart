@@ -52,7 +52,7 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: c.accent,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadii.sectionR,
                     ),
                     child: const Icon(LucideIcons.history, size: 24, color: Colors.white),
                   ),
@@ -79,11 +79,11 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                   filled: true,
                   fillColor: c.bgSecondary,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadii.componentR,
                     borderSide: BorderSide(color: c.border),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadii.componentR,
                     borderSide: BorderSide(color: c.border),
                   ),
                 ),
@@ -181,13 +181,13 @@ class _HistoryCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 10),
       child: InkWell(
         onTap: () => context.go('/quiz/result/${item.attemptId}'),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: c.bgCard,
             border: Border.all(color: c.border),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadii.sectionR,
           ),
           child: Row(
             children: [
@@ -197,7 +197,7 @@ class _HistoryCard extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: iconBg,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadii.sectionR,
                 ),
                 child: Icon(passed ? LucideIcons.trophy : LucideIcons.circleX,
                     size: 24, color: scoreFg),

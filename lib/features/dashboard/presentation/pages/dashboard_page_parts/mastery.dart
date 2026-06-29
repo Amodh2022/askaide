@@ -98,7 +98,7 @@ class _MasteryOverview extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                     decoration: BoxDecoration(
                       color: c.bgSecondary,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadii.sectionR,
                     ),
                     child: Column(
                       children: [
@@ -121,7 +121,7 @@ class _MasteryOverview extends StatelessWidget {
           // Stacked distribution bar
           if (total > 0)
             ClipRRect(
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: AppRadii.pillR,
               child: SizedBox(
                 height: 12,
                 child: Row(
@@ -195,7 +195,7 @@ class _TopicList extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: c.bgSecondary,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -224,7 +224,7 @@ class _TopicList extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: c.bgCard,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadii.cardR,
                     ),
                     child: Text('${(s.mastery * 100).round()}%',
                         style: AppTypography.mono(

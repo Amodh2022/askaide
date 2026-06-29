@@ -94,7 +94,7 @@ class _AchievementsCardState extends State<_AchievementsCard> {
           const SizedBox(height: 14),
           // Progress bar
           ClipRRect(
-            borderRadius: BorderRadius.circular(99),
+            borderRadius: AppRadii.pillR,
             child: LinearProgressIndicator(
               value: total > 0 ? earnedCount / total : 0,
               minHeight: 6,
@@ -109,7 +109,7 @@ class _AchievementsCardState extends State<_AchievementsCard> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: c.bgSecondary,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadii.sectionR,
               ),
               child: Column(
                 children: [
@@ -163,7 +163,7 @@ class _BadgeTile extends StatelessWidget {
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: c.bgSecondary,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
         border: Border.all(color: c.border),
       ),
       child: Stack(
@@ -237,7 +237,7 @@ class _LeaderboardCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
                     color: c.accentLight,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadii.componentR,
                   ),
                   child: Text('Your rank: #$myRank',
                       style: AppTypography.bodySmall(c.accent)
@@ -254,7 +254,7 @@ class _LeaderboardCard extends StatelessWidget {
                   height: 48,
                   decoration: BoxDecoration(
                     color: c.accentLight,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadii.sectionR,
                   ),
                   child: Icon(LucideIcons.trophy, size: 24, color: c.accent),
                 ),
@@ -313,7 +313,7 @@ class _LeaderboardRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: isMe ? c.accentLight : c.bgSecondary,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
         border: Border.all(color: isMe ? c.accent.withValues(alpha: 0.3) : Colors.transparent),
       ),
       child: Row(

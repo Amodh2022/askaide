@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/presentation/widgets/confirm_dialog.dart';
+import '../../../../core/presentation/widgets/page_scroll_scaffold.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/sound/sound_cubit.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -26,23 +27,19 @@ class SettingsPage extends StatelessWidget {
     final user = context.select<ProfileCubit, dynamic>((p) => p.state.user);
     final sound = context.read<SoundCubit>();
 
-    return SingleChildScrollView(
+    return PageScrollScaffold(
+      maxWidth: 720,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      children: [
               // Header
               Text('— SETTINGS', style: AppTypography.sectionLabel(c.accent)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Text('Preferences',
                   style: AppTypography.h1(c.textPrimary).copyWith(fontSize: 36)),
               const SizedBox(height: 6),
               Text('Customize your learning experience',
                   style: AppTypography.bodySmall(c.textMuted)),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.lg),
 
               // Account
               _Section(
@@ -57,7 +54,7 @@ class SettingsPage extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: c.bgRaised,
                         border: Border.all(color: c.border),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadii.cardR,
                       ),
                       child: Row(
                         children: [
@@ -88,7 +85,7 @@ class SettingsPage extends StatelessWidget {
                                 horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: c.accentLight,
-                              borderRadius: BorderRadius.circular(99),
+                              borderRadius: AppRadii.pillR,
                             ),
                             child: Text(user?.accountType.label ?? 'Student',
                                 style: AppTypography.mono(c.accent, size: 11)),
@@ -96,7 +93,7 @@ class SettingsPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.sm),
                     _RowButton(
                       label: 'View Profile',
                       onTap: () {
@@ -128,7 +125,7 @@ class SettingsPage extends StatelessWidget {
                         },
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: AppSpacing.sm),
                     Expanded(
                       child: _ThemeOption(
                         icon: LucideIcons.moon,
@@ -161,7 +158,7 @@ class SettingsPage extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: c.bgRaised,
                             border: Border.all(color: c.border),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: AppRadii.cardR,
                           ),
                           child: Row(
                             children: [
@@ -187,14 +184,14 @@ class SettingsPage extends StatelessWidget {
                           ),
                         ),
                         if (soundEnabled) ...[
-                          const SizedBox(height: 12),
+                          const SizedBox(height: AppSpacing.sm),
                           Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: c.bgRaised,
                               border: Border.all(color: c.border),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: AppRadii.cardR,
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +199,7 @@ class SettingsPage extends StatelessWidget {
                                 Text('TEST SOUNDS',
                                     style: AppTypography.sectionLabel(
                                         c.textMuted)),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.sm),
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
@@ -261,7 +258,7 @@ class SettingsPage extends StatelessWidget {
               ),
 
               // App info footer
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Center(
                 child: Column(
                   children: [
@@ -273,11 +270,8 @@ class SettingsPage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
-      ),
+              const SizedBox(height: AppSpacing.lg),
+      ],
     );
   }
 }
@@ -309,7 +303,7 @@ class _Section extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: AppTypography.sectionLabel(c.textMuted)),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Row(
             children: [
               Container(
@@ -317,11 +311,11 @@ class _Section extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: c.accentLight,
                   border: Border.all(color: c.border),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: Icon(icon, size: 20, color: c.accent),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -335,7 +329,7 @@ class _Section extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           child,
         ],
       ),
@@ -362,14 +356,14 @@ class _ThemeOption extends StatelessWidget {
     final c = context.colors;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: AppRadii.cardR,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
         decoration: BoxDecoration(
           color: selected ? c.accentLight : c.bgRaised,
           border: Border.all(
               color: selected ? c.accent : c.border, width: selected ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: Column(
           children: [
@@ -378,7 +372,7 @@ class _ThemeOption extends StatelessWidget {
               decoration: BoxDecoration(
                 color: selected ? c.accent : c.bgCard,
                 border: Border.all(color: c.border),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
               ),
               child: Icon(icon, size: 22, color: selected ? c.bgCard : c.accent),
             ),
@@ -391,12 +385,12 @@ class _ThemeOption extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: AppTypography.bodySmall(c.textMuted)),
             if (selected) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: c.accent,
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                 ),
                 child: Text('ACTIVE', style: AppTypography.mono(c.bgCard, size: 9)),
               ),
@@ -418,13 +412,13 @@ class _RowButton extends StatelessWidget {
     final c = context.colors;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: AppRadii.cardR,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: c.bgRaised,
           border: Border.all(color: c.border),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -448,12 +442,12 @@ class _TestChip extends StatelessWidget {
     final c = context.colors;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(99),
+      borderRadius: AppRadii.pillR,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
           color: c.accent,
-          borderRadius: BorderRadius.circular(99),
+          borderRadius: AppRadii.pillR,
         ),
         child: Text(label, style: AppTypography.button(c.bgCard)),
       ),

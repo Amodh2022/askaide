@@ -112,10 +112,14 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
     // The server is the source of truth for history (mirrors React's Sidebar
     // fetchSessionsByUserId). Refresh from it when we have a user and a network.
     if (online && e.userId.isNotEmpty) {
+      emit(state.copyWith(historyStatus: LoadStatus.loading));
       final result = await _repository.fetchRemoteSessionHistory(e.userId);
       result.fold(
-        (_) {}, // keep the cached history on failure
-        (sessions) => emit(state.copyWith(history: sessions)),
+        (_) => emit(state.copyWith(historyStatus: LoadStatus.success)),
+        (sessions) => emit(state.copyWith(
+          history: sessions,
+          historyStatus: LoadStatus.success,
+        )),
       );
     }
   }
@@ -598,8 +602,29 @@ class SessionBloc extends Bloc<SessionEvent, SessionState> {
   }
 
   void _onBackToConfig(BackToConfigRequested e, Emitter<SessionState> emit) {
+    _pending.clear();
     emit(state.copyWith(
-        panel: SessionPanel.config, clearFeedback: true, clearOrigin: true));
+      panel: SessionPanel.config,
+      sessionStarted: false,
+      config: const StudyConfig(),
+      subjects: const [],
+      chapters: const [],
+      questions: const [],
+      currentIndex: 0,
+      questionOffset: 0,
+      seenQuestionIds: const {},
+      answers: const {},
+      questionStatus: LoadStatus.idle,
+      taxonomyStatus: LoadStatus.idle,
+      clearFeedback: true,
+      clearError: true,
+      clearResultSummary: true,
+      clearReviewSession: true,
+      finishing: false,
+      mastered: false,
+      // intentionally NOT clearing originRoute — that is only cleared by
+      // _onResultDismissed so the Progress page listener doesn't fire here.
+    ));
   }
 
   Future<void> _onRetryBatch(

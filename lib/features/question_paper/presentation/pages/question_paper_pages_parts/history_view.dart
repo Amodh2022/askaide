@@ -95,7 +95,7 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: c.accent,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: AppRadii.componentR,
                         ),
                         child: const Icon(LucideIcons.fileText,
                             size: 20, color: Colors.white),
@@ -169,7 +169,7 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
                             decoration: BoxDecoration(
                               color: c.bgCard,
                               border: Border.all(color: c.border),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppRadii.sectionR,
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,7 +344,7 @@ class _HistoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+      decoration: BoxDecoration(color: bg, borderRadius: AppRadii.cardR),
       child: Text(label, style: AppTypography.bodySmall(fg).copyWith(fontWeight: FontWeight.w500)),
     );
   }

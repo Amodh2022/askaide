@@ -24,7 +24,7 @@ class _DashboardSkeleton extends StatelessWidget {
                 height: 46,
                 decoration: BoxDecoration(
                   color: c.bgCard,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                   border: Border.all(color: c.border),
                 ),
               ),
@@ -35,7 +35,7 @@ class _DashboardSkeleton extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: c.bgCard,
                   border: Border.all(color: c.border),
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppRadii.modalR,
                 ),
               ),
             ],
@@ -47,7 +47,7 @@ class _DashboardSkeleton extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: c.bgRaised,
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: AppRadii.pillR,
             ),
           ),
           const SizedBox(height: 28),
@@ -232,13 +232,13 @@ class _ActionCard extends StatelessWidget {
     final fg = accent ? Colors.white : c.textPrimary;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: AppRadii.cardR,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: accent ? c.accent : c.bgCard,
           border: Border.all(color: accent ? c.accent : c.borderSubtle),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
           boxShadow: AppShadows.card(Theme.of(context).brightness),
         ),
         child: Row(
@@ -258,7 +258,7 @@ class _ActionCard extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: accent ? Colors.white.withValues(alpha: 0.18) : c.accentLight,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
               ),
               child: Icon(icon, size: 18, color: accent ? Colors.white : c.accent),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 
 /// Result of the NPS survey: a 0–10 recommendation [score] and optional
@@ -72,16 +73,16 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
     if (_submitted) {
       return Dialog(
         backgroundColor: c.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.modalR),
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('🙏', style: TextStyle(fontSize: 36)),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               Text('Thank you!', style: AppTypography.h4(c.textPrimary)),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xxs),
               Text('Your feedback helps us improve',
                   textAlign: TextAlign.center,
                   style: AppTypography.bodySmall(c.textSecondary)),
@@ -94,7 +95,7 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
     return Dialog(
       backgroundColor: c.bgCard,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.modalR),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380),
         child: Padding(
@@ -106,13 +107,13 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
               Row(
                 children: [
                   Icon(LucideIcons.star, size: 18, color: c.accent),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text('Quick Question',
                       style: AppTypography.labelLarge(c.textPrimary)),
                   const Spacer(),
                   InkWell(
                     onTap: () => Navigator.of(context).pop(),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadii.componentR,
                     child: Padding(
                       padding: const EdgeInsets.all(4),
                       child: Icon(LucideIcons.x, size: 16, color: c.textMuted),
@@ -120,10 +121,10 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Text('How likely are you to recommend AskAide to a classmate?',
                   style: AppTypography.bodyMedium(c.textSecondary)),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               // 0–10 score picker
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -139,7 +140,7 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: _scoreColor(c, val),
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: AppRadii.modalR,
                               border: Border.all(
                                 color: _score == val ? c.accent : c.borderSubtle,
                                 width: _score == val ? 2 : 1,
@@ -172,7 +173,7 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                 ],
               ),
               if (_score != null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 TextField(
                   controller: _commentController,
                   maxLength: 200,
@@ -188,15 +189,15 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 12),
                     enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppRadii.componentR,
                         borderSide: BorderSide(color: c.border)),
                     focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: AppRadii.componentR,
                         borderSide: BorderSide(color: c.accent)),
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -208,7 +209,7 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                     disabledForegroundColor: c.textMuted,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                        borderRadius: AppRadii.componentR),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -216,7 +217,7 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                       Icon(LucideIcons.send,
                           size: 16,
                           color: _score == null ? c.textMuted : Colors.white),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       Text('Submit feedback',
                           style: AppTypography.button(
                               _score == null ? c.textMuted : Colors.white)),

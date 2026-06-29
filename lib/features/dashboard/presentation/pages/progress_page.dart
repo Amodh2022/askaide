@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/page_scroll_scaffold.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -38,22 +39,22 @@ class _ProgressSkeleton extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: c.bgCard,
                   border: Border.all(color: c.border),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
               );
               if (wide) {
                 return Row(
                   children: [
                     SizedBox(width: 260, child: dd),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: AppSpacing.md),
                     SizedBox(width: 260, child: dd),
                   ],
                 );
               }
-              return Column(children: [dd, const SizedBox(height: 12), dd]);
+              return Column(children: [dd, const SizedBox(height: AppSpacing.sm), dd]);
             },
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
           // Gauge cards row (2 side by side)
           LayoutBuilder(
             builder: (context, cons) {
@@ -63,12 +64,12 @@ class _ProgressSkeleton extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: c.bgCard,
                   border: Border.all(color: c.border),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: Column(
                   children: [
                     const SkeletonBox(width: 80, height: 10),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     const SkeletonBox(width: 100, height: 14),
                     const SizedBox(height: 14),
                     Container(
@@ -87,14 +88,14 @@ class _ProgressSkeleton extends StatelessWidget {
               if (wide) {
                 return Row(children: [
                   Expanded(child: card),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(child: card),
                 ]);
               }
-              return Column(children: [card, const SizedBox(height: 16), card]);
+              return Column(children: [card, const SizedBox(height: AppSpacing.md), card]);
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           // Chapter health card
           Container(
             width: double.infinity,
@@ -102,7 +103,7 @@ class _ProgressSkeleton extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.bgCard,
               border: Border.all(color: c.border),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,9 +117,9 @@ class _ProgressSkeleton extends StatelessWidget {
                         height: 14,
                         decoration: BoxDecoration(
                             color: c.bgRaised,
-                            borderRadius: BorderRadius.circular(4)),
+                            borderRadius: AppRadii.cardR),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       const SkeletonBox(width: 110, height: 10),
                     ]),
                     const SkeletonBox(width: 80, height: 18, radius: 99),
@@ -129,7 +130,7 @@ class _ProgressSkeleton extends StatelessWidget {
                   height: 6,
                   decoration: BoxDecoration(
                     color: c.bgRaised,
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -151,7 +152,7 @@ class _ProgressSkeleton extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           // AI coach card
           Container(
             width: double.infinity,
@@ -159,7 +160,7 @@ class _ProgressSkeleton extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.bgCard,
               border: Border.all(color: c.border),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
             child: Row(
               children: [
@@ -168,7 +169,7 @@ class _ProgressSkeleton extends StatelessWidget {
                   height: 40,
                   decoration: BoxDecoration(
                       color: c.bgRaised,
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: AppRadii.sectionR),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
@@ -176,7 +177,7 @@ class _ProgressSkeleton extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SkeletonBox(width: 140, height: 14),
-                      SizedBox(height: 4),
+                      SizedBox(height: AppSpacing.xxs),
                       SkeletonBox(width: 220, height: 11),
                     ],
                   ),
@@ -184,7 +185,7 @@ class _ProgressSkeleton extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.lg),
           // Chapter section header
           Row(
             children: [
@@ -195,12 +196,12 @@ class _ProgressSkeleton extends StatelessWidget {
                 height: 22,
                 decoration: BoxDecoration(
                   color: c.bgRaised,
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           // Chapter cards
           ...List.generate(
             3,
@@ -227,7 +228,7 @@ class _ChapterCardSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,13 +236,13 @@ class _ChapterCardSkeleton extends StatelessWidget {
           Row(
             children: [
               const SkeletonBox(width: 80, height: 10),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Container(
                 width: 60,
                 height: 20,
                 decoration: BoxDecoration(
                   color: c.bgRaised,
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                 ),
               ),
               const Spacer(),
@@ -249,34 +250,34 @@ class _ChapterCardSkeleton extends StatelessWidget {
                 width: 16,
                 height: 16,
                 decoration: BoxDecoration(
-                    color: c.bgRaised, borderRadius: BorderRadius.circular(4)),
+                    color: c.bgRaised, borderRadius: AppRadii.cardR),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           const SkeletonBox(width: 200, height: 16),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           const SkeletonBox(width: 160, height: 11),
           const SizedBox(height: 14),
           // Coverage bar
           const SkeletonBox(width: 60, height: 10),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           Container(
             height: 6,
             decoration: BoxDecoration(
               color: c.bgRaised,
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: AppRadii.pillR,
             ),
           ),
           const SizedBox(height: 10),
           // Mastery bar
           const SkeletonBox(width: 55, height: 10),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           Container(
             height: 6,
             decoration: BoxDecoration(
               color: c.bgRaised,
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: AppRadii.pillR,
             ),
           ),
           const SizedBox(height: 14),
@@ -288,7 +289,7 @@ class _ChapterCardSkeleton extends StatelessWidget {
               height: 36,
               decoration: BoxDecoration(
                 color: c.bgRaised,
-                borderRadius: BorderRadius.circular(99),
+                borderRadius: AppRadii.pillR,
               ),
             ),
           ),
@@ -338,22 +339,17 @@ class _ProgressView extends StatelessWidget {
             await context.read<ProgressCubit>().init(userId);
           }
         },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+        child: PageScrollScaffold(
+          maxWidth: 920,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 920),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          children: [
                   Text('PROGRESS',
                       style: AppTypography.sectionLabel(c.textMuted)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   Text("How far you've come.",
                       style: AppTypography.h1(c.textPrimary)
                           .copyWith(fontSize: 30)),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text('Track your coverage and mastery chapter by chapter.',
                       style: AppTypography.bodyMedium(c.textMuted)),
                   const SizedBox(height: 28),
@@ -395,29 +391,26 @@ class _ProgressView extends StatelessWidget {
                                           CrossAxisAlignment.start,
                                       children: [
                                         SizedBox(width: 260, child: classDd),
-                                        const SizedBox(width: 16),
+                                        const SizedBox(width: AppSpacing.md),
                                         SizedBox(width: 260, child: subjectDd),
                                       ],
                                     )
                                   : Column(children: [
                                       classDd,
-                                      const SizedBox(height: 12),
+                                      const SizedBox(height: AppSpacing.sm),
                                       subjectDd,
                                     ]);
                             }),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: AppSpacing.lg),
                           _body(context, state),
                         ],
                       );
                     },
                   ),
                 ],
-              ),
             ),
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _body(BuildContext context, ProgressState state) {
@@ -462,7 +455,7 @@ class _ProgressView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _SubjectSummary(data: data),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               children: [
                 Text('Chapters', style: AppTypography.h3(c.textPrimary)),
@@ -472,14 +465,14 @@ class _ProgressView extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: c.accentLight,
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                   ),
                   child: Text('${data.chapters.length}',
                       style: AppTypography.mono(c.textMuted, size: 11)),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             for (final ch in data.chapters)
               _ChapterCard(
                 chapter: ch,
@@ -522,7 +515,7 @@ class _Dropdown extends StatelessWidget {
           decoration: BoxDecoration(
             color: c.bgCard,
             border: Border.all(color: c.border),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadii.cardR,
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -573,11 +566,11 @@ class _EmptyCard extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: c.accentLight,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
             child: Icon(icon, size: 26, color: c.accent),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           Text(title, style: AppTypography.h3(c.textPrimary)),
           const SizedBox(height: 6),
           Text(hint,
@@ -642,7 +635,7 @@ class _SubjectSummary extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: masteryCfg.bg,
-                borderRadius: BorderRadius.circular(99),
+                borderRadius: AppRadii.pillR,
               ),
               child: Text(masteryCfg.label,
                   style: AppTypography.bodySmall(masteryCfg.color)),
@@ -651,13 +644,13 @@ class _SubjectSummary extends StatelessWidget {
           return wide
               ? Row(children: [
                   Expanded(child: coverage),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(child: mastery),
                 ])
               : Column(
-                  children: [coverage, const SizedBox(height: 16), mastery]);
+                  children: [coverage, const SizedBox(height: AppSpacing.md), mastery]);
         }),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         // Chapter health
         Container(
           width: double.infinity,
@@ -671,7 +664,7 @@ class _SubjectSummary extends StatelessWidget {
                 children: [
                   Row(children: [
                     Icon(LucideIcons.bookOpen, size: 14, color: c.textMuted),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     Text('CHAPTER HEALTH',
                         style: AppTypography.mono(c.textMuted, size: 10)),
                   ]),
@@ -680,7 +673,7 @@ class _SubjectSummary extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                     decoration: BoxDecoration(
                       color: c.accentLight,
-                      borderRadius: BorderRadius.circular(99),
+                      borderRadius: AppRadii.pillR,
                     ),
                     child: Text('$total chapters',
                         style: AppTypography.mono(c.textMuted, size: 10)),
@@ -690,7 +683,7 @@ class _SubjectSummary extends StatelessWidget {
               const SizedBox(height: 14),
               if (total > 0)
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                   child: Row(
                     children: [
                       for (final entry in _breakdownOrder)
@@ -726,7 +719,7 @@ class _SubjectSummary extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         if (userId.isNotEmpty)
           _AiCoachCard(
             loader: () =>
@@ -798,11 +791,11 @@ class _GaugeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(title,
                     style:
                         AppTypography.h4(c.textPrimary).copyWith(fontSize: 17)),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 footer,
               ],
             ),
@@ -910,7 +903,7 @@ class _ChapterCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onOpen,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: context.cardDecoration(),
@@ -921,13 +914,13 @@ class _ChapterCard extends StatelessWidget {
                 children: [
                   Text('Chapter ${chapter.order}',
                       style: AppTypography.mono(c.textMuted, size: 10)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Container(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: c.bgRaised,
-                      borderRadius: BorderRadius.circular(99),
+                      borderRadius: AppRadii.pillR,
                     ),
                     child: Text(
                         chapter.status.replaceAll('_', ' ').toLowerCase(),
@@ -937,12 +930,12 @@ class _ChapterCard extends StatelessWidget {
                   Icon(LucideIcons.chevronRight, size: 16, color: c.textMuted),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Text(chapter.name,
                   style:
                       AppTypography.h4(c.textPrimary).copyWith(fontSize: 17)),
               if (chapter.totalTopics > 0) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 Text(
                     '${chapter.totalTopics} topics • ${chapter.attemptedTopics} practiced',
                     style: AppTypography.bodySmall(c.textMuted)),
@@ -1007,9 +1000,9 @@ class _BarRow extends StatelessWidget {
                 style: AppTypography.mono(color, size: 11)),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xxs),
         ClipRRect(
-          borderRadius: BorderRadius.circular(99),
+          borderRadius: AppRadii.pillR,
           child: LinearProgressIndicator(
             value: (percent / 100).clamp(0, 1),
             minHeight: 6,
@@ -1049,7 +1042,7 @@ class _ChapterDetail extends StatelessWidget {
           label: Text('Back to chapters',
               style: AppTypography.bodyMedium(c.textMuted)),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.xs),
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(18),
@@ -1068,7 +1061,7 @@ class _ChapterDetail extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
-                        color: cfg.bg, borderRadius: BorderRadius.circular(99)),
+                        color: cfg.bg, borderRadius: AppRadii.pillR),
                     child: Text(cfg.label,
                         style: AppTypography.bodySmall(cfg.color)),
                   ),
@@ -1078,13 +1071,13 @@ class _ChapterDetail extends StatelessWidget {
               Text(
                   '${chapter.attemptedTopics} / ${chapter.totalTopics} topics (${chapter.coveragePercent.round()}%)',
                   style: AppTypography.bodySmall(c.textMuted)),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.sm),
               _BarRow(
                   label: 'Coverage',
                   percent: chapter.coveragePercent,
                   color: c.accent),
               if (weak > 0 || learning > 0) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   [
                     if (weak > 0) '$weak weak',
@@ -1096,18 +1089,18 @@ class _ChapterDetail extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         if (userId.isNotEmpty)
           _AiCoachCard(
             loader: () => sl<ProgressRepository>()
                 .chapterInsight(userId, chapter.chapterId),
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         Text('Topics',
             style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 18)),
         const SizedBox(height: 10),
         for (final t in sorted) _TopicRow(topic: t),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         SizedBox(
           width: double.infinity,
           child: FilledButton.icon(
@@ -1157,7 +1150,7 @@ class _TopicRow extends StatelessWidget {
                   height: 8,
                   decoration:
                       BoxDecoration(color: color, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Expanded(
                   child: Text(topic.name,
                       style: AppTypography.bodyMedium(c.textPrimary))),
@@ -1167,9 +1160,9 @@ class _TopicRow extends StatelessWidget {
             ],
           ),
           if (topic.masteryScore > 0) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             ClipRRect(
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: AppRadii.pillR,
               child: LinearProgressIndicator(
                 value: topic.masteryScore.clamp(0, 1),
                 minHeight: 5,
@@ -1239,7 +1232,7 @@ class _AiCoachCardState extends State<_AiCoachCard> {
                     padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
                         color: c.accent,
-                        borderRadius: BorderRadius.circular(4)),
+                        borderRadius: AppRadii.cardR),
                     child: const Icon(LucideIcons.sparkles,
                         size: 16, color: Colors.white),
                   ),
@@ -1251,13 +1244,13 @@ class _AiCoachCardState extends State<_AiCoachCard> {
                         Row(children: [
                           Text('AI Learning Coach',
                               style: AppTypography.labelLarge(c.textPrimary)),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.xs),
                           Container(
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: c.accentLight,
-                              borderRadius: BorderRadius.circular(99),
+                              borderRadius: AppRadii.pillR,
                             ),
                             child: Text('BETA',
                                 style: AppTypography.mono(c.accent, size: 9)),
@@ -1297,7 +1290,7 @@ class _AiCoachCardState extends State<_AiCoachCard> {
                 decoration: BoxDecoration(
                   color: c.bgPrimary,
                   border: Border.all(color: c.border),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: MarkdownBody(data: _insight!),
               ),

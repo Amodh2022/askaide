@@ -45,7 +45,7 @@ class _ReferralCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: c.accentLight,
-                          borderRadius: BorderRadius.circular(99),
+                          borderRadius: AppRadii.pillR,
                         ),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
                           Icon(LucideIcons.users, size: 13, color: c.accent),
@@ -63,7 +63,7 @@ class _ReferralCard extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: c.bgSecondary,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadii.sectionR,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

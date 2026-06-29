@@ -62,7 +62,7 @@ class _TeacherQuizListView extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.lg),
               BlocBuilder<TeacherQuizListCubit, TeacherQuizListState>(
                 builder: (context, state) {
                   if (state.status == TqLoad.loading) {
@@ -102,14 +102,14 @@ class _TeacherQuizListView extends StatelessWidget {
                                     decoration: BoxDecoration(
                                         color: c.accentLight,
                                         borderRadius:
-                                            BorderRadius.circular(99)),
+                                            AppRadii.pillR),
                                     child: Text(q.status.toUpperCase(),
                                         style: AppTypography.mono(c.accent,
                                             size: 9)),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: AppSpacing.xxs),
                               Text('${q.questionCount} questions',
                                   style: AppTypography.bodySmall(c.textMuted)),
                               const SizedBox(height: 10),
@@ -250,28 +250,28 @@ class _QuizFormViewState extends State<_QuizFormView> {
                     child: Text('← Quizzes',
                         style: AppTypography.bodySmall(c.textMuted)),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   const PageHeader(
                       eyebrow: 'TEACHER', title: 'New', emphasis: 'quiz.'),
                   const SizedBox(height: 20),
                   _field(c, 'Title', _title, 'e.g. Chapter 3 Quiz'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   _field(c, 'Description', _desc, 'Optional'),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   _dropdown(
                       c,
                       'Class',
                       state.classId,
                       state.classes.map((e) => (e.id, e.name)).toList(),
                       cubit.selectClass),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   _dropdown(
                       c,
                       'Subject',
                       state.subjectId,
                       state.subjects.map((e) => (e.id, e.name)).toList(),
                       cubit.selectSubject),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   if (state.chapters.isNotEmpty) ...[
                     Text('CHAPTERS',
                         style: AppTypography.mono(c.textMuted, size: 10)),
@@ -289,11 +289,11 @@ class _QuizFormViewState extends State<_QuizFormView> {
                           ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.sm),
                   ],
                   Text('SETTINGS',
                       style: AppTypography.mono(c.textMuted, size: 10)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   Text('TIME LIMIT: $_timeLimit min',
                       style: AppTypography.mono(c.textMuted, size: 10)),
                   Slider(
@@ -305,7 +305,7 @@ class _QuizFormViewState extends State<_QuizFormView> {
                     label: '$_timeLimit',
                     onChanged: (v) => setState(() => _timeLimit = v.round()),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text('PASSING %: $_passingPercentage%',
                       style: AppTypography.mono(c.textMuted, size: 10)),
                   Slider(
@@ -318,7 +318,7 @@ class _QuizFormViewState extends State<_QuizFormView> {
                     onChanged: (v) =>
                         setState(() => _passingPercentage = v.round()),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text('ALLOWED ATTEMPTS: $_allowedAttempts',
                       style: AppTypography.mono(c.textMuted, size: 10)),
                   Slider(
@@ -331,7 +331,7 @@ class _QuizFormViewState extends State<_QuizFormView> {
                     onChanged: (v) =>
                         setState(() => _allowedAttempts = v.round()),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   _dropdown(
                     c,
                     'Show answers',
@@ -339,7 +339,7 @@ class _QuizFormViewState extends State<_QuizFormView> {
                     _showAnswersOptions,
                     (v) => setState(() => _showAnswersAfter = v),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Text('DEADLINE',
                       style: AppTypography.mono(c.textMuted, size: 10)),
                   const SizedBox(height: 6),
@@ -363,7 +363,7 @@ class _QuizFormViewState extends State<_QuizFormView> {
                             side: BorderSide(color: c.border),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4)),
+                                borderRadius: AppRadii.cardR),
                           ),
                         ),
                       ),
@@ -375,7 +375,7 @@ class _QuizFormViewState extends State<_QuizFormView> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: c.accent,
@@ -392,7 +392,7 @@ class _QuizFormViewState extends State<_QuizFormView> {
                     title: Text('Shuffle options',
                         style: AppTypography.bodyMedium(c.textPrimary)),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -458,10 +458,10 @@ class _QuizFormViewState extends State<_QuizFormView> {
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                   borderSide: BorderSide(color: c.border)),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                   borderSide: BorderSide(color: c.accent)),
             ),
           ),
@@ -481,7 +481,7 @@ class _QuizFormViewState extends State<_QuizFormView> {
             decoration: BoxDecoration(
               color: c.bgRaised,
               border: Border.all(color: c.border),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -544,16 +544,16 @@ class _QuizQuestionManagerView extends StatelessWidget {
                     child: Text('← Quizzes',
                         style: AppTypography.bodySmall(c.textMuted)),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   const PageHeader(
                       eyebrow: 'TEACHER', title: 'Add', emphasis: 'questions.'),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   if (state.loadingManaged || state.managed.isNotEmpty) ...[
                     _ManagedQuestions(quizId: quizId),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.lg),
                     Text('ADD MORE FROM THE QUESTION BANK',
                         style: AppTypography.mono(c.textMuted, size: 10)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                   ],
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     for (final cls in state.classes)
@@ -563,7 +563,7 @@ class _QuizQuestionManagerView extends StatelessWidget {
                           onSelected: (_) => cubit.selectClass(cls.id)),
                   ]),
                   if (state.subjects.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     Wrap(spacing: 8, runSpacing: 8, children: [
                       for (final s in state.subjects)
                         ChoiceChip(
@@ -573,7 +573,7 @@ class _QuizQuestionManagerView extends StatelessWidget {
                     ]),
                   ],
                   if (state.chapters.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     Wrap(spacing: 8, runSpacing: 8, children: [
                       for (final ch in state.chapters)
                         FilterChip(
@@ -582,7 +582,7 @@ class _QuizQuestionManagerView extends StatelessWidget {
                             onSelected: (_) => cubit.toggleChapter(ch.id),
                             selectedColor: c.accentLight),
                     ]),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.sm),
                     FilledButton(
                       onPressed: state.chapterIds.isEmpty ? null : cubit.search,
                       style: FilledButton.styleFrom(
@@ -593,7 +593,7 @@ class _QuizQuestionManagerView extends StatelessWidget {
                           : 'Search question bank'),
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   for (final q in state.bank)
                     CheckboxListTile(
                       value: state.selectedQuestionIds.contains(q.id),
@@ -605,10 +605,10 @@ class _QuizQuestionManagerView extends StatelessWidget {
                           style: AppTypography.bodySmall(c.textMuted)),
                     ),
                   if (state.selectedOrder.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     Text('SELECTED — SET MARKS & DRAG TO REORDER',
                         style: AppTypography.mono(c.textMuted, size: 10)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     ReorderableListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -638,14 +638,14 @@ class _QuizQuestionManagerView extends StatelessWidget {
                                 child: Icon(LucideIcons.gripVertical,
                                     size: 16, color: c.textMuted),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: AppSpacing.xs),
                               Container(
                                 width: 22,
                                 height: 22,
                                 alignment: Alignment.center,
                                 decoration: BoxDecoration(
                                     color: c.accentLight,
-                                    borderRadius: BorderRadius.circular(6)),
+                                    borderRadius: AppRadii.modalR),
                                 child: Text('${index + 1}',
                                     style:
                                         AppTypography.mono(c.accent, size: 11)),
@@ -676,11 +676,11 @@ class _QuizQuestionManagerView extends StatelessWidget {
                                     contentPadding: const EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 8),
                                     enabledBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: AppRadii.cardR,
                                         borderSide:
                                             BorderSide(color: c.border)),
                                     focusedBorder: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(4),
+                                        borderRadius: AppRadii.cardR,
                                         borderSide:
                                             BorderSide(color: c.accent)),
                                   ),
@@ -751,9 +751,9 @@ class _ManagedQuestions extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SkeletonBox(width: 180, height: 14),
-              SizedBox(height: 12),
+              SizedBox(height: AppSpacing.sm),
               SkeletonBox(width: double.infinity, height: 12),
-              SizedBox(height: 8),
+              SizedBox(height: AppSpacing.xs),
               SkeletonBox(width: 240, height: 12),
             ],
           ),
@@ -766,7 +766,7 @@ class _ManagedQuestions extends StatelessWidget {
       children: [
         Text('QUESTIONS IN THIS QUIZ — DRAG TO REORDER',
             style: AppTypography.mono(c.textMuted, size: 10)),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.xs),
         ReorderableListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -786,14 +786,14 @@ class _ManagedQuestions extends StatelessWidget {
                     child: Icon(LucideIcons.gripVertical,
                         size: 16, color: c.textMuted),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Container(
                     width: 22,
                     height: 22,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                         color: c.accentLight,
-                        borderRadius: BorderRadius.circular(6)),
+                        borderRadius: AppRadii.modalR),
                     child: Text('${index + 1}',
                         style: AppTypography.mono(c.accent, size: 11)),
                   ),
@@ -810,7 +810,7 @@ class _ManagedQuestions extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                         color: c.accentLight,
-                        borderRadius: BorderRadius.circular(6)),
+                        borderRadius: AppRadii.modalR),
                     child: Text('${q.marks} mark${q.marks == 1 ? '' : 's'}',
                         style: AppTypography.mono(c.accent, size: 10)),
                   ),
@@ -895,7 +895,7 @@ class _QuizAnalyticsView extends StatelessWidget {
                     child: Text('← Quizzes',
                         style: AppTypography.bodySmall(c.textMuted)),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   const PageHeader(
                       eyebrow: 'TEACHER',
                       title: 'Quiz',
@@ -907,15 +907,15 @@ class _QuizAnalyticsView extends StatelessWidget {
                     Row(
                       children: [
                         _stat(context, '${d.totalAttempts}', 'ATTEMPTS'),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.sm),
                         _stat(context, '${d.avgScore.round()}', 'AVG SCORE'),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.sm),
                         _stat(context, '${d.passRate.round()}%', 'PASS RATE'),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.lg),
                     _questionAnalysis(context, d),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: AppSpacing.lg),
                     _studentLists(context, d),
                   ],
                 ],
@@ -935,7 +935,7 @@ class _QuizAnalyticsView extends StatelessWidget {
         decoration: context.cardDecoration(),
         child: Column(children: [
           Text(v, style: AppTypography.statNumber(c.accent, size: 26)),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xxs),
           Text(l, style: AppTypography.mono(c.textMuted, size: 10)),
         ]),
       ),
@@ -957,11 +957,11 @@ class _QuizAnalyticsView extends StatelessWidget {
         children: [
           Row(children: [
             Icon(LucideIcons.chartColumn, size: 16, color: c.accent),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.xs),
             Text('QUESTION-BY-QUESTION',
                 style: AppTypography.mono(c.textMuted, size: 10)),
           ]),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
           if (qs.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
@@ -1019,7 +1019,7 @@ class _QuizAnalyticsView extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.sm),
             for (var i = 0; i < qs.length; i++)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -1084,12 +1084,12 @@ class _QuizAnalyticsView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(child: top),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(child: struggling),
         ],
       );
     }
-    return Column(children: [top, const SizedBox(height: 12), struggling]);
+    return Column(children: [top, const SizedBox(height: AppSpacing.sm), struggling]);
   }
 
   Widget _studentCard(
@@ -1111,10 +1111,10 @@ class _QuizAnalyticsView extends StatelessWidget {
         children: [
           Row(children: [
             Icon(icon, size: 16, color: iconColor),
-            const SizedBox(width: 8),
+            const SizedBox(width: AppSpacing.xs),
             Text(title, style: AppTypography.mono(c.textMuted, size: 10)),
           ]),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           if (students.isEmpty)
             Text(emptyText, style: AppTypography.bodySmall(c.textMuted))
           else
@@ -1129,7 +1129,7 @@ class _QuizAnalyticsView extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: AppTypography.bodyMedium(c.textPrimary)),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     Text(
                       totalMarks > 0
                           ? '${s.score}/$totalMarks (${s.percentage.round()}%)'

@@ -112,7 +112,7 @@ class _StudentPublicProfilePageState extends State<StudentPublicProfilePage> {
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                      decoration: BoxDecoration(color: c.accentLight, borderRadius: BorderRadius.circular(99)),
+                      decoration: BoxDecoration(color: c.accentLight, borderRadius: AppRadii.pillR),
                       child: Text(d!.accountType.toUpperCase(), style: AppTypography.mono(c.accent, size: 9)),
                     ),
                   ],

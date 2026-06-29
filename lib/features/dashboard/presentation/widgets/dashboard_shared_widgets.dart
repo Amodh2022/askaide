@@ -25,7 +25,7 @@ class GradientIcon extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [base, dark],
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Icon(icon, size: 18, color: Colors.white),
     );
@@ -58,7 +58,7 @@ class StreakDisplay extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           color: c.bgCard,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
           border: Border.all(color: c.border),
         ),
       );
@@ -79,7 +79,7 @@ class StreakDisplay extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: c.bgCard,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
         border: Border.all(color: atRisk ? _flame.withValues(alpha: 0.5) : c.border),
       ),
       child: Row(
@@ -94,7 +94,7 @@ class StreakDisplay extends StatelessWidget {
                 children: [
                   Icon(LucideIcons.flame,
                       size: 14, color: current > 0 ? _flame : c.textMuted),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: AppSpacing.xxs),
                   if (current > 0)
                     ShaderMask(
                       shaderCallback: (b) => const LinearGradient(
@@ -117,11 +117,11 @@ class StreakDisplay extends StatelessWidget {
                   style: AppTypography.mono(practicedToday ? c.accent : c.textMuted, size: 9)
                       .copyWith(letterSpacing: 1)),
               if (current > 0) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xxs),
                 SizedBox(
                   width: 36,
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                     child: LinearProgressIndicator(
                       value: milestoneProgress,
                       minHeight: 3,
@@ -201,7 +201,7 @@ class MetricSegment extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 13, color: iconColor),
-            const SizedBox(width: 4),
+            const SizedBox(width: AppSpacing.xxs),
             Text(value,
                 style: AppTypography.mono(c.textPrimary, size: 16)
                     .copyWith(fontWeight: FontWeight.w700, height: 1)),
@@ -281,7 +281,7 @@ class _AchievementsCardState extends State<AchievementsCard> {
           Row(
             children: [
               const GradientIcon(LucideIcons.trophy),
-              const SizedBox(width: 12),
+              const SizedBox(width: AppSpacing.sm),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -311,7 +311,7 @@ class _AchievementsCardState extends State<AchievementsCard> {
           const SizedBox(height: 14),
           // Progress bar
           ClipRRect(
-            borderRadius: BorderRadius.circular(99),
+            borderRadius: AppRadii.pillR,
             child: LinearProgressIndicator(
               value: total > 0 ? earnedCount / total : 0,
               minHeight: 6,
@@ -326,16 +326,16 @@ class _AchievementsCardState extends State<AchievementsCard> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: c.bgSecondary,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: AppRadii.sectionR,
               ),
               child: Column(
                 children: [
                   const Text('🏅', style: TextStyle(fontSize: 28)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   Text("No badges yet — you're just getting started",
                       textAlign: TextAlign.center,
                       style: AppTypography.labelLarge(c.textPrimary)),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text('Complete sessions, build your streak, and unlock achievements.',
                       textAlign: TextAlign.center,
                       style: AppTypography.bodySmall(c.textMuted)),
@@ -380,7 +380,7 @@ class BadgeTile extends StatelessWidget {
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: c.bgSecondary,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
         border: Border.all(color: c.border),
       ),
       child: Stack(
@@ -392,7 +392,7 @@ class BadgeTile extends StatelessWidget {
                 opacity: earned ? 1 : 0.35,
                 child: Text(emoji, style: const TextStyle(fontSize: 26)),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: AppSpacing.xxs),
               Text(name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

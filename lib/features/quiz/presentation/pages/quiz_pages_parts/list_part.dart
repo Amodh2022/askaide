@@ -23,7 +23,7 @@ class _QuizListSkeleton extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: c.bgCard,
                       border: Border.all(color: c.border),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadii.cardR,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -31,7 +31,7 @@ class _QuizListSkeleton extends StatelessWidget {
                         Container(
                           width: 20,
                           height: 20,
-                          decoration: BoxDecoration(color: c.bgRaised, borderRadius: BorderRadius.circular(4)),
+                          decoration: BoxDecoration(color: c.bgRaised, borderRadius: AppRadii.cardR),
                         ),
                         const SizedBox(height: 8),
                         const SkeletonBox(width: 40, height: 22),
@@ -54,7 +54,7 @@ class _QuizListSkeleton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: c.bgCard,
                     border: Border.all(color: c.border),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppRadii.cardR,
                   ),
                 ),
               ),
@@ -65,7 +65,7 @@ class _QuizListSkeleton extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: c.bgCard,
                   border: Border.all(color: c.border),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
               ),
             ],
@@ -75,18 +75,30 @@ class _QuizListSkeleton extends StatelessWidget {
           LayoutBuilder(
             builder: (context, cons) {
               final cols = cons.maxWidth >= 600 ? 2 : 1;
-              final gap = 16.0;
+              const gap = 16.0;
               final w = (cons.maxWidth - gap * (cols - 1)) / cols;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: List.generate(
-                  4,
-                  (_) => SizedBox(
-                    width: w,
-                    child: _QuizCardSkeleton(),
-                  ),
-                ),
+              final items = List.generate(4, (_) => _QuizCardSkeleton());
+              final rows = <List<Widget>>[];
+              for (var i = 0; i < items.length; i += cols) {
+                rows.add(items.sublist(i, (i + cols).clamp(0, items.length)));
+              }
+              return Column(
+                children: [
+                  for (var i = 0; i < rows.length; i++) ...[
+                    if (i > 0) const SizedBox(height: gap),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (var j = 0; j < rows[i].length; j++) ...[
+                            if (j > 0) const SizedBox(width: gap),
+                            SizedBox(width: cols == 1 ? cons.maxWidth : w, child: rows[i][j]),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               );
             },
           ),
@@ -105,7 +117,7 @@ class _QuizCardSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +136,7 @@ class _QuizCardSkeleton extends StatelessWidget {
                       height: 22,
                       decoration: BoxDecoration(
                         color: c.bgRaised,
-                        borderRadius: BorderRadius.circular(99),
+                        borderRadius: AppRadii.pillR,
                       ),
                     ),
                   ],
@@ -155,7 +167,7 @@ class _QuizCardSkeleton extends StatelessWidget {
                       width: 80,
                       decoration: BoxDecoration(
                         color: c.bgRaised,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadii.cardR,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -164,7 +176,7 @@ class _QuizCardSkeleton extends StatelessWidget {
                       width: 70,
                       decoration: BoxDecoration(
                         color: c.bgRaised,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadii.cardR,
                       ),
                     ),
                   ],
@@ -196,6 +208,41 @@ class _QuizListView extends StatefulWidget {
 class _QuizListViewState extends State<_QuizListView> {
   String _query = '';
   String _statusFilter = ''; // '' | available | in_progress | completed
+
+  // Cached source list (updated by BlocConsumer listener).
+  List<QuizSummary> _sourceQuizzes = const [];
+  // Pre-filtered results — recomputed only when source, query, or filter changes.
+  List<QuizSummary> _filtered = const [];
+  int _availableCount = 0;
+  int _inProgressCount = 0;
+  int _completedCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isMockMode) {
+      _sourceQuizzes = _mockQuizzes;
+      _applyFilters();
+    }
+  }
+
+  void _applyFilters() {
+    final all = _sourceQuizzes;
+    _availableCount = all.where((q) => q.status == 'available' && q.canAttempt).length;
+    _inProgressCount = all.where((q) => q.status == 'in_progress').length;
+    _completedCount = all.where((q) => q.bestScore != null).length;
+    var f = all;
+    if (_statusFilter.isNotEmpty) {
+      f = f.where((q) => q.status == _statusFilter).toList();
+    }
+    if (_query.isNotEmpty) {
+      final ql = _query.toLowerCase();
+      f = f.where((q) =>
+          q.title.toLowerCase().contains(ql) ||
+          q.description.toLowerCase().contains(ql)).toList();
+    }
+    _filtered = f;
+  }
 
   // Mirror of MOCK_QUIZZES from StudentQuizList.jsx — shown to Admin/SuperAdmin.
   List<QuizSummary> get _mockQuizzes {
@@ -261,7 +308,10 @@ class _QuizListViewState extends State<_QuizListView> {
   }
 
   void _setStatusFilter(String value) {
-    setState(() => _statusFilter = value);
+    setState(() {
+      _statusFilter = value;
+      _applyFilters();
+    });
     if (!widget.isMockMode) _loadPage(1);
   }
 
@@ -305,36 +355,20 @@ class _QuizListViewState extends State<_QuizListView> {
                 ],
               ),
               const SizedBox(height: 20),
-              BlocBuilder<QuizListCubit, QuizListState>(
+              BlocConsumer<QuizListCubit, QuizListState>(
+                listenWhen: (p, n) => p.available != n.available || p.status != n.status,
+                listener: (ctx, state) {
+                  if (!widget.isMockMode) {
+                    setState(() {
+                      _sourceQuizzes = state.available;
+                      _applyFilters();
+                    });
+                  }
+                },
+                buildWhen: (p, n) => p.status != n.status || p.pagination != n.pagination,
                 builder: (context, state) {
                   if (!widget.isMockMode && state.status == Load.loading) {
                     return const _QuizListSkeleton();
-                  }
-                  final all =
-                      widget.isMockMode ? _mockQuizzes : state.available;
-                  // Stats mirror StudentQuizList: available / in-progress / completed.
-                  final available = all
-                      .where((q) => q.status == 'available' && q.canAttempt)
-                      .length;
-                  final inProgress =
-                      all.where((q) => q.status == 'in_progress').length;
-                  final completed =
-                      all.where((q) => q.bestScore != null).length;
-
-                  // Apply status filter + search.
-                  var filtered = all;
-                  if (_statusFilter.isNotEmpty) {
-                    filtered = filtered
-                        .where((q) => q.status == _statusFilter)
-                        .toList();
-                  }
-                  if (_query.isNotEmpty) {
-                    final ql = _query.toLowerCase();
-                    filtered = filtered
-                        .where((q) =>
-                            q.title.toLowerCase().contains(ql) ||
-                            q.description.toLowerCase().contains(ql))
-                        .toList();
                   }
 
                   return Column(
@@ -343,22 +377,22 @@ class _QuizListViewState extends State<_QuizListView> {
                       // Stats cards
                       Row(
                         children: [
-                          _QuizStat(
+                          StatCard(
                               icon: LucideIcons.play,
                               color: c.accent,
-                              value: available,
+                              value: '$_availableCount',
                               label: 'AVAILABLE'),
                           const SizedBox(width: 12),
-                          _QuizStat(
+                          StatCard(
                               icon: LucideIcons.refreshCw,
                               color: c.warning,
-                              value: inProgress,
+                              value: '$_inProgressCount',
                               label: 'IN PROGRESS'),
                           const SizedBox(width: 12),
-                          _QuizStat(
+                          StatCard(
                               icon: LucideIcons.circleCheck,
                               color: c.accent,
-                              value: completed,
+                              value: '$_completedCount',
                               label: 'COMPLETED'),
                         ],
                       ),
@@ -366,7 +400,7 @@ class _QuizListViewState extends State<_QuizListView> {
                       // Search + status filter
                       LayoutBuilder(builder: (context, cons) {
                         final search = TextField(
-                          onChanged: (v) => setState(() => _query = v),
+                          onChanged: (v) => setState(() { _query = v; _applyFilters(); }),
                           decoration: InputDecoration(
                             hintText: 'Search quizzes...',
                             prefixIcon: Icon(LucideIcons.search,
@@ -375,11 +409,11 @@ class _QuizListViewState extends State<_QuizListView> {
                             filled: true,
                             fillColor: c.bgCard,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: AppRadii.cardR,
                               borderSide: BorderSide(color: c.border),
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: AppRadii.cardR,
                               borderSide: BorderSide(color: c.border),
                             ),
                           ),
@@ -402,10 +436,19 @@ class _QuizListViewState extends State<_QuizListView> {
                         ]);
                       }),
                       const SizedBox(height: 20),
-                      if (filtered.isEmpty)
-                        _QuizListEmpty(
-                            filtered:
-                                _query.isNotEmpty || _statusFilter.isNotEmpty)
+                      if (_filtered.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: EmptyState(
+                            icon: Icons.book_outlined,
+                            title: _query.isNotEmpty || _statusFilter.isNotEmpty
+                                ? 'No quizzes match your filters'
+                                : 'Nothing assigned yet',
+                            hint: _query.isNotEmpty || _statusFilter.isNotEmpty
+                                ? 'Try adjusting your filters or come back later.'
+                                : 'Quizzes will appear here once your teacher assigns them.',
+                          ),
+                        )
                       else
                         LayoutBuilder(builder: (context, cons) {
                           final cols = cons.maxWidth >= 900
@@ -413,14 +456,29 @@ class _QuizListViewState extends State<_QuizListView> {
                               : (cons.maxWidth >= 600 ? 2 : 1);
                           const gap = 16.0;
                           final w = (cons.maxWidth - gap * (cols - 1)) / cols;
-                          return Wrap(
-                            spacing: gap,
-                            runSpacing: gap,
+                          final rows = <List<QuizSummary>>[];
+                          for (var i = 0; i < _filtered.length; i += cols) {
+                            rows.add(_filtered.sublist(i, (i + cols).clamp(0, _filtered.length)));
+                          }
+                          return Column(
                             children: [
-                              for (final q in filtered)
-                                SizedBox(
-                                    width: cols == 1 ? cons.maxWidth : w,
-                                    child: _QuizCard(quiz: q)),
+                              for (var i = 0; i < rows.length; i++) ...[
+                                if (i > 0) const SizedBox(height: gap),
+                                IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      for (var j = 0; j < rows[i].length; j++) ...[
+                                        if (j > 0) const SizedBox(width: gap),
+                                        SizedBox(
+                                          width: cols == 1 ? cons.maxWidth : w,
+                                          child: _QuizCard(quiz: rows[i][j]),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ],
                           );
                         }),
@@ -464,41 +522,6 @@ class _QuizListViewState extends State<_QuizListView> {
   }
 }
 
-/// One of the three count cards atop the quiz list.
-class _QuizStat extends StatelessWidget {
-  const _QuizStat({
-    required this.icon,
-    required this.color,
-    required this.value,
-    required this.label,
-  });
-  final IconData icon;
-  final Color color;
-  final int value;
-  final String label;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: context.cardDecoration(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(height: 8),
-            Text('$value',
-                style: AppTypography.statNumber(c.textPrimary, size: 22)),
-            const SizedBox(height: 2),
-            Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Status filter dropdown (All / Available / In Progress / Completed).
 class _StatusDropdown extends StatelessWidget {
   const _StatusDropdown({required this.value, required this.onChanged});
@@ -512,7 +535,7 @@ class _StatusDropdown extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -529,48 +552,6 @@ class _StatusDropdown extends StatelessWidget {
           ],
           onChanged: (v) => onChanged(v ?? ''),
         ),
-      ),
-    );
-  }
-}
-
-class _QuizListEmpty extends StatelessWidget {
-  const _QuizListEmpty({required this.filtered});
-  final bool filtered;
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: c.accentLight,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Icon(LucideIcons.bookOpen, size: 28, color: c.accent),
-          ),
-          const SizedBox(height: 16),
-          Text(
-              filtered
-                  ? 'No quizzes match your filters'
-                  : 'Nothing assigned yet',
-              textAlign: TextAlign.center,
-              style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 18)),
-          const SizedBox(height: 8),
-          Text(
-            filtered
-                ? 'No quizzes match this view. Try adjusting your filters or come back later.'
-                : "Quizzes will appear here once your teacher assigns them. When they do, you'll be the first to know!",
-            textAlign: TextAlign.center,
-            style: AppTypography.bodySmall(c.textMuted),
-          ),
-        ],
       ),
     );
   }
@@ -656,6 +637,7 @@ class _QuizCard extends StatelessWidget {
       decoration: context.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Body
           Padding(
@@ -679,7 +661,7 @@ class _QuizCard extends StatelessWidget {
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
                           color: badgeBg,
-                          borderRadius: BorderRadius.circular(99)),
+                          borderRadius: AppRadii.pillR),
                       child: Text(badgeLabel,
                           style: AppTypography.mono(badgeFg, size: 9)),
                     ),
@@ -749,7 +731,7 @@ class _QuizCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: c.bgPrimary,
                       border: Border.all(color: c.border),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadii.cardR,
                     ),
                     child: Column(
                       children: [
@@ -884,7 +866,7 @@ class _QuizCard extends StatelessWidget {
           foregroundColor: c.textMuted,
           side: BorderSide(color: c.border),
           padding: const EdgeInsets.symmetric(vertical: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+          shape: RoundedRectangleBorder(borderRadius: AppRadii.cardR),
         ),
       );
     }
@@ -897,7 +879,7 @@ class _QuizCard extends StatelessWidget {
         foregroundColor: Colors.white,
         minimumSize: const Size.fromHeight(40),
         padding: const EdgeInsets.symmetric(vertical: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.cardR),
       ),
     );
   }
@@ -919,7 +901,7 @@ class _QuizCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-          color: c.accentLight, borderRadius: BorderRadius.circular(4)),
+          color: c.accentLight, borderRadius: AppRadii.cardR),
       child: Text(text, style: AppTypography.bodySmall(c.accent)),
     );
   }
@@ -932,7 +914,7 @@ class _QuizCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration:
-          BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+          BoxDecoration(color: bg, borderRadius: AppRadii.cardR),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

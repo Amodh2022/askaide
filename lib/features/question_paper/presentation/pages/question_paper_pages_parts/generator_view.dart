@@ -130,9 +130,7 @@ class _GeneratorView extends StatelessWidget {
                               FilledButton.icon(
                                 onPressed: state.canGenerate ? cubit.generate : null,
                                 icon: state.generating
-                                    ? const SizedBox(
-                                        width: 16, height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                    ? const BtnSpinner(size: 16)
                                     : const Icon(LucideIcons.sparkles, size: 16),
                                 label: Text(state.generating ? 'Generating…' : 'Generate Paper'),
                                 style: FilledButton.styleFrom(
@@ -174,7 +172,7 @@ class _GeneratorView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: c.success.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                 ),
                 child: Text('Auto-filled',
                     style: AppTypography.bodySmall(c.success)),
@@ -350,7 +348,7 @@ class _GeneratorView extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: c.accentLight,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -375,7 +373,7 @@ class _GeneratorView extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.bgRaised,
           border: Border.all(color: c.border),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: Row(
           children: [
@@ -409,7 +407,7 @@ class _GeneratorView extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: c.bgRaised,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
             child: Row(
               children: [
@@ -430,7 +428,7 @@ class _GeneratorView extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: c.accentLight,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

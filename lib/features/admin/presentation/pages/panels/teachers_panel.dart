@@ -1,7 +1,7 @@
 part of '../admin_dashboard_page.dart';
 
 class _TeachersPanel extends StatefulWidget {
-  const _TeachersPanel();
+  const _TeachersPanel({super.key});
   @override
   State<_TeachersPanel> createState() => _TeachersPanelState();
 }
@@ -121,19 +121,29 @@ class _TeachersPanelState extends State<_TeachersPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final state = context.watch<AdminCubit>().state;
-    final hasSchool = state.selectedSchoolId != null;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Text('Teacher Management', style: AppTypography.h3(c.textPrimary).copyWith(fontSize: 22)),
-        const SizedBox(height: 16),
-        _createCard(c, state, hasSchool),
-        if (hasSchool) ...[
-          const SizedBox(height: 16),
-          _listCard(c, state.teachers),
-        ],
-      ],
+    return BlocBuilder<AdminCubit, AdminState>(
+      buildWhen: (p, n) =>
+          p.selectedSchoolId != n.selectedSchoolId ||
+          p.teachers != n.teachers ||
+          p.schools != n.schools,
+      builder: (context, state) {
+        final hasSchool = state.selectedSchoolId != null;
+        return Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+            Text('Teacher Management', style: AppTypography.h3(c.textPrimary).copyWith(fontSize: 22)),
+            const SizedBox(height: 16),
+            _createCard(c, state, hasSchool),
+            if (hasSchool) ...[
+              const SizedBox(height: 16),
+              _listCard(c, state.teachers),
+            ],
+          ],
+          ),
+        );
+      },
     );
   }
 
@@ -144,7 +154,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -186,7 +196,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
               child: FilledButton.icon(
                 onPressed: _creating ? null : _submit,
                 icon: _creating
-                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const BtnSpinner()
                     : const Icon(Icons.save, size: 18),
                 label: Text('Create ${_rows.length} Teacher${_rows.length != 1 ? 's' : ''}'),
                 style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
@@ -225,7 +235,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
       decoration: BoxDecoration(
         color: c.bgPrimary,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
       ),
       child: mobile
           ? Column(
@@ -295,7 +305,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -316,7 +326,9 @@ class _TeachersPanelState extends State<_TeachersPanel> {
               ),
             )
           else if (context.isMobile)
-            Column(children: [for (final t in teachers) _teacherCardMobile(c, t)])
+            Column(
+              children: List.generate(teachers.length, (i) => _teacherCardMobile(c, teachers[i])),
+            )
           else ...[
             Row(children: [
               Expanded(flex: 4, child: Text('NAME', style: AppTypography.mono(c.textMuted, size: 10))),
@@ -369,7 +381,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
       decoration: BoxDecoration(
         color: c.bgPrimary,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
       ),
       child: editing
           ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -402,9 +414,9 @@ class _TeachersPanelState extends State<_TeachersPanel> {
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: c.accent)),
+              borderRadius: AppRadii.componentR, borderSide: BorderSide(color: c.accent)),
           focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: c.accent)),
+              borderRadius: AppRadii.componentR, borderSide: BorderSide(color: c.accent)),
         ),
       );
 

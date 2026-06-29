@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../profile/presentation/cubit/profile_cubit.dart';
 import '../../domain/entities/question.dart';
@@ -152,13 +153,13 @@ class _PracticePanelState extends State<PracticePanel> {
                               message: _streakMessage!,
                               excellent: _streakExcellent,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.xs),
                           ],
                           Icon(LucideIcons.circleCheck, size: 16, color: c.accent),
                           const SizedBox(width: 6),
                           Text('${state.correctCount}',
                               style: AppTypography.bodySmall(c.textMuted)),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.xs),
                           // Report button — warning styled, mirrors React QuestionPractice
                           GestureDetector(
                             onTap: () => showDialog<void>(
@@ -171,14 +172,14 @@ class _PracticePanelState extends State<PracticePanel> {
                               decoration: BoxDecoration(
                                 color: c.warningBg,
                                 border: Border.all(color: c.warning),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: AppRadii.componentR,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(LucideIcons.flag,
                                       size: 14, color: c.warning),
-                                  const SizedBox(width: 4),
+                                  const SizedBox(width: AppSpacing.xxs),
                                   Text('Report',
                                       style: AppTypography.mono(c.warning,
                                           size: 11)),
@@ -186,7 +187,7 @@ class _PracticePanelState extends State<PracticePanel> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.xs),
                           OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -194,7 +195,7 @@ class _PracticePanelState extends State<PracticePanel> {
                               side: BorderSide(color: c.danger),
                               foregroundColor: c.danger,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
+                                  borderRadius: AppRadii.componentR),
                             ),
                             onPressed: state.finishing
                                 ? null
@@ -224,11 +225,11 @@ class _PracticePanelState extends State<PracticePanel> {
                     ],
                   ),
                   // Row 2: chapter name + difficulty chip
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Row(
                     children: [
                       Icon(LucideIcons.bookOpen, size: 12, color: c.textMuted),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: AppSpacing.xxs),
                       Flexible(
                         child: Text(
                           state.config.selectedChapter?.name ?? '',
@@ -237,7 +238,7 @@ class _PracticePanelState extends State<PracticePanel> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       _DifficultyChip(difficulty: state.config.difficulty),
                     ],
                   ),
@@ -260,7 +261,7 @@ class _PracticePanelState extends State<PracticePanel> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.xs),
                         Text(
                           'Q${(state.currentIndex + 1).clamp(1, total)}/$total',
                           style: AppTypography.mono(c.textMuted, size: 9),
@@ -330,7 +331,7 @@ class _PracticePanelState extends State<PracticePanel> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text('Next question', style: AppTypography.button(answered ? c.bgPrimary : c.textMuted)),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.xs),
                             Icon(LucideIcons.arrowRight, size: 16, color: answered ? c.bgPrimary : c.textMuted),
                           ],
                         ),
@@ -371,7 +372,7 @@ class _StreakBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(99),
+          borderRadius: AppRadii.pillR,
         ),
         child: Text(message,
             style: AppTypography.bodySmall(color)
@@ -483,18 +484,18 @@ class _MasteredView extends StatelessWidget {
               alignment: Alignment.center,
               child: Icon(LucideIcons.trophy, size: 32, color: c.accent),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Text('🏆 You’ve mastered this selection!',
                 style: AppTypography.h4(c.textPrimary),
                 textAlign: TextAlign.center),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               'You’ve answered every question we have here. Wrap up to see '
               'your results, or pick another chapter or difficulty to keep going.',
               style: AppTypography.bodySmall(c.textSecondary),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             FilledButton(
               onPressed: () => context.read<SessionBloc>().add(
                     SessionFinished(
@@ -545,15 +546,15 @@ class _QuestionErrorView extends StatelessWidget {
               alignment: Alignment.center,
               child: Icon(LucideIcons.circleX, size: 28, color: c.danger),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.md),
             Text('Something went wrong',
                 style: AppTypography.labelLarge(c.textPrimary),
                 textAlign: TextAlign.center),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppSpacing.xs),
             Text(message,
                 style: AppTypography.bodySmall(c.textSecondary),
                 textAlign: TextAlign.center),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.lg),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -567,7 +568,7 @@ class _QuestionErrorView extends StatelessWidget {
                   ),
                   child: const Text('Go Back'),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: AppSpacing.sm),
                 FilledButton(
                   onPressed: () => context
                       .read<SessionBloc>()
@@ -636,7 +637,7 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
           alignment: Alignment.center,
           child: Icon(LucideIcons.bot, size: 18, color: c.accent),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.xs),
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -658,13 +659,13 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
                   style: AppTypography.h4(c.textPrimary)
                       .copyWith(fontSize: 15, height: 1.55, fontWeight: FontWeight.w400),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.sm),
                 if (q.type == QuestionType.mcq)
                   ..._options(c, q)
                 else
                   _fillInput(c, q),
                 if (widget.answered && widget.feedback != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   _feedback(c, widget.feedback!),
                 ],
               ],
@@ -705,13 +706,13 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
 
     return InkWell(
       onTap: show ? null : () => widget.onAnswer(option),
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: AppRadii.cardR,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
         decoration: BoxDecoration(
           color: bg,
           border: Border.all(color: border, width: isCorrect || isWrong ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: Row(
           children: [
@@ -759,10 +760,10 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
               hintStyle: AppTypography.bodyMedium(c.textMuted),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                   borderSide: BorderSide(color: c.border)),
               focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                   borderSide: BorderSide(color: c.accent)),
             ),
             onSubmitted: (v) {
@@ -770,7 +771,7 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
             },
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: AppSpacing.xs),
         IconButton(
           onPressed: () {
             final v = _blankController.text.trim();
@@ -788,7 +789,7 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Column(
@@ -798,13 +799,13 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
             children: [
               Icon(f.isCorrect ? LucideIcons.circleCheck : LucideIcons.circleX,
                   size: 16, color: color),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Text(f.isCorrect ? 'Correct!' : 'Not quite',
                   style: AppTypography.labelLarge(color)),
             ],
           ),
           if (!f.isCorrect) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xxs),
             Text('Answer: ${f.correctAnswer}', style: AppTypography.bodySmall(c.textPrimary)),
           ],
           if (f.explanation != null && f.explanation!.isNotEmpty) ...[
@@ -879,7 +880,7 @@ class _DifficultyChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.accentLight,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: AppRadii.pillR,
       ),
       child: Text(
         difficulty.label.toUpperCase(),
@@ -955,10 +956,10 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
       fillColor: c.bgSecondary,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadii.componentR,
           borderSide: BorderSide(color: c.border)),
       focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadii.componentR,
           borderSide: BorderSide(color: c.accent)),
     );
   }
@@ -969,7 +970,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
     return Dialog(
       backgroundColor: c.bgCard,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
         side: BorderSide(color: c.border),
       ),
       child: Padding(
@@ -986,11 +987,11 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(LucideIcons.circleCheck, size: 40, color: c.success),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         Text('Thank you for your feedback!',
             style: AppTypography.h4(c.textPrimary),
             textAlign: TextAlign.center),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           'Your feedback helps us improve AskAide for everyone.',
           style: AppTypography.bodySmall(c.textMuted),
@@ -1025,7 +1026,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xxs),
         Text('Help us make AskAide better for everyone',
             style: AppTypography.bodySmall(c.textMuted)),
         const SizedBox(height: 20),
@@ -1046,7 +1047,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
           style: AppTypography.bodyMedium(c.textPrimary),
           decoration: _fieldDecoration(c, 'Enter your name'),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         // Email (optional)
         RichText(
           text: TextSpan(
@@ -1067,7 +1068,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
           keyboardType: TextInputType.emailAddress,
           decoration: _fieldDecoration(c, 'your@email.com'),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.md),
         // Feedback (required)
         RichText(
           text: TextSpan(
@@ -1089,14 +1090,14 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         ),
         // Error box
         if (_error != null) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.sm),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: c.danger.withValues(alpha: 0.1),
               border: Border.all(color: c.danger.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: AppRadii.componentR,
             ),
             child: Text(_error!,
                 style: AppTypography.bodySmall(c.danger)),
@@ -1114,7 +1115,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
               disabledForegroundColor: c.textMuted,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+                  borderRadius: AppRadii.componentR),
             ),
             child: _submitting
                 ? const SizedBox(
@@ -1127,14 +1128,14 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(LucideIcons.send, size: 15, color: Colors.white),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       Text('Submit Feedback',
                           style: AppTypography.button(Colors.white)),
                     ],
                   ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.sm),
         Center(
           child: Text(
             'Your feedback is anonymous unless you provide your email',

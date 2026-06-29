@@ -189,9 +189,7 @@ class _PublicPaperGeneratorViewState extends State<_PublicPaperGeneratorView> {
                   FilledButton.icon(
                     onPressed: s.generating ? null : () => _onNext(s),
                     icon: s.generating
-                        ? const SizedBox(
-                            width: 16, height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        ? const BtnSpinner(size: 16)
                         : Icon(s.step < 2 ? LucideIcons.chevronRight : LucideIcons.fileText, size: 16),
                     label: Text(s.generating
                         ? 'Generating…'
@@ -253,9 +251,7 @@ class _PublicPaperGeneratorViewState extends State<_PublicPaperGeneratorView> {
               FilledButton.icon(
                 onPressed: _downloading ? null : () => _download(s),
                 icon: _downloading
-                    ? const SizedBox(
-                        width: 16, height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const BtnSpinner(size: 16)
                     : const Icon(LucideIcons.download, size: 16),
                 label: Text(_downloading ? 'Preparing PDF…' : 'Download PDF'),
                 style: FilledButton.styleFrom(
@@ -322,7 +318,7 @@ class _PubStepIndicator extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                 decoration: BoxDecoration(
                   color: current == i + 1 ? c.accent : Colors.transparent,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -369,11 +365,11 @@ class _PubTextField extends StatelessWidget {
         fillColor: c.bgRaised,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
           borderSide: BorderSide(color: c.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
           borderSide: BorderSide(color: c.border),
         ),
       ),

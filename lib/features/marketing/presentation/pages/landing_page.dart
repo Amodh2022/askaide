@@ -64,10 +64,10 @@ class _Hero extends StatelessWidget {
             children: [
               Text('— A PRACTICE PLATFORM · CLASSES 6–12',
                   style: AppTypography.sectionLabel(c.accent)),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               // Headline with highlighted "work" and muted "watching".
               _Headline(),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.lg),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 480),
                 child: Text.rich(
@@ -124,7 +124,7 @@ class _Hero extends StatelessWidget {
                       style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 22, fontWeight: FontWeight.w500)),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.xl),
               // CTAs
               Wrap(
                 spacing: 12,
@@ -140,7 +140,7 @@ class _Hero extends StatelessWidget {
                     ),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Text('Start a free session', style: AppTypography.button(Colors.white)),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       Text('→', style: AppTypography.serifEmphasis(Colors.white, size: 16)),
                     ]),
                   ),
@@ -162,7 +162,7 @@ class _Hero extends StatelessWidget {
               const SizedBox(height: 20),
               Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(LucideIcons.shield, size: 14, color: c.accent),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.xs),
                 Text('Free forever  •  No credit card', style: AppTypography.bodySmall(c.textMuted)),
               ]),
               const SizedBox(height: 20),
@@ -276,7 +276,7 @@ class _Features extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.xl),
               LayoutBuilder(builder: (context, cons) {
                 final cols = cons.maxWidth > 760 ? 3 : 1;
                 return GridView.count(
@@ -322,7 +322,7 @@ class _Feature extends StatelessWidget {
           Text(title,
               style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 18),
               maxLines: 1, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           Flexible(
             child: Text(body,
                 style: AppTypography.bodyMedium(c.textMuted),
@@ -363,7 +363,7 @@ class _CtaBand extends StatelessWidget {
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text('Create your account', style: AppTypography.button(Colors.white)),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.xs),
                   Text('→', style: AppTypography.serifEmphasis(Colors.white, size: 16)),
                 ]),
               ),

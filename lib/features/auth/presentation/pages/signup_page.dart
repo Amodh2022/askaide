@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../domain/entities/signup_data.dart';
 import '../bloc/auth_bloc.dart';
@@ -145,7 +146,7 @@ class _SignupPageState extends State<SignupPage> {
               const SizedBox(height: 28),
 
               AuthField(label: 'YOUR NAME', controller: _name, hintText: 'Aanya Sharma', errorText: _nameError),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               AuthField(
                 label: 'EMAIL',
                 controller: _email,
@@ -153,7 +154,7 @@ class _SignupPageState extends State<SignupPage> {
                 keyboardType: TextInputType.emailAddress,
                 errorText: _emailError,
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               AuthField(
                 label: 'SET A PASSWORD',
                 controller: _password,
@@ -167,7 +168,7 @@ class _SignupPageState extends State<SignupPage> {
                 ),
               ),
               if (pwd.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
                     Expanded(
@@ -181,7 +182,7 @@ class _SignupPageState extends State<SignupPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     SizedBox(
                       width: 44,
                       child: Text(strength.label.toUpperCase(),
@@ -190,7 +191,7 @@ class _SignupPageState extends State<SignupPage> {
                   ],
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               AuthField(
                 label: 'CONFIRM PASSWORD',
                 controller: _confirm,
@@ -199,7 +200,7 @@ class _SignupPageState extends State<SignupPage> {
                 errorText: _confirmError,
                 onSubmitted: (_) => _submit(),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
 
               GestureDetector(
                 onTap: () => setState(() => _receiveTips = !_receiveTips),
@@ -226,14 +227,14 @@ class _SignupPageState extends State<SignupPage> {
               ),
 
               if (state.action == AuthAction.failure) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.md),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   decoration: BoxDecoration(
                     color: c.danger.withValues(alpha: 0.08),
                     border: Border.all(color: c.danger),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppRadii.cardR,
                   ),
                   child: Text(
                     state.errorMessage ?? 'Signup failed, please try again',
@@ -243,7 +244,7 @@ class _SignupPageState extends State<SignupPage> {
                 ),
               ],
 
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -260,14 +261,14 @@ class _SignupPageState extends State<SignupPage> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text('Create account', style: AppTypography.button(c.bgPrimary)),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.xs),
                             Text('→', style: AppTypography.serifEmphasis(c.bgPrimary, size: 16)),
                           ],
                         ),
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Center(
                 child: Wrap(
                   alignment: WrapAlignment.center,
@@ -290,7 +291,7 @@ class _SignupPageState extends State<SignupPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Center(
                 child: GestureDetector(
                   onTap: () => context.go(RoutePaths.login),
@@ -308,7 +309,7 @@ class _SignupPageState extends State<SignupPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
             ],
           );
         },

@@ -7,13 +7,17 @@ class AppRadii {
   AppRadii._();
 
   static const double pill = 99; // buttons
-  static const double card = 4; // cards
-  static const double modal = 6; // modals / sheets
+  static const double card = 4; // cards, input fields
+  static const double modal = 6; // modals, sheets
+  static const double component = 8; // inner containers, badges
+  static const double section = 12; // section cards, panels
   static const double chip = 99;
 
   static const BorderRadius pillR = BorderRadius.all(Radius.circular(pill));
   static const BorderRadius cardR = BorderRadius.all(Radius.circular(card));
   static const BorderRadius modalR = BorderRadius.all(Radius.circular(modal));
+  static const BorderRadius componentR = BorderRadius.all(Radius.circular(component));
+  static const BorderRadius sectionR = BorderRadius.all(Radius.circular(section));
 }
 
 class AppSpacing {
@@ -23,6 +27,7 @@ class AppSpacing {
   static const double xs = 8;
   static const double sm = 12;
   static const double md = 16;
+  static const double cardPad = 18; // standard card body padding
   static const double lg = 24;
   static const double xl = 32;
   static const double xxl = 48;

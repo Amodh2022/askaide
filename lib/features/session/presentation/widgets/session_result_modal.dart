@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../bloc/session_bloc.dart';
 
@@ -39,7 +40,7 @@ class _SessionResultModal extends StatelessWidget {
     return Dialog(
       backgroundColor: c.bgCard,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadii.modalR),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
         child: Column(
@@ -58,7 +59,7 @@ class _SessionResultModal extends StatelessWidget {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: AppRadii.modalR,
                     ),
                     child: const Icon(LucideIcons.trophy,
                         size: 32, color: Colors.white),
@@ -83,7 +84,7 @@ class _SessionResultModal extends StatelessWidget {
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                     decoration: BoxDecoration(
                       color: c.accentLight,
-                      borderRadius: BorderRadius.circular(99),
+                      borderRadius: AppRadii.pillR,
                       border: Border.all(color: c.border),
                     ),
                     child: Row(
@@ -96,14 +97,14 @@ class _SessionResultModal extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.sm),
                   Text("You've completed the practice session!",
                       textAlign: TextAlign.center,
                       style: AppTypography.bodySmall(c.textSecondary)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   // Animated score
                   _AnimatedScore(score: summary.score, total: summary.total),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text('QUESTIONS CORRECT',
                       style: AppTypography.mono(c.textMuted, size: 9)),
                   const SizedBox(height: 20),
@@ -112,10 +113,10 @@ class _SessionResultModal extends StatelessWidget {
                     children: [
                       _stat(context, LucideIcons.circleCheck, c.accent,
                           '${summary.score}', 'CORRECT'),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       _stat(context, LucideIcons.circleX, c.danger,
                           '${summary.incorrect}', 'WRONG'),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.xs),
                       _stat(context, LucideIcons.target, c.accent,
                           '$pct%', 'SCORE'),
                     ],
@@ -130,13 +131,13 @@ class _SessionResultModal extends StatelessWidget {
                         foregroundColor: c.bgPrimary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4)),
+                            borderRadius: AppRadii.cardR),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(LucideIcons.house, size: 18, color: c.bgPrimary),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: AppSpacing.xs),
                           Text('Done', style: AppTypography.button(c.bgPrimary)),
                         ],
                       ),
@@ -160,7 +161,7 @@ class _SessionResultModal extends StatelessWidget {
         decoration: BoxDecoration(
           color: c.bgSecondary,
           border: Border.all(color: c.border),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: Column(
           children: [

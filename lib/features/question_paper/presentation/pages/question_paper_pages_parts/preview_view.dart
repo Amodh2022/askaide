@@ -414,7 +414,7 @@ class _PaperQuestionTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: c.bgRaised,
                   border: Border.all(color: c.border),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: Text(
                   '[$marks Mark${marks > 1 ? 's' : ''}]',

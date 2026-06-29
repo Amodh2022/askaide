@@ -1,7 +1,7 @@
 part of '../admin_dashboard_page.dart';
 
 class _SectionsPanel extends StatefulWidget {
-  const _SectionsPanel();
+  const _SectionsPanel({super.key});
   @override
   State<_SectionsPanel> createState() => _SectionsPanelState();
 }
@@ -83,8 +83,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                       if (mounted) _after(r.isRight(), 'Section created', 'Could not create section');
                     },
               child: saving
-                  ? const SizedBox(width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const BtnSpinner(size: 16)
                   : const Text('Create'),
             ),
           ],
@@ -143,8 +142,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                       if (mounted) _after(r.isRight(), 'Created ${names.length} sections', 'Could not create sections');
                     },
               child: saving
-                  ? const SizedBox(width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const BtnSpinner(size: 16)
                   : const Text('Create'),
             ),
           ],
@@ -204,8 +202,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                       if (mounted) _after(r.isRight(), 'Section updated', 'Could not update section');
                     },
               child: saving
-                  ? const SizedBox(width: 16, height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  ? const BtnSpinner(size: 16)
                   : const Text('Save'),
             ),
           ],
@@ -233,7 +230,9 @@ class _SectionsPanelState extends State<_SectionsPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final state = context.watch<AdminCubit>().state;
+    final schools = context.select<AdminCubit, List<AdminSchool>>((c) => c.state.schools);
+    final classes = context.select<AdminCubit, List<AdminRecord>>((c) => c.state.classes);
+    final selectedSchoolId = context.select<AdminCubit, String?>((c) => c.state.selectedSchoolId);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -242,10 +241,10 @@ class _SectionsPanelState extends State<_SectionsPanel> {
           child: _PickerField(
             label: 'School',
             hint: 'Select school…',
-            items: state.schools
+            items: schools
                 .map((s) => AdminRecord(id: s.id, name: s.name))
                 .toList(),
-            selectedId: state.selectedSchoolId,
+            selectedId: selectedSchoolId,
             onChanged: (v) {
               context.read<AdminCubit>().selectSchool(v);
               setState(() {
@@ -260,7 +259,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
           child: _PickerField(
             label: 'Class',
             hint: 'Select class…',
-            items: state.classes,
+            items: classes,
             selectedId: _classId,
             onChanged: _selectClass,
           ),
@@ -306,8 +305,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
         ] else
           const SizedBox(height: 8),
         Divider(height: 1, color: c.border),
-        Expanded(
-          child: _classId == null
+        _classId == null
               ? const EmptyState(
                   icon: Icons.class_outlined,
                   title: 'Pick a class',
@@ -322,11 +320,12 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                           hint: 'Create one with the buttons above.',
                         )
                       : ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(12),
                           itemCount: _sections.length,
                           itemBuilder: (_, i) => _sectionCard(_sections[i]),
                         ),
-        ),
       ],
     );
   }
@@ -357,7 +356,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -376,7 +375,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                   color: s.isActive
                       ? c.accent.withValues(alpha: 0.12)
                       : c.danger.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                 ),
                 child: Text(
                   s.isActive ? 'Active' : 'Inactive',
@@ -424,7 +423,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
           ),
           const SizedBox(height: 6),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadii.cardR,
             child: LinearProgressIndicator(
               value: fillRatio.clamp(0.0, 1.0),
               backgroundColor: c.border,

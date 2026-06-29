@@ -20,12 +20,12 @@ class _StepIndicator extends StatelessWidget {
             Expanded(
               child: InkWell(
                 onTap: () => onTap(i + 1),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   decoration: BoxDecoration(
                     color: current == i + 1 ? c.accent : Colors.transparent,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: AppRadii.cardR,
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -142,11 +142,11 @@ class _TextInputState extends State<_TextInput> {
         fillColor: c.bgRaised,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
           borderSide: BorderSide(color: c.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
           borderSide: BorderSide(color: c.border),
         ),
       ),
@@ -175,7 +175,7 @@ class _NumberStepper extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgRaised,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -222,7 +222,7 @@ class _DifficultyCounter extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgRaised,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         children: [
@@ -298,11 +298,11 @@ class _InstructionAdderState extends State<_InstructionAdder> {
               fillColor: c.bgRaised,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
                 borderSide: BorderSide(color: c.border),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
                 borderSide: BorderSide(color: c.border),
               ),
             ),
@@ -341,7 +341,7 @@ class _ChipButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? c.accent : c.bgRaised,
           border: Border.all(color: selected ? c.accent : c.border),
-          borderRadius: BorderRadius.circular(99),
+          borderRadius: AppRadii.pillR,
         ),
         child: Text(
           label,

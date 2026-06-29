@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/presentation/widgets/page_scroll_scaffold.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -33,21 +34,17 @@ class _ReferralView extends StatelessWidget {
     final code = info.code.isEmpty ? 'ASKAIDE-FRIEND' : info.code;
     final link = 'https://askaide.ai/signup?ref=$code';
 
-    return SingleChildScrollView(
+    return PageScrollScaffold(
+      maxWidth: 720,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+      children: [
               // Hero
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(28),
                 decoration: BoxDecoration(
                   color: c.accentLight,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: AppRadii.modalR,
                   border: Border.all(color: c.border),
                 ),
                 child: Column(
@@ -56,31 +53,31 @@ class _ReferralView extends StatelessWidget {
                     Container(
                       width: 48,
                       height: 48,
-                      decoration: BoxDecoration(color: c.accent, borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: c.accent, borderRadius: AppRadii.componentR),
                       child: const Icon(LucideIcons.gift, color: Colors.white),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     Text('Refer a friend, both win!',
                         style: AppTypography.h2(c.textPrimary).copyWith(fontSize: 28)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     Text('Share your code — when a friend joins, you both earn streak freezes.',
                         style: AppTypography.bodyLarge(c.textSecondary)),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
 
               // Stats
               Row(
                 children: [
                   _RefStat(value: '${info.redeemCount}', label: 'REFERRALS'),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.sm),
                   _RefStat(value: '${info.redeemCount}', label: 'REWARDS'),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.sm),
                   _RefStat(value: '${info.dailyGoal}', label: 'DAILY GOAL'),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
 
               // Referral code + link
               Container(
@@ -91,19 +88,16 @@ class _ReferralView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('YOUR REFERRAL CODE', style: AppTypography.mono(c.textMuted, size: 10)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     _CopyRow(value: code, label: 'code'),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.md),
                     Text('SHARE LINK', style: AppTypography.mono(c.textMuted, size: 10)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.xs),
                     _CopyRow(value: link, label: 'link'),
                   ],
                 ),
               ),
             ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -124,7 +118,7 @@ class _RefStat extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(value, style: AppTypography.statNumber(c.accent, size: 28)),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xxs),
             Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
           ],
         ),
@@ -146,7 +140,7 @@ class _CopyRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgRaised,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Row(
         children: [

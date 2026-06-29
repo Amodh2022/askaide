@@ -5,7 +5,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/profile/domain/entities/account_type.dart';
+import '../../../../features/profile/domain/entities/user.dart';
 import '../../../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../../../features/session/presentation/bloc/session_bloc.dart';
 import '../../../sound/sound_cubit.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_tokens.dart';
@@ -18,13 +20,17 @@ import '../nav_items.dart';
 /// Fixed 240px left rail shown on desktop for authenticated routes. Groups are
 /// role-filtered; the active item switches to the serif font with an
 /// accent-light pill and a small accent dot.
+///
+/// Pass [onCollapse] to show a collapse-toggle button in the header (tablet).
 class AppSidebar extends StatelessWidget {
-  const AppSidebar({super.key});
+  const AppSidebar({super.key, this.onCollapse});
+
+  final VoidCallback? onCollapse;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final user = context.watch<ProfileCubit>().state.user;
+    final user = context.select<ProfileCubit, User?>((c) => c.state.user);
     final role = user?.accountType ?? AccountType.student;
     final items = navItemsFor(role);
     final location = GoRouterState.of(context).uri.path;
@@ -38,11 +44,30 @@ class AppSidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Top: logo + user.
+          // Top: logo + collapse toggle (tablet) or just logo.
           Padding(
             padding: const EdgeInsets.fromLTRB(
                 AppSpacing.md, AppSpacing.lg, AppSpacing.md, AppSpacing.md),
-            child: BrandLogo(size: 26),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Flexible(fit: FlexFit.loose, child: BrandLogo(size: 26)),
+                if (onCollapse != null)
+                  Tooltip(
+                    message: 'Collapse sidebar',
+                    child: InkWell(
+                      borderRadius: AppRadii.modalR,
+                      onTap: onCollapse,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(LucideIcons.panelLeftClose,
+                            size: 18, color: c.textMuted),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -117,13 +142,31 @@ class _NavTile extends StatelessWidget {
         borderRadius: AppRadii.modalR,
         child: InkWell(
           borderRadius: AppRadii.modalR,
-          onTap: () {
+          onTap: () async {
             context.read<SoundCubit>().playClick();
-            // On mobile the sidebar lives in a Drawer; close it after picking a
-            // destination. No-op on desktop where the rail is persistent.
+
+            final sessionBloc = context.read<SessionBloc>();
+            if (sessionBloc.state.panel == SessionPanel.practice) {
+              final confirmed = await showConfirmDialog(
+                context,
+                title: 'End Session?',
+                message: 'Do you want to end your current practice session?',
+                confirmLabel: 'End Session',
+                destructive: true,
+              );
+              if (!confirmed || !context.mounted) return;
+              // End session: reset to config panel. Don't navigate away —
+              // the user lands back on the study config screen.
+              sessionBloc.add(const BackToConfigRequested());
+              final scaffold = Scaffold.maybeOf(context);
+              if (scaffold?.isDrawerOpen ?? false) scaffold!.closeDrawer();
+              return;
+            }
+
+            // Normal tap: close drawer (mobile) and navigate.
             final scaffold = Scaffold.maybeOf(context);
             if (scaffold?.isDrawerOpen ?? false) scaffold!.closeDrawer();
-            context.go(item.path);
+            if (context.mounted) context.go(item.path);
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(

@@ -166,12 +166,18 @@ class AppRouter {
               title: 'Chapter ${state.pathParameters['chapterId']}'),
         ),
 
-        // ---- PERSISTENT BOTTOM-NAV TABS (kept alive via StatefulShellRoute) ----
-        // Each branch's widget tree is preserved in an IndexedStack so switching
-        // tabs never remounts the page or re-triggers data loads.
+        // ---- PERSISTENT SIDEBAR / BOTTOM-NAV DESTINATIONS ----
+        // Every sidebar destination is a StatefulShellBranch so GoRouter's
+        // IndexedStack keeps the widget tree alive — navigating away and back
+        // never remounts or re-fetches data.
+        //
+        // Detail / sub-routes (teacher subject pages, quiz attempt, etc.) are
+        // kept as standalone GoRoutes below; they are pushed on top of the
+        // branch's stack and rebuilt as normal detail views.
         StatefulShellRoute.indexedStack(
           builder: (_, __, navigationShell) => navigationShell,
           branches: [
+            // ---- Learn (bottom-nav tabs) ----
             StatefulShellBranch(routes: [
               _route(RoutePaths.study, (_, __) => const StudyPage()),
             ]),
@@ -184,13 +190,34 @@ class AppRouter {
             StatefulShellBranch(routes: [
               _route(RoutePaths.quizzes, (_, __) => const StudentQuizListPage()),
             ]),
+            // ---- Account (sidebar only) ----
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.profile, (_, __) => const ProfilePage()),
+            ]),
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.referral, (_, __) => const ReferralPage()),
+            ]),
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.settings, (_, __) => const SettingsPage()),
+            ]),
+            // ---- Manage / role-gated (sidebar only) ----
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.questionPaper,
+                  (_, __) => const QuestionPaperGeneratorPage()),
+            ]),
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.teacher, (_, __) => const TeacherDashboardPage()),
+            ]),
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.parent, (_, __) => const ParentDashboardPage()),
+            ]),
+            StatefulShellBranch(routes: [
+              _route(RoutePaths.admin, (_, __) => const AdminDashboardPage()),
+            ]),
           ],
         ),
 
-        // ---- PROTECTED ----
-        _route(RoutePaths.profile, (_, __) => const ProfilePage()),
-        _route(RoutePaths.settings, (_, __) => const SettingsPage()),
-        _route(RoutePaths.referral, (_, __) => const ReferralPage()),
+        // ---- Detail / sub-routes (not kept alive — rebuilt as normal) ----
         _route(
           RoutePaths.quizAttempt,
           (_, state) => QuizAttemptPage(
@@ -204,10 +231,6 @@ class AppRouter {
               QuizResultPage(attemptId: state.pathParameters['attemptId'] ?? ''),
         ),
         _route(RoutePaths.quizHistory, (_, __) => const QuizHistoryPage()),
-
-        // ---- ROLE-GATED ----
-        _route(RoutePaths.parent, (_, __) => const ParentDashboardPage()),
-        _route(RoutePaths.teacher, (_, __) => const TeacherDashboardPage()),
         _route(
           '/teacher/subject/:subjectId',
           (_, state) => TeacherSubjectPage(
@@ -227,7 +250,8 @@ class AppRouter {
         ),
         _route(
           '/teacher/subject/:subjectId/students',
-          (_, state) => TeacherStudentsPage(subjectId: state.pathParameters['subjectId'] ?? ''),
+          (_, state) => TeacherStudentsPage(
+              subjectId: state.pathParameters['subjectId'] ?? ''),
         ),
         _route(
           '/teacher/subject/:subjectId/chapter/:chapterId',
@@ -238,11 +262,13 @@ class AppRouter {
         ),
         _route(
           '/teacher/subject/:subjectId/weak-topics',
-          (_, state) => TeacherWeakTopicsPage(subjectId: state.pathParameters['subjectId'] ?? ''),
+          (_, state) => TeacherWeakTopicsPage(
+              subjectId: state.pathParameters['subjectId'] ?? ''),
         ),
         _route(
           '/teacher/subject/:subjectId/activity',
-          (_, state) => TeacherActivityPage(subjectId: state.pathParameters['subjectId'] ?? ''),
+          (_, state) => TeacherActivityPage(
+              subjectId: state.pathParameters['subjectId'] ?? ''),
         ),
         _route(
           '/teacher/subject/:subjectId/student/:studentId',
@@ -251,11 +277,7 @@ class AppRouter {
             studentId: state.pathParameters['studentId'] ?? '',
           ),
         ),
-        _route(
-            '/teacher/ai-generator', (_, __) => const TeacherAiGeneratorPage()),
-        _route(RoutePaths.admin, (_, __) => const AdminDashboardPage()),
-        _route(RoutePaths.questionPaper,
-            (_, __) => const QuestionPaperGeneratorPage()),
+        _route('/teacher/ai-generator', (_, __) => const TeacherAiGeneratorPage()),
         _route(
           RoutePaths.questionPaperPreview,
           (_, state) => QuestionPaperPreviewPage(

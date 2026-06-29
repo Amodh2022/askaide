@@ -21,15 +21,16 @@ class _TeacherHomeSkeleton extends StatelessWidget {
           Row(
             children: List.generate(
               4,
-              (_) => Padding(
-                padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
-                child: Container(
-                  width: 100,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: context.colors.bgCard,
-                    border: Border.all(color: context.colors.border),
-                    borderRadius: BorderRadius.circular(4),
+              (_) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
+                  child: Container(
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: context.colors.bgCard,
+                      border: Border.all(color: context.colors.border),
+                      borderRadius: AppRadii.cardR,
+                    ),
                   ),
                 ),
               ),
@@ -74,7 +75,7 @@ class _TeacherSubjectCardSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -92,7 +93,7 @@ class _TeacherSubjectCardSkeleton extends StatelessWidget {
                   height: 24,
                   decoration: BoxDecoration(
                     color: c.bgCard,
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                   ),
                 ),
                 const Spacer(),
@@ -102,7 +103,7 @@ class _TeacherSubjectCardSkeleton extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: c.bgCard,
                     border: Border.all(color: c.border),
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                   ),
                 ),
               ],
@@ -159,15 +160,16 @@ class _TeacherSubjectSkeleton extends StatelessWidget {
           Row(
             children: List.generate(
               3,
-              (_) => Padding(
-                padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
-                child: Container(
-                  width: 100,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: context.colors.bgCard,
-                    border: Border.all(color: context.colors.border),
-                    borderRadius: BorderRadius.circular(4),
+              (_) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: _ > 0 ? 8 : 0),
+                  child: Container(
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: context.colors.bgCard,
+                      border: Border.all(color: context.colors.border),
+                      borderRadius: AppRadii.cardR,
+                    ),
                   ),
                 ),
               ),
@@ -219,7 +221,7 @@ class _TeacherKpiCardSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +229,7 @@ class _TeacherKpiCardSkeleton extends StatelessWidget {
           Container(
             width: 30,
             height: 30,
-            decoration: BoxDecoration(color: c.bgRaised, borderRadius: BorderRadius.circular(6)),
+            decoration: BoxDecoration(color: c.bgRaised, borderRadius: AppRadii.modalR),
           ),
           const SizedBox(height: 8),
           const SkeletonBox(width: 80, height: 20),
@@ -251,14 +253,14 @@ class _TeacherChapterCardSkeleton extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Row(
         children: [
           Container(
             width: 36,
             height: 36,
-            decoration: BoxDecoration(color: c.bgRaised, borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(color: c.bgRaised, borderRadius: AppRadii.cardR),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -381,7 +383,7 @@ class _StatusBadge extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(99),
+        borderRadius: AppRadii.pillR,
       ),
       child: Text(_statusLabel(status), style: AppTypography.mono(color, size: 9)),
     );
@@ -537,7 +539,7 @@ class _KpiCard extends StatelessWidget {
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6),
+                borderRadius: AppRadii.modalR,
               ),
               child: Icon(icon, size: 15, color: iconColor),
             ),
@@ -611,7 +613,7 @@ class _ActionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: bg,
           border: Border.all(color: filled ? c.accent : danger ? c.danger.withValues(alpha: 0.4) : c.border),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: AppRadii.cardR,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -641,7 +643,7 @@ class _DropdownPill<T> extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<T>(

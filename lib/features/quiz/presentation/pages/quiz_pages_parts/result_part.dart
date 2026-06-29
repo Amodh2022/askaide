@@ -20,7 +20,7 @@ class _QuizResultView extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -85,7 +85,7 @@ class _QuizResultView extends StatelessWidget {
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                         color: scoreColor,
-                        borderRadius: BorderRadius.circular(4)),
+                        borderRadius: AppRadii.cardR),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -147,7 +147,7 @@ class _QuizResultView extends StatelessWidget {
                                   horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: AppRadii.cardR,
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -273,7 +273,7 @@ class _QuizResultView extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 24, vertical: 12),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(4)),
+                                borderRadius: AppRadii.cardR),
                           ),
                         ),
                         if (r.canRetry && r.quizId.isNotEmpty)
@@ -288,7 +288,7 @@ class _QuizResultView extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 24, vertical: 12),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4)),
+                                  borderRadius: AppRadii.cardR),
                             ),
                           ),
                       ],
@@ -346,7 +346,7 @@ class _ReviewTileState extends State<_ReviewTile> {
                       color: correct
                           ? c.accentLight
                           : c.danger.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: AppRadii.cardR,
                     ),
                     child: Text('${widget.index + 1}',
                         style: AppTypography.mono(correct ? c.accent : c.danger,
@@ -445,7 +445,7 @@ class _ReviewTileState extends State<_ReviewTile> {
       decoration: BoxDecoration(
         color: bg,
         border: Border.all(color: border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -43,6 +43,7 @@ class SessionState extends Equatable {
     this.taxonomyStatus = LoadStatus.idle,
     this.questionStatus = LoadStatus.idle,
     this.reviewStatus = LoadStatus.idle,
+    this.historyStatus = LoadStatus.idle,
     this.questions = const [],
     this.currentIndex = 0,
     this.questionOffset = 0,
@@ -74,6 +75,7 @@ class SessionState extends Equatable {
 
   final LoadStatus questionStatus;
   final LoadStatus reviewStatus;
+  final LoadStatus historyStatus;
   final List<Question> questions;
   final int currentIndex;
 
@@ -159,6 +161,7 @@ class SessionState extends Equatable {
     LoadStatus? taxonomyStatus,
     LoadStatus? questionStatus,
     LoadStatus? reviewStatus,
+    LoadStatus? historyStatus,
     List<Question>? questions,
     int? currentIndex,
     int? questionOffset,
@@ -169,6 +172,7 @@ class SessionState extends Equatable {
     bool? sessionStarted,
     StudySession? activeSession,
     StudySession? reviewSession,
+    bool clearReviewSession = false,
     List<StudySession>? history,
     bool? isOnline,
     int? queuedCount,
@@ -192,6 +196,7 @@ class SessionState extends Equatable {
       taxonomyStatus: taxonomyStatus ?? this.taxonomyStatus,
       questionStatus: questionStatus ?? this.questionStatus,
       reviewStatus: reviewStatus ?? this.reviewStatus,
+      historyStatus: historyStatus ?? this.historyStatus,
       questions: questions ?? this.questions,
       currentIndex: currentIndex ?? this.currentIndex,
       questionOffset: questionOffset ?? this.questionOffset,
@@ -200,7 +205,7 @@ class SessionState extends Equatable {
       feedback: clearFeedback ? null : (feedback ?? this.feedback),
       sessionStarted: sessionStarted ?? this.sessionStarted,
       activeSession: activeSession ?? this.activeSession,
-      reviewSession: reviewSession ?? this.reviewSession,
+      reviewSession: clearReviewSession ? null : (reviewSession ?? this.reviewSession),
       history: history ?? this.history,
       isOnline: isOnline ?? this.isOnline,
       queuedCount: queuedCount ?? this.queuedCount,
@@ -225,6 +230,7 @@ class SessionState extends Equatable {
         taxonomyStatus,
         questionStatus,
         reviewStatus,
+        historyStatus,
         questions,
         currentIndex,
         questionOffset,

@@ -113,7 +113,7 @@ class _QuizAttemptView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4)),
+                          borderRadius: AppRadii.cardR),
                     ),
                   ),
                 ],
@@ -175,7 +175,7 @@ class _QuizAttemptView extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 8),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4)),
+                                  borderRadius: AppRadii.cardR),
                             ),
                             child: const Text('Show all'),
                           ),
@@ -198,7 +198,7 @@ class _QuizAttemptView extends StatelessWidget {
       context: context,
       builder: (dctx) => AlertDialog(
         backgroundColor: c.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.cardR),
         title: Text('Leave quiz?', style: AppTypography.h4(c.textPrimary)),
         content: Text('Your progress is saved. You can resume later.',
             style: AppTypography.bodyMedium(c.textMuted)),
@@ -227,13 +227,13 @@ class _QuizAttemptView extends StatelessWidget {
       context: context,
       builder: (dctx) => AlertDialog(
         backgroundColor: c.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadii.cardR),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: c.warningBg, borderRadius: BorderRadius.circular(4)),
+                  color: c.warningBg, borderRadius: AppRadii.cardR),
               child:
                   Icon(LucideIcons.triangleAlert, size: 18, color: c.warning),
             ),
@@ -253,7 +253,7 @@ class _QuizAttemptView extends StatelessWidget {
               decoration: BoxDecoration(
                 color: c.bgPrimary,
                 border: Border.all(color: c.border),
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadii.cardR,
               ),
               child: Column(
                 children: [
@@ -338,7 +338,7 @@ class _QuestionPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.bgCard,
               border: Border.all(color: c.border),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,7 +358,7 @@ class _QuestionPanel extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: c.accentLight,
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: AppRadii.cardR,
                         ),
                         child: Text('${state.index + 1}',
                             style: AppTypography.mono(c.accent, size: 13)),
@@ -369,13 +369,13 @@ class _QuestionPanel extends StatelessWidget {
                       const Spacer(),
                       InkWell(
                         onTap: cubit.toggleFlag,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadii.cardR,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: isFlagged ? c.warningBg : Colors.transparent,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: AppRadii.cardR,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -434,7 +434,7 @@ class _QuestionPanel extends StatelessWidget {
                           foregroundColor: c.textPrimary,
                           side: BorderSide(color: c.border),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4)),
+                              borderRadius: AppRadii.cardR),
                         ),
                       ),
                       const Spacer(),
@@ -447,7 +447,7 @@ class _QuestionPanel extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4)),
+                              borderRadius: AppRadii.cardR),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -490,13 +490,13 @@ class _AttemptOption extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: selected ? c.accentLight : c.bgCard,
             border: Border.all(color: selected ? c.accent : c.border),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadii.cardR,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,7 +507,7 @@ class _AttemptOption extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: selected ? c.accent : c.bgPrimary,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: AppRadii.cardR,
                 ),
                 child: Text(letter,
                     style: AppTypography.mono(
@@ -576,7 +576,7 @@ class _QuestionNavigator extends StatelessWidget {
                 cubit.goTo(idx);
                 onTapQuestion?.call();
               },
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
               child: Opacity(
                 opacity: (!isAnswered && !isActive) ? 0.6 : 1.0,
                 child: Stack(
@@ -590,7 +590,7 @@ class _QuestionNavigator extends StatelessWidget {
                             : isAnswered
                                 ? c.accentLight
                                 : c.bgPrimary,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadii.cardR,
                       ),
                       child: Text('${idx + 1}',
                           style: AppTypography.mono(
@@ -648,7 +648,7 @@ class _QuestionNavigator extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.warningBg,
               border: Border.all(color: c.warning.withValues(alpha: 0.3)),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -669,7 +669,7 @@ class _QuestionNavigator extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.bgPrimary,
               border: Border.all(color: c.border),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: AppRadii.cardR,
             ),
             child: Column(
               children: [
@@ -700,7 +700,7 @@ class _QuestionNavigator extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             border: Border.all(color: c.border),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: AppRadii.cardR,
           ),
         ),
         const SizedBox(width: 8),
@@ -783,7 +783,7 @@ class _CountdownTimerState extends State<_CountdownTimer> {
       decoration: BoxDecoration(
         color: bg,
         border: Border.all(color: border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: AppRadii.cardR,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

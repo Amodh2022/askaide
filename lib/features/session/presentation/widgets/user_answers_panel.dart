@@ -49,25 +49,25 @@ class UserAnswersPanel extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   Text('— SESSION REVIEW', style: AppTypography.sectionLabel(c.accent)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   Text(session.title, style: AppTypography.h3(c.textPrimary)),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text('${session.answeredCount} questions answered',
                       style: AppTypography.bodySmall(c.textMuted)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.md),
                   // Summary cards
                   Row(
                     children: [
                       _stat(context, '$pct%', 'ACCURACY'),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.sm),
                       _stat(context, '${session.correctCount}/${session.answeredCount}', 'CORRECT'),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.sm),
                       _stat(context, '${session.answeredCount}', 'ANSWERED'),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: AppSpacing.lg),
                   if (isLoading)
                     _ReviewShimmer()
                   else
@@ -93,7 +93,7 @@ class UserAnswersPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(value, style: AppTypography.statNumber(c.accent, size: 28)),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xxs),
             Text(label, style: AppTypography.mono(c.textMuted, size: 10)),
           ],
         ),
@@ -136,7 +136,7 @@ class _ShimmerThread extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(color: c.bgRaised, shape: BoxShape.circle),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.all(14),
@@ -148,7 +148,7 @@ class _ShimmerThread extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SkeletonBox(height: 14, width: double.infinity),
-                      SizedBox(height: 8),
+                      SizedBox(height: AppSpacing.xs),
                       SkeletonBox(height: 12, width: 260),
                       SizedBox(height: 6),
                       SkeletonBox(height: 12, width: 220),
@@ -160,7 +160,7 @@ class _ShimmerThread extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           // User answer bubble (right-aligned)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,7 +176,7 @@ class _ShimmerThread extends StatelessWidget {
                   child: const SkeletonBox(height: 14, width: 140),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Container(
                 width: 32,
                 height: 32,
@@ -184,7 +184,7 @@ class _ShimmerThread extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           // Feedback bubble (left-aligned)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -194,7 +194,7 @@ class _ShimmerThread extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(color: c.bgRaised, shape: BoxShape.circle),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.all(14),
@@ -206,7 +206,7 @@ class _ShimmerThread extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SkeletonBox(height: 14, width: 180),
-                      SizedBox(height: 8),
+                      SizedBox(height: AppSpacing.xs),
                       SkeletonBox(height: 12, width: 300),
                     ],
                   ),
@@ -252,7 +252,7 @@ class _AnswerThread extends StatelessWidget {
                   style: AppTypography.bodyMedium(c.textPrimary),
                 ),
                 if (answer.options.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   ...answer.options.map(
                     (o) => Padding(
                       padding: const EdgeInsets.only(bottom: 2),
@@ -262,7 +262,7 @@ class _AnswerThread extends StatelessWidget {
                   ),
                 ],
                 if (answer.timeSpentSeconds != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.xs),
                   Text('⏱ ${answer.timeSpentSeconds}s',
                       style: AppTypography.bodySmall(c.textMuted)
                           .copyWith(fontSize: 11)),
@@ -270,7 +270,7 @@ class _AnswerThread extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           // User's answer.
           _Bubble(
             alignEnd: true,
@@ -278,7 +278,7 @@ class _AnswerThread extends StatelessWidget {
             bubbleColor: (ok ? c.success : c.danger).withValues(alpha: 0.15),
             child: Text(answer.answer, style: AppTypography.bodyMedium(c.textPrimary)),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.xs),
           // Feedback.
           _Bubble(
             alignEnd: false,
@@ -296,7 +296,7 @@ class _AnswerThread extends StatelessWidget {
                       .copyWith(fontWeight: FontWeight.w600),
                 ),
                 if (answer.explanation?.isNotEmpty == true) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: AppSpacing.xxs),
                   Text(answer.explanation!,
                       style: AppTypography.bodySmall(c.textMuted)),
                 ],
@@ -343,8 +343,8 @@ class _Bubble extends StatelessWidget {
       ),
     );
     final children = alignEnd
-        ? [bubble, const SizedBox(width: 8), avatar]
-        : [avatar, const SizedBox(width: 8), bubble];
+        ? [bubble, const SizedBox(width: AppSpacing.xs), avatar]
+        : [avatar, const SizedBox(width: AppSpacing.xs), bubble];
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,

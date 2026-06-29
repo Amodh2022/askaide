@@ -67,7 +67,7 @@ class _TeacherHomeView extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: c.accentLight,
                             border: Border.all(color: c.border),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: AppRadii.cardR,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -84,7 +84,7 @@ class _TeacherHomeView extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: c.accentLight,
                             border: Border.all(color: c.border),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: AppRadii.cardR,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -183,7 +183,7 @@ class _SubjectCard extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: c.bgCard,
                       border: Border.all(color: c.border),
-                      borderRadius: BorderRadius.circular(99),
+                      borderRadius: AppRadii.pillR,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

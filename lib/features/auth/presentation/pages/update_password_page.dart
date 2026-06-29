@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/router/route_paths.dart';
+import '../../../../core/presentation/widgets/btn_spinner.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/responsive.dart';
 import '../bloc/auth_bloc.dart';
@@ -134,22 +136,22 @@ class _BrandingColumn extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   color: c.accentLight,
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: AppRadii.pillR,
                   border: Border.all(color: c.border),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(LucideIcons.shieldCheck, size: 16, color: c.accent),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.xs),
                     Text('Secure Password Reset',
                         style: AppTypography.labelLarge(c.accent).copyWith(fontSize: 13)),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.lg),
               Text('AskAide AI', style: AppTypography.h1(c.textPrimary), textAlign: TextAlign.center),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Text('Create a strong password to keep your account secure',
                   style: AppTypography.bodyLarge(c.textSecondary), textAlign: TextAlign.center),
             ],
@@ -198,17 +200,17 @@ class _FormCard extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(LucideIcons.arrowLeft, size: 16, color: c.textMuted),
-              const SizedBox(width: 8),
+              const SizedBox(width: AppSpacing.xs),
               Text('Back to Home', style: AppTypography.labelLarge(c.textMuted).copyWith(fontSize: 13)),
             ],
           ),
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: AppSpacing.xl),
         Container(
           padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             color: c.bgCard,
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadii.modalR,
             border: Border.all(color: c.border),
           ),
           child: Column(
@@ -225,23 +227,23 @@ class _FormCard extends StatelessWidget {
                       end: Alignment.bottomRight,
                       colors: [c.accent, Color.alphaBlend(Colors.black.withValues(alpha: 0.3), c.accent)],
                     ),
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: AppRadii.modalR,
                   ),
                   child: const Icon(LucideIcons.lock, size: 28, color: Colors.white),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Text('Create New Password',
                   textAlign: TextAlign.center, style: AppTypography.h3(c.textPrimary)),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.xs),
               Text('Almost done! Enter your new password below',
                   textAlign: TextAlign.center, style: AppTypography.bodySmall(c.textMuted)),
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.lg),
               _field(c, 'New Password', password, showPassword, onTogglePassword, 'Enter new password'),
               const SizedBox(height: 20),
               _field(c, 'Confirm Password', confirm, showConfirm, onToggleConfirm, 'Re-enter password'),
               if (match || conflict) ...[
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
                 Row(
                   children: [
                     Icon(match ? LucideIcons.circleCheck : LucideIcons.circleX,
@@ -252,7 +254,7 @@ class _FormCard extends StatelessWidget {
                   ],
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: AppSpacing.lg),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -264,20 +266,18 @@ class _FormCard extends StatelessWidget {
                     shape: const StadiumBorder(),
                   ),
                   child: busy
-                      ? const SizedBox(
-                          width: 16, height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      ? const BtnSpinner(size: 16)
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text('Reset Password', style: AppTypography.button(Colors.white)),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.xs),
                             const Icon(LucideIcons.arrowRight, size: 16, color: Colors.white),
                           ],
                         ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.md),
               Center(
                 child: GestureDetector(
                   onTap: () => context.go(RoutePaths.login),
@@ -324,7 +324,7 @@ class _FormCard extends StatelessWidget {
   }
 
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadii.componentR,
         borderSide: BorderSide(color: color),
       );
 }

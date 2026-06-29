@@ -1,7 +1,7 @@
 part of '../admin_dashboard_page.dart';
 
 class _RelationsPanel extends StatefulWidget {
-  const _RelationsPanel();
+  const _RelationsPanel({super.key});
   @override
   State<_RelationsPanel> createState() => _RelationsPanelState();
 }
@@ -75,7 +75,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                     color: c.bgPrimary,
                     border: Border.all(
                         color: value.isNotEmpty ? c.accent : c.border),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadii.componentR,
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -123,7 +123,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                   height: 4,
                   decoration: BoxDecoration(
                       color: c.border,
-                      borderRadius: BorderRadius.circular(99)),
+                      borderRadius: AppRadii.pillR),
                 ),
                 const SizedBox(height: 16),
 
@@ -232,7 +232,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final state = context.watch<AdminCubit>().state;
+    final schools = context.select<AdminCubit, List<AdminSchool>>((c) => c.state.schools);
 
     final filtered = _links
         .where((l) =>
@@ -242,36 +242,39 @@ class _RelationsPanelState extends State<_RelationsPanel> {
             (_fSection.isEmpty || l.sectionName == _fSection))
         .toList();
 
-    return ListView(
+    return Padding(
       padding: const EdgeInsets.all(20),
-      children: [
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         // ── Page title ───────────────────────────────────────────────────────
         Text('Relation Management',
             style: AppTypography.h3(c.textPrimary).copyWith(fontSize: 22)),
         const SizedBox(height: 16),
 
         // ── School selector card ─────────────────────────────────────────────
-        _schoolCard(c, state),
+        _schoolCard(c, schools),
         const SizedBox(height: 16),
 
         // ── Relations card ───────────────────────────────────────────────────
         if (_schoolId != null) _relationsCard(c, filtered),
       ],
+      ),
     );
   }
 
-  Widget _schoolCard(AskAideColors c, AdminState state) {
+  Widget _schoolCard(AskAideColors c, List<AdminSchool> schools) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: _PickerField(
         label: 'School',
         hint: 'Select a school…',
-        items: state.schools
+        items: schools
             .map((s) => AdminRecord(
                 id: s.id,
                 name: s.code.isEmpty ? s.name : '${s.name} (${s.code})'))
@@ -287,7 +290,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadii.sectionR,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -307,7 +310,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                       horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: c.accent.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(99),
+                    borderRadius: AppRadii.pillR,
                   ),
                   child: Text(
                     _loading
@@ -457,7 +460,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
             const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
             color: c.accentLight,
-            borderRadius: BorderRadius.circular(99)),
+            borderRadius: AppRadii.pillR),
         child: Text(name, style: AppTypography.bodySmall(c.accent)),
       );
 }

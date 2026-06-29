@@ -1,7 +1,7 @@
 part of '../admin_dashboard_page.dart';
 
 class _UploadPanel extends StatefulWidget {
-  const _UploadPanel();
+  const _UploadPanel({super.key});
   @override
   State<_UploadPanel> createState() => _UploadPanelState();
 }
@@ -75,6 +75,14 @@ class _UploadPanelState extends State<_UploadPanel> {
         _fileName = null;
       });
 
+  Future<void> _previewFile() async {
+    if (_fileBytes == null) return;
+    await Printing.sharePdf(
+      bytes: _fileBytes!,
+      filename: _fileName ?? 'chapter.pdf',
+    );
+  }
+
   Future<void> _deleteChapterItem(String id) async {
     final sid = _subjectId!;
     final r = await _repo.deleteChapters(_classId!, sid, [id]);
@@ -122,7 +130,7 @@ class _UploadPanelState extends State<_UploadPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final classes = context.watch<AdminCubit>().state.classes;
+    final classes = context.select<AdminCubit, List<AdminRecord>>((c) => c.state.classes);
 
     final canUpload = _classId != null &&
         _subjectId != null &&
@@ -163,7 +171,7 @@ class _UploadPanelState extends State<_UploadPanel> {
                           labelText: 'Chapter name',
                           labelStyle: TextStyle(color: c.textMuted),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                              borderRadius: AppRadii.componentR),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
                         ),
@@ -178,7 +186,7 @@ class _UploadPanelState extends State<_UploadPanel> {
                           labelText: 'Order',
                           labelStyle: TextStyle(color: c.textMuted),
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                              borderRadius: AppRadii.componentR),
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
                         ),
@@ -207,7 +215,7 @@ class _UploadPanelState extends State<_UploadPanel> {
                     decoration: BoxDecoration(
                       color: c.accent.withValues(alpha: 0.06),
                       border: Border.all(color: c.accent.withValues(alpha: 0.3)),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: AppRadii.componentR,
                     ),
                     child: Row(
                       children: [
@@ -228,6 +236,12 @@ class _UploadPanelState extends State<_UploadPanel> {
                                       AppTypography.mono(c.textMuted, size: 10)),
                             ],
                           ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.visibility_outlined, size: 16, color: c.accent),
+                          onPressed: _previewFile,
+                          splashRadius: 16,
+                          tooltip: 'Preview PDF',
                         ),
                         IconButton(
                           icon: Icon(Icons.close, size: 16, color: c.textMuted),
@@ -264,8 +278,7 @@ class _UploadPanelState extends State<_UploadPanel> {
         ],
 
         // ── Existing chapters list ─────────────────────────────────────────
-        Expanded(
-          child: _subjectId == null
+        _subjectId == null
               ? const EmptyState(
                   icon: Icons.upload_file_outlined,
                   title: 'Pick a class & subject',
@@ -280,6 +293,8 @@ class _UploadPanelState extends State<_UploadPanel> {
                           hint: 'Upload the first chapter above.',
                         )
                       : ListView.separated(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(8),
                           itemCount: _chapters.length,
                           separatorBuilder: (_, __) =>
@@ -303,7 +318,6 @@ class _UploadPanelState extends State<_UploadPanel> {
                             ),
                           ),
                         ),
-        ),
       ],
     );
   }
