@@ -9,10 +9,14 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 import '../../../../core/di/injection.dart';
+import '../../../../core/domain/question_type.dart';
+import '../../../../core/taxonomy/taxonomy_repository.dart';
 import '../../../profile/presentation/cubit/profile_cubit.dart';
-import '../../../../core/presentation/widgets/btn_spinner.dart';
+import '../../../../core/presentation/widgets/chip_picker.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
+import '../../../../core/presentation/widgets/step_indicator.dart';
+import '../../../../core/theme/state_visuals.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -20,6 +24,7 @@ import '../../data/question_paper_feature.dart';
 
 part 'question_paper_pages_parts/generator_view.dart';
 part 'question_paper_pages_parts/wizard_widgets.dart';
+part 'question_paper_pages_parts/question_type_section.dart';
 part 'question_paper_pages_parts/preview_view.dart';
 part 'question_paper_pages_parts/pdf_builder.dart';
 part 'question_paper_pages_parts/history_view.dart';

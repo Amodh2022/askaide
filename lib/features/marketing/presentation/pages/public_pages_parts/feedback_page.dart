@@ -1,73 +1,46 @@
 part of '../public_pages.dart';
 
 /// `/feedback` — a working feedback form (name, email, message, rating).
-class FeedbackPage extends StatefulWidget {
+class FeedbackPage extends StatelessWidget {
   const FeedbackPage({super.key});
 
-  @override
-  State<FeedbackPage> createState() => _FeedbackPageState();
-}
-
-class _FeedbackPageState extends State<FeedbackPage> {
-  final _name = TextEditingController();
-  final _email = TextEditingController();
-  final _message = TextEditingController();
-  int _rating = 0;
-  bool _submitting = false;
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _email.dispose();
-    _message.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    if (_name.text.trim().isEmpty || _message.text.trim().isEmpty) {
+  Future<void> _submit(BuildContext context) async {
+    final cubit = context.read<MarketingFeedbackCubit>();
+    if (cubit.name.text.trim().isEmpty || cubit.message.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Name and feedback are required.')));
       return;
     }
-    setState(() => _submitting = true);
-    var ok = true;
-    try {
-      await sl<Dio>().post(Endpoints.feedback, data: {
-        'name': _name.text.trim(),
-        'email': _email.text.trim(),
-        'feedback': _message.text.trim(),
-        if (_rating > 0) 'rating': _rating,
-      });
-    } catch (_) {
-      ok = false;
-    }
-    if (!mounted) return;
-    setState(() => _submitting = false);
+    final ok = await cubit.submit();
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok ? 'Thank you for your feedback!' : 'Failed to record feedback.')));
-    if (ok) {
-      _name.clear();
-      _email.clear();
-      _message.clear();
-      setState(() => _rating = 0);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<MarketingFeedbackCubit>(
+      create: (_) => sl<MarketingFeedbackCubit>(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-    return _PublicPage(
+    final cubit = context.read<MarketingFeedbackCubit>();
+    return BlocBuilder<MarketingFeedbackCubit, FeedbackFormState>(
+      builder: (context, state) => _PublicPage(
       maxWidth: 600,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const PageHeader(eyebrow: 'FEEDBACK', title: 'Tell us', emphasis: 'more.'),
           const SizedBox(height: 24),
-          _input(c, 'Your name', _name, 'Enter your name'),
+          _input(c, 'Your name', cubit.name, 'Enter your name'),
           const SizedBox(height: 14),
-          _input(c, 'Email', _email, 'your@email.com'),
+          _input(c, 'Email', cubit.email, 'your@email.com'),
           const SizedBox(height: 14),
-          _input(c, 'Message', _message,
+          _input(c, 'Message', cubit.message,
               "Tell us what's on your mind... What do you love? What could be better?",
               maxLines: 5),
           const SizedBox(height: 14),
@@ -75,9 +48,9 @@ class _FeedbackPageState extends State<FeedbackPage> {
           const SizedBox(height: 6),
           Row(
             children: List.generate(5, (i) {
-              final filled = i < _rating;
+              final filled = i < state.rating;
               return IconButton(
-                onPressed: () => setState(() => _rating = i + 1),
+                onPressed: () => cubit.setRating(i + 1),
                 icon: Icon(filled ? LucideIcons.star : LucideIcons.star,
                     color: filled ? c.accentSecondary : c.border, size: 24),
               );
@@ -87,17 +60,18 @@ class _FeedbackPageState extends State<FeedbackPage> {
           SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: _submitting ? null : _submit,
+              onPressed: state.submitting ? null : () => _submit(context),
               style: FilledButton.styleFrom(
                 backgroundColor: c.textPrimary, foregroundColor: c.bgPrimary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: const StadiumBorder(),
               ),
-              child: Text(_submitting ? 'Sending…' : 'Send feedback',
+              child: Text(state.submitting ? 'Sending…' : 'Send feedback',
                   style: AppTypography.button(c.bgPrimary)),
             ),
           ),
         ],
+      ),
       ),
     );
   }

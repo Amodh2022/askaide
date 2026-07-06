@@ -6,10 +6,12 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/domain/question_type.dart';
 import '../../../core/error/failures.dart';
 import '../../../core/network/api_helpers.dart';
 import '../../../core/network/endpoints.dart';
 import '../../../core/taxonomy/taxonomy_repository.dart';
+import '../../../core/utils/wizard_step.dart';
 import '../../teacher/data/teacher_feature.dart';
 
 class PaperQuestion extends Equatable {
@@ -18,24 +20,31 @@ class PaperQuestion extends Equatable {
     required this.options,
     required this.correctAnswer,
     required this.explanation,
-    this.questionType = '',
+    this.questionType,
     this.difficulty = '',
   });
   final String text;
   final List<String> options;
   final String correctAnswer;
   final String explanation;
-  final String questionType;
+
+  /// Null when the backend didn't tag this question with a type — callers
+  /// must treat that as "unknown", not default it to [QuestionType.mcq]
+  /// (which is what [QuestionType.fromApi] does for an empty string).
+  final QuestionType? questionType;
   final String difficulty;
 
-  factory PaperQuestion.fromJson(Map<dynamic, dynamic> j) => PaperQuestion(
-        text: j.str(['questionText', 'text']),
-        options: j.listAt(['options']).map((e) => e.toString()).toList(),
-        correctAnswer: j.str(['correctAnswer']),
-        explanation: j.str(['explanation']),
-        questionType: j.str(['questionType', 'type']),
-        difficulty: j.str(['difficulty']),
-      );
+  factory PaperQuestion.fromJson(Map<dynamic, dynamic> j) {
+    final rawType = j.str(['questionType', 'type']);
+    return PaperQuestion(
+      text: j.str(['questionText', 'text']),
+      options: j.listAt(['options']).map((e) => e.toString()).toList(),
+      correctAnswer: j.str(['correctAnswer']),
+      explanation: j.str(['explanation']),
+      questionType: rawType.isEmpty ? null : QuestionType.fromApi(rawType),
+      difficulty: j.str(['difficulty']),
+    );
+  }
 
   @override
   List<Object?> get props =>
@@ -237,17 +246,32 @@ class QuestionPaperRepositoryImpl implements QuestionPaperRepository {
 enum QpLoad { initial, loading, loaded, error }
 
 class PaperPreviewState extends Equatable {
-  const PaperPreviewState({this.status = QpLoad.initial, this.preview, this.error});
+  const PaperPreviewState({
+    this.status = QpLoad.initial,
+    this.preview,
+    this.error,
+    this.printing = false,
+  });
   final QpLoad status;
   final PaperPreview? preview;
   final String? error;
+  final bool printing;
 
-  PaperPreviewState copyWith({QpLoad? status, PaperPreview? preview, String? error}) =>
+  PaperPreviewState copyWith({
+    QpLoad? status,
+    PaperPreview? preview,
+    String? error,
+    bool? printing,
+  }) =>
       PaperPreviewState(
-          status: status ?? this.status, preview: preview ?? this.preview, error: error);
+        status: status ?? this.status,
+        preview: preview ?? this.preview,
+        error: error,
+        printing: printing ?? this.printing,
+      );
 
   @override
-  List<Object?> get props => [status, preview, error];
+  List<Object?> get props => [status, preview, error, printing];
 }
 
 class PaperPreviewCubit extends Cubit<PaperPreviewState> {
@@ -262,6 +286,8 @@ class PaperPreviewCubit extends Cubit<PaperPreviewState> {
       (p) => emit(state.copyWith(status: QpLoad.loaded, preview: p)),
     );
   }
+
+  void setPrinting(bool value) => emit(state.copyWith(printing: value));
 }
 
 class PaperHistoryState extends Equatable {
@@ -272,6 +298,8 @@ class PaperHistoryState extends Equatable {
     this.total = 0,
     this.totalPages = 1,
     this.error,
+    this.downloadingId,
+    this.deletingId,
   });
   final QpLoad status;
   final List<PaperSummary> papers;
@@ -279,6 +307,8 @@ class PaperHistoryState extends Equatable {
   final int total;
   final int totalPages;
   final String? error;
+  final String? downloadingId;
+  final String? deletingId;
 
   PaperHistoryState copyWith({
     QpLoad? status,
@@ -287,6 +317,10 @@ class PaperHistoryState extends Equatable {
     int? total,
     int? totalPages,
     String? error,
+    String? downloadingId,
+    String? deletingId,
+    bool clearDownloadingId = false,
+    bool clearDeletingId = false,
   }) =>
       PaperHistoryState(
         status: status ?? this.status,
@@ -295,15 +329,22 @@ class PaperHistoryState extends Equatable {
         total: total ?? this.total,
         totalPages: totalPages ?? this.totalPages,
         error: error,
+        downloadingId:
+            clearDownloadingId ? null : (downloadingId ?? this.downloadingId),
+        deletingId: clearDeletingId ? null : (deletingId ?? this.deletingId),
       );
 
   @override
-  List<Object?> get props => [status, papers, page, total, totalPages, error];
+  List<Object?> get props =>
+      [status, papers, page, total, totalPages, error, downloadingId, deletingId];
 }
 
 class PaperHistoryCubit extends Cubit<PaperHistoryState> {
   PaperHistoryCubit(this._repo) : super(const PaperHistoryState());
   final QuestionPaperRepository _repo;
+
+  void setDownloading(String? id) => emit(state.copyWith(
+      downloadingId: id, clearDownloadingId: id == null));
 
   Future<void> load({int page = 1}) async {
     emit(state.copyWith(status: QpLoad.loading));
@@ -323,10 +364,16 @@ class PaperHistoryCubit extends Cubit<PaperHistoryState> {
 
   /// Deletes a paper and removes it from the list optimistically on success.
   Future<bool> delete(String paperId) async {
+    emit(state.copyWith(deletingId: paperId));
     final r = await _repo.deletePaper(paperId);
-    return r.fold((_) => false, (_) {
+    return r.fold((_) {
+      emit(state.copyWith(clearDeletingId: true));
+      return false;
+    }, (_) {
       emit(state.copyWith(
-          papers: state.papers.where((p) => p.id != paperId).toList()));
+        papers: state.papers.where((p) => p.id != paperId).toList(),
+        clearDeletingId: true,
+      ));
       return true;
     });
   }
@@ -334,9 +381,41 @@ class PaperHistoryCubit extends Cubit<PaperHistoryState> {
 
 // ---- Generator (taxonomy pickers + generate) ------------------------------
 
+sealed class QpWizardStep extends WizardStep<QpGenState> {
+  const QpWizardStep(super.ordinal, super.label);
+}
+
+class QpSetupStep extends QpWizardStep {
+  const QpSetupStep() : super(0, 'Setup');
+
+  @override
+  bool isValid(QpGenState state) =>
+      state.title.trim().isNotEmpty && state.subjectId != null && state.classId != null;
+
+  @override
+  String get validationMessage => 'Enter a title and pick a subject and class.';
+}
+
+class QpQuestionsStep extends QpWizardStep {
+  const QpQuestionsStep() : super(1, 'Questions');
+
+  @override
+  bool isValid(QpGenState state) =>
+      state.chapterIds.isNotEmpty && state.totalQuestions >= 1;
+
+  @override
+  String get validationMessage => 'Select at least one chapter and one question.';
+}
+
+class QpOptionsStep extends QpWizardStep {
+  const QpOptionsStep() : super(2, 'Options');
+}
+
+const List<QpWizardStep> qpWizardSteps = [QpSetupStep(), QpQuestionsStep(), QpOptionsStep()];
+
 class QpGenState extends Equatable {
   const QpGenState({
-    this.step = 1,
+    this.step = const QpSetupStep(),
     this.loadingAssignments = true,
     this.assignments = const [],
     this.schoolNamePrefill = '',
@@ -351,7 +430,7 @@ class QpGenState extends Equatable {
     this.easy = 3,
     this.medium = 4,
     this.hard = 3,
-    this.questionTypes = const {'mcq'},
+    this.questionTypes = const {QuestionType.mcq},
     this.includeAnswerKey = true,
     this.instructions = const [],
     this.generating = false,
@@ -359,7 +438,7 @@ class QpGenState extends Equatable {
     this.error,
   });
 
-  final int step;
+  final QpWizardStep step;
 
   /// True while the teacher's assignments are being fetched.
   final bool loadingAssignments;
@@ -382,7 +461,7 @@ class QpGenState extends Equatable {
   final int easy;
   final int medium;
   final int hard;
-  final Set<String> questionTypes;
+  final Set<QuestionType> questionTypes;
   final bool includeAnswerKey;
   final List<String> instructions;
   final bool generating;
@@ -416,17 +495,11 @@ class QpGenState extends Equatable {
           .firstOrNull ??
       '';
 
-  /// Step 1 is valid once a title, subject and class are chosen.
-  bool get step1Valid =>
-      title.trim().isNotEmpty && subjectId != null && classId != null;
-
-  /// Step 2 is valid once chapters are picked and at least one question is set.
-  bool get step2Valid => chapterIds.isNotEmpty && totalQuestions >= 1;
-
-  bool get canGenerate => step1Valid && step2Valid && !generating;
+  bool get canGenerate =>
+      qpWizardSteps.every((s) => s.isValid(this)) && !generating;
 
   QpGenState copyWith({
-    int? step,
+    QpWizardStep? step,
     bool? loadingAssignments,
     List<TeacherAssignment>? assignments,
     String? schoolNamePrefill,
@@ -441,7 +514,7 @@ class QpGenState extends Equatable {
     int? easy,
     int? medium,
     int? hard,
-    Set<String>? questionTypes,
+    Set<QuestionType>? questionTypes,
     bool? includeAnswerKey,
     List<String>? instructions,
     bool? generating,
@@ -551,8 +624,8 @@ class QpGeneratorCubit extends Cubit<QpGenState> {
   void setHard(int v) => emit(state.copyWith(hard: v < 0 ? 0 : v));
   void setAnswerKey(bool v) => emit(state.copyWith(includeAnswerKey: v));
 
-  void toggleType(String type) {
-    final next = Set<String>.from(state.questionTypes);
+  void toggleType(QuestionType type) {
+    final next = Set<QuestionType>.from(state.questionTypes);
     if (next.contains(type)) {
       if (next.length > 1) next.remove(type);
     } else {
@@ -572,9 +645,17 @@ class QpGeneratorCubit extends Cubit<QpGenState> {
     emit(state.copyWith(instructions: next));
   }
 
-  void goToStep(int step) => emit(state.copyWith(step: step.clamp(1, 3)));
-  void next() => emit(state.copyWith(step: (state.step + 1).clamp(1, 3)));
-  void back() => emit(state.copyWith(step: (state.step - 1).clamp(1, 3)));
+  void goToStep(QpWizardStep step) => emit(state.copyWith(step: step));
+
+  void next() {
+    final i = state.step.ordinal;
+    if (i < qpWizardSteps.length - 1) emit(state.copyWith(step: qpWizardSteps[i + 1]));
+  }
+
+  void back() {
+    final i = state.step.ordinal;
+    if (i > 0) emit(state.copyWith(step: qpWizardSteps[i - 1]));
+  }
 
   Future<void> generate() async {
     if (!state.canGenerate) return;
@@ -591,7 +672,7 @@ class QpGeneratorCubit extends Cubit<QpGenState> {
           'medium': state.medium,
           'hard': state.hard,
         },
-        'questionTypes': state.questionTypes.toList(),
+        'questionTypes': state.questionTypes.map((t) => t.paperApiValue).toList(),
         'includeAnswerKey': state.includeAnswerKey,
       },
       'duration': state.duration,
@@ -610,9 +691,38 @@ class QpGeneratorCubit extends Cubit<QpGenState> {
 
 enum PubGenStage { setup, ready }
 
+sealed class PublicQpWizardStep extends WizardStep<PublicQpState> {
+  const PublicQpWizardStep(super.ordinal, super.label);
+}
+
+class PublicClassSubjectStep extends PublicQpWizardStep {
+  const PublicClassSubjectStep() : super(0, 'Class & Subject');
+
+  @override
+  bool isValid(PublicQpState state) => state.classId != null && state.subjectId != null;
+
+  @override
+  String get validationMessage => 'Please select a class and subject.';
+}
+
+class PublicChaptersStep extends PublicQpWizardStep {
+  const PublicChaptersStep() : super(1, 'Chapters');
+
+  @override
+  bool isValid(PublicQpState state) => state.chapterIds.isNotEmpty;
+
+  @override
+  String get validationMessage => 'Please select at least one chapter.';
+}
+
+const List<PublicQpWizardStep> publicQpWizardSteps = [
+  PublicClassSubjectStep(),
+  PublicChaptersStep(),
+];
+
 class PublicQpState extends Equatable {
   const PublicQpState({
-    this.step = 1,
+    this.step = const PublicClassSubjectStep(),
     this.stage = PubGenStage.setup,
     this.classes = const [],
     this.subjects = const [],
@@ -626,9 +736,10 @@ class PublicQpState extends Equatable {
     this.generating = false,
     this.paper,
     this.error,
+    this.downloading = false,
   });
 
-  final int step;
+  final PublicQpWizardStep step;
   final PubGenStage stage;
   final List<TaxItem> classes;
   final List<TaxItem> subjects;
@@ -642,16 +753,15 @@ class PublicQpState extends Equatable {
   final bool generating;
   final PaperPreview? paper;
   final String? error;
+  final bool downloading;
 
-  bool get step1Valid => classId != null && subjectId != null;
-  bool get step2Valid => chapterIds.isNotEmpty;
   bool get leadValid =>
       name.trim().isNotEmpty &&
       schoolName.trim().isNotEmpty &&
       contactInfo.trim().length >= 5;
 
   PublicQpState copyWith({
-    int? step,
+    PublicQpWizardStep? step,
     PubGenStage? stage,
     List<TaxItem>? classes,
     List<TaxItem>? subjects,
@@ -665,6 +775,7 @@ class PublicQpState extends Equatable {
     bool? generating,
     PaperPreview? paper,
     String? error,
+    bool? downloading,
     bool clearSubject = false,
     bool clearChapters = false,
   }) =>
@@ -683,12 +794,14 @@ class PublicQpState extends Equatable {
         generating: generating ?? this.generating,
         paper: paper ?? this.paper,
         error: error,
+        downloading: downloading ?? this.downloading,
       );
 
   @override
   List<Object?> get props => [
         step, stage, classes, subjects, chapters, classId, subjectId,
         chapterIds, name, schoolName, contactInfo, generating, paper, error,
+        downloading,
       ];
 }
 
@@ -735,15 +848,25 @@ class PublicQpCubit extends Cubit<PublicQpState> {
   void setName(String v) => emit(state.copyWith(name: v));
   void setSchoolName(String v) => emit(state.copyWith(schoolName: v));
   void setContactInfo(String v) => emit(state.copyWith(contactInfo: v));
+  void setDownloading(bool v) => emit(state.copyWith(downloading: v));
 
-  void next() => emit(state.copyWith(step: (state.step + 1).clamp(1, 2)));
-  void back() => emit(state.copyWith(step: (state.step - 1).clamp(1, 2)));
+  void next() {
+    final i = state.step.ordinal;
+    if (i < publicQpWizardSteps.length - 1) {
+      emit(state.copyWith(step: publicQpWizardSteps[i + 1]));
+    }
+  }
+
+  void back() {
+    final i = state.step.ordinal;
+    if (i > 0) emit(state.copyWith(step: publicQpWizardSteps[i - 1]));
+  }
 
   String _name(List<TaxItem> list, String? id) =>
       list.firstWhere((e) => e.id == id, orElse: () => const TaxItem(id: '', name: '')).name;
 
   Future<void> generate() async {
-    if (!state.step1Valid || !state.step2Valid) return;
+    if (!publicQpWizardSteps.every((s) => s.isValid(state))) return;
     emit(state.copyWith(generating: true, error: null));
     final className = _name(state.classes, state.classId);
     final subjectName = _name(state.subjects, state.subjectId);
@@ -766,7 +889,7 @@ class PublicQpCubit extends Cubit<PublicQpState> {
             'medium': (total * 0.4).ceil(),
             'hard': (total * 0.2).floor(),
           },
-          'questionTypes': ['mcq', 'fillblanks'],
+          'questionTypes': QuestionType.values.map((t) => t.paperApiValue).toList(),
           'includeAnswerKey': true,
         },
         'schoolName': state.schoolName,
@@ -776,7 +899,7 @@ class PublicQpCubit extends Cubit<PublicQpState> {
     r.fold(
       (f) => emit(state.copyWith(generating: false, error: f.message)),
       (paper) => emit(state.copyWith(
-          generating: false, paper: paper, stage: PubGenStage.ready, step: 3)),
+          generating: false, paper: paper, stage: PubGenStage.ready)),
     );
   }
 }

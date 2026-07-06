@@ -1,37 +1,33 @@
 part of '../question_paper_pages.dart';
 
-class _PaperHistoryView extends StatefulWidget {
+class _PaperHistoryView extends StatelessWidget {
   const _PaperHistoryView();
-  @override
-  State<_PaperHistoryView> createState() => _PaperHistoryViewState();
-}
 
-class _PaperHistoryViewState extends State<_PaperHistoryView> {
-  String? _downloadingId;
-  String? _deletingId;
-
-  void _snack(String msg) =>
+  void _snack(BuildContext context, String msg) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-  Future<void> _download(PaperSummary p) async {
-    setState(() => _downloadingId = p.id);
+  Future<void> _download(BuildContext context, PaperSummary p) async {
+    final cubit = context.read<PaperHistoryCubit>();
+    cubit.setDownloading(p.id);
     try {
       // Fetch the server-rendered PDF (matches the web download) and share it.
       final repo = sl<QuestionPaperRepository>();
       final r = await repo.downloadPdf(p.id);
       await r.fold(
-        (f) async => _snack('Failed to download PDF: ${f.message}'),
+        (f) async {
+          if (context.mounted) _snack(context, 'Failed to download PDF: ${f.message}');
+        },
         (bytes) => Printing.sharePdf(
           bytes: bytes,
           filename: _pdfFileName(p.title),
         ),
       );
     } finally {
-      if (mounted) setState(() => _downloadingId = null);
+      cubit.setDownloading(null);
     }
   }
 
-  Future<void> _confirmDelete(PaperSummary p) async {
+  Future<void> _confirmDelete(BuildContext context, PaperSummary p) async {
     final cubit = context.read<PaperHistoryCubit>();
     final ok = await showDialog<bool>(
       context: context,
@@ -52,11 +48,9 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
       ),
     );
     if (ok != true) return;
-    setState(() => _deletingId = p.id);
     final success = await cubit.delete(p.id);
-    if (!mounted) return;
-    setState(() => _deletingId = null);
-    _snack(success ? 'Paper deleted' : 'Failed to delete paper');
+    if (!context.mounted) return;
+    _snack(context, success ? 'Paper deleted' : 'Failed to delete paper');
   }
 
   String _formatDate(String? raw) {
@@ -241,10 +235,10 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
                                     ),
                                     const SizedBox(width: 8),
                                     OutlinedButton.icon(
-                                      onPressed: _downloadingId == p.id
+                                      onPressed: state.downloadingId == p.id
                                           ? null
-                                          : () => _download(p),
-                                      icon: _downloadingId == p.id
+                                          : () => _download(context, p),
+                                      icon: state.downloadingId == p.id
                                           ? const SizedBox(
                                               width: 12,
                                               height: 12,
@@ -264,10 +258,10 @@ class _PaperHistoryViewState extends State<_PaperHistoryView> {
                                     ),
                                     const SizedBox(width: 8),
                                     OutlinedButton.icon(
-                                      onPressed: _deletingId == p.id
+                                      onPressed: state.deletingId == p.id
                                           ? null
-                                          : () => _confirmDelete(p),
-                                      icon: _deletingId == p.id
+                                          : () => _confirmDelete(context, p),
+                                      icon: state.deletingId == p.id
                                           ? const SizedBox(
                                               width: 12,
                                               height: 12,

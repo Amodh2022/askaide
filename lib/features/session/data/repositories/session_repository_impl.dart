@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_helpers.dart';
 import '../../../../core/network/network_info.dart';
 import '../../../../core/taxonomy/taxonomy_repository.dart';
 import '../../domain/entities/question.dart';
@@ -40,30 +41,6 @@ class SessionRepositoryImpl implements SessionRepository {
   /// richer study domain entities below.
   final TaxonomyRepository _taxonomy;
 
-  Future<Either<Failure, T>> _guard<T>(Future<T> Function() body) async {
-    try {
-      return Right(await body());
-    } on UnauthorizedException catch (e) {
-      return Left(UnauthorizedFailure(e.message));
-    } on NetworkException catch (e) {
-      return Left(NetworkFailure(e.message));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message, statusCode: e.statusCode));
-    } on DioException catch (e) {
-      final inner = e.error;
-      if (inner is ServerException) {
-        return Left(ServerFailure(inner.message, statusCode: inner.statusCode));
-      }
-      if (inner is NetworkException) return Left(NetworkFailure(inner.message));
-      if (inner is UnauthorizedException) {
-        return Left(UnauthorizedFailure(inner.message));
-      }
-      return Left(ServerFailure(e.message ?? 'Network error'));
-    } catch (e) {
-      return Left(UnknownFailure(e.toString()));
-    }
-  }
-
   // The class → subject → chapter funnel delegates to the shared
   // [TaxonomyRepository] (same endpoints the quiz builder / paper generator
   // use) and maps the generic TaxItems onto the study domain entities.
@@ -99,7 +76,7 @@ class SessionRepositoryImpl implements SessionRepository {
     required StudyConfig config,
     required String userId,
   }) =>
-      _guard(() async {
+      guardEither(() async {
         // Field shape mirrors the React frontend's `studyApi.startSession`
         // config: ids + display names, with a first-letter-capitalised
         // difficulty (e.g. 'Medium').
@@ -126,7 +103,7 @@ class SessionRepositoryImpl implements SessionRepository {
     bool retry = false,
   }) {
     final chapterId = config.selectedChapter?.id ?? '';
-    return _guard(() async {
+    return guardEither(() async {
       // Mirrors the frontend's `useQuestionPolling`: while the server is still
       // AI-generating a batch we poll (~3s apart, up to ~60s); a `failed`
       // generation is retried a few times with `retry=true` (mirrors React's
@@ -213,7 +190,7 @@ class SessionRepositoryImpl implements SessionRepository {
     if (queued.isEmpty) return const Right(0);
     if (!await _network.isConnected) return const Left(NetworkFailure());
 
-    return _guard(() async {
+    return guardEither(() async {
       await _remote.submitAnswers(queued.map((a) => a.toWireJson()).toList());
       await _local.clearQueuedAnswers(_local.queuedKeys());
       return queued.length;
@@ -226,7 +203,7 @@ class SessionRepositoryImpl implements SessionRepository {
     required int npsScore,
     String? comment,
   }) =>
-      _guard(() async {
+      guardEither(() async {
         await _remote.submitNps({
           'userId': userId,
           'npsScore': npsScore,
@@ -241,14 +218,14 @@ class SessionRepositoryImpl implements SessionRepository {
     required int score,
     required int totalQuestions,
   }) =>
-      _guard(() async {
+      guardEither(() async {
         await _remote.endSession(sessionId, score, totalQuestions);
         return unit;
       });
 
   @override
   Future<Either<Failure, Unit>> submitSessionReaction(Map<String, dynamic> data) =>
-      _guard(() async {
+      guardEither(() async {
         await _remote.submitReaction(data);
         return unit;
       });
@@ -259,39 +236,39 @@ class SessionRepositoryImpl implements SessionRepository {
     required String feedback,
     String? email,
   }) =>
-      _guard(() async {
+      guardEither(() async {
         await _remote.submitFeedback(name: name, feedback: feedback, email: email);
         return unit;
       });
 
   @override
   Future<Either<Failure, bool>> checkNpsEligibility(String userId) =>
-      _guard(() => _remote.checkNpsEligibility(userId));
+      guardEither(() => _remote.checkNpsEligibility(userId));
 
   @override
   Future<Either<Failure, Map<String, dynamic>>> completeDailyChallenge({
     required String userId,
     required List<Map<String, dynamic>> answers,
   }) =>
-      _guard(() => _remote.completeDailyChallenge(userId, answers));
+      guardEither(() => _remote.completeDailyChallenge(userId, answers));
 
   @override
   Future<Either<Failure, Unit>> useStreakFreeze(String userId) =>
-      _guard(() async {
+      guardEither(() async {
         await _remote.useStreakFreeze(userId);
         return unit;
       });
 
   @override
   Future<Either<Failure, Map<String, dynamic>?>> getShareCard(String sessionId) =>
-      _guard(() => _remote.getShareCard(sessionId));
+      guardEither(() => _remote.getShareCard(sessionId));
 
   @override
   Future<Either<Failure, List<dynamic>>> checkNewBadges({
     required String userId,
     required Map<String, dynamic> sessionData,
   }) =>
-      _guard(() => _remote.checkNewBadges(userId, sessionData));
+      guardEither(() => _remote.checkNewBadges(userId, sessionData));
 
   @override
   List<StudySession> getSessionHistory() => _local.readHistory();
@@ -300,7 +277,7 @@ class SessionRepositoryImpl implements SessionRepository {
   Future<Either<Failure, List<StudySession>>> fetchRemoteSessionHistory(
     String userId,
   ) =>
-      _guard(() async {
+      guardEither(() async {
         final sessions = await _remote.fetchSessionsByUserId(userId);
         sessions.sort((a, b) => b.startedAtMillis.compareTo(a.startedAtMillis));
         return sessions;
@@ -310,18 +287,18 @@ class SessionRepositoryImpl implements SessionRepository {
   Future<Either<Failure, List<UserAnswer>>> fetchSessionAnswers(
     String sessionId,
   ) =>
-      _guard(() => _remote.fetchUserAnswersBySession(sessionId));
+      guardEither(() => _remote.fetchUserAnswersBySession(sessionId));
 
   @override
   Future<Either<Failure, Unit>> saveSession(StudySession session) =>
-      _guard(() async {
+      guardEither(() async {
         await _local.upsertSession(session);
         return unit;
       });
 
   @override
   Future<Either<Failure, Unit>> deleteSession(String sessionId) =>
-      _guard(() async {
+      guardEither(() async {
         await _local.deleteSession(sessionId);
         return unit;
       });

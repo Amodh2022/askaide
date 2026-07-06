@@ -1,14 +1,8 @@
 part of '../dashboard_page.dart';
 
-class _AchievementsCard extends StatefulWidget {
+class _AchievementsCard extends StatelessWidget {
   const _AchievementsCard({required this.earned});
   final List<String> earned;
-  @override
-  State<_AchievementsCard> createState() => _AchievementsCardState();
-}
-
-class _AchievementsCardState extends State<_AchievementsCard> {
-  bool _showAll = false;
 
   static const _maxVisible = 6;
 
@@ -33,7 +27,7 @@ class _AchievementsCardState extends State<_AchievementsCard> {
   ];
 
   bool _isEarned(({String id, String name, String emoji}) badge) {
-    final hay = widget.earned.map((e) => e.toLowerCase());
+    final hay = earned.map((e) => e.toLowerCase());
     final id = badge.id.toLowerCase();
     final name = badge.name.toLowerCase();
     return hay.any((e) => e.contains(id) || e.contains(name));
@@ -41,7 +35,15 @@ class _AchievementsCardState extends State<_AchievementsCard> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<ShowAllCubit>(
+      create: (_) => sl<ShowAllCubit>(),
+      child: Builder(builder: _buildCard),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
     final c = context.colors;
+    final showAll = context.watch<ShowAllCubit>().state;
     final earnedFlags = {for (final b in _catalog) b.id: _isEarned(b)};
     final earnedCount = earnedFlags.values.where((v) => v).length;
     final total = _catalog.length;
@@ -53,7 +55,7 @@ class _AchievementsCardState extends State<_AchievementsCard> {
         if (!ea && eb) return 1;
         return 0;
       });
-    final visible = _showAll ? sorted : sorted.take(_maxVisible).toList();
+    final visible = showAll ? sorted : sorted.take(_maxVisible).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -78,7 +80,7 @@ class _AchievementsCardState extends State<_AchievementsCard> {
               ),
               if (sorted.length > _maxVisible)
                 TextButton(
-                  onPressed: () => setState(() => _showAll = !_showAll),
+                  onPressed: () => context.read<ShowAllCubit>().toggle(),
                   style: TextButton.styleFrom(
                     foregroundColor: c.accent,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -86,7 +88,7 @@ class _AchievementsCardState extends State<_AchievementsCard> {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Text(_showAll ? 'Show Less' : 'View All',
+                  child: Text(showAll ? 'Show Less' : 'View All',
                       style: AppTypography.bodySmall(c.accent)),
                 ),
             ],

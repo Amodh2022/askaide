@@ -47,11 +47,16 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
     );
   }
 
-  final mcqs = preview.questions.where((q) => q.questionType == 'mcq').toList();
-  final fills = preview.questions.where((q) => q.questionType == 'fillblanks').toList();
+  final sections = QuestionSectionFactory.groupSections(preview.questions);
   // Fall back to flat numbering when there is no type info on questions.
-  final hasSections = mcqs.isNotEmpty || fills.isNotEmpty;
-  final ordered = hasSections ? [...mcqs, ...fills] : preview.questions;
+  final hasSections = sections.isNotEmpty;
+  final sectionOffsets = <int>[
+    for (var i = 0, total = 0; i < sections.length; total += sections[i].questions.length, i++)
+      total,
+  ];
+  final ordered = hasSections
+      ? [for (final s in sections) ...s.questions]
+      : preview.questions;
 
   doc.addPage(
     pw.MultiPage(
@@ -87,22 +92,17 @@ Future<Uint8List> _buildPdf(PaperPreview preview, PdfPageFormat format, bool wit
                 style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey800)),
           pw.SizedBox(height: 8),
         ],
-        if (hasSections) ...[
-          if (mcqs.isNotEmpty) ...[
-            pw.Text('Section A — Multiple Choice Questions',
+        if (hasSections)
+          for (var s = 0; s < sections.length; s++) ...[
+            if (s > 0) pw.SizedBox(height: 6),
+            pw.Text(sections[s].spec.sectionLabel,
                 style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
-            for (var i = 0; i < mcqs.length; i++) questionBlock(i + 1, mcqs[i]),
-          ],
-          if (fills.isNotEmpty) ...[
-            pw.SizedBox(height: 6),
-            pw.Text('Section B — Fill in the Blanks',
-                style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 6),
-            for (var i = 0; i < fills.length; i++)
-              questionBlock(mcqs.length + i + 1, fills[i], showOptions: false),
-          ],
-        ] else
+            for (var i = 0; i < sections[s].questions.length; i++)
+              questionBlock(sectionOffsets[s] + i + 1, sections[s].questions[i],
+                  showOptions: sections[s].spec.showOptions),
+          ]
+        else
           for (var i = 0; i < ordered.length; i++) questionBlock(i + 1, ordered[i]),
         if (withAnswers) ...[
           pw.SizedBox(height: 16),

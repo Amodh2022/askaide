@@ -305,34 +305,35 @@ class _QuizResultView extends StatelessWidget {
 }
 
 /// A collapsible reviewed-question row in the result screen.
-class _ReviewTile extends StatefulWidget {
+class _ReviewTile extends StatelessWidget {
   const _ReviewTile(
       {required this.index, required this.q, this.isLast = false});
   final int index;
   final QuizReviewQuestion q;
   final bool isLast;
-  @override
-  State<_ReviewTile> createState() => _ReviewTileState();
-}
-
-class _ReviewTileState extends State<_ReviewTile> {
-  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<ReviewTileCubit>(
+      create: (_) => sl<ReviewTileCubit>(),
+      child: Builder(builder: _buildTile),
+    );
+  }
+
+  Widget _buildTile(BuildContext context) {
     final c = context.colors;
-    final q = widget.q;
     final correct = q.isCorrect;
+    final expanded = context.watch<ReviewTileCubit>().state;
     return Container(
       decoration: BoxDecoration(
         border:
-            widget.isLast ? null : Border(bottom: BorderSide(color: c.border)),
+            isLast ? null : Border(bottom: BorderSide(color: c.border)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InkWell(
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: () => context.read<ReviewTileCubit>().toggle(),
             child: Padding(
               padding: const EdgeInsets.all(14),
               child: Row(
@@ -348,7 +349,7 @@ class _ReviewTileState extends State<_ReviewTile> {
                           : c.danger.withValues(alpha: 0.1),
                       borderRadius: AppRadii.cardR,
                     ),
-                    child: Text('${widget.index + 1}',
+                    child: Text('${index + 1}',
                         style: AppTypography.mono(correct ? c.accent : c.danger,
                             size: 12)),
                   ),
@@ -383,7 +384,7 @@ class _ReviewTileState extends State<_ReviewTile> {
                   ),
                   const SizedBox(width: 8),
                   Icon(
-                      _expanded
+                      expanded
                           ? LucideIcons.chevronUp
                           : LucideIcons.chevronDown,
                       size: 16,
@@ -392,7 +393,7 @@ class _ReviewTileState extends State<_ReviewTile> {
               ),
             ),
           ),
-          if (_expanded)
+          if (expanded)
             Padding(
               padding: const EdgeInsets.fromLTRB(54, 0, 14, 14),
               child: Column(

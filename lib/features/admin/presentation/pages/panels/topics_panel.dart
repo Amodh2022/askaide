@@ -1,73 +1,30 @@
 part of '../admin_dashboard_page.dart';
 
-class _TopicsPanel extends StatefulWidget {
-  const _TopicsPanel({super.key});
-  @override
-  State<_TopicsPanel> createState() => _TopicsPanelState();
-}
-
-class _TopicsPanelState extends State<_TopicsPanel> {
-  final _repo = sl<AdminRepository>();
-  String? _classId;
-  String? _subjectId;
-  List<AdminRecord> _subjects = const [];
-  List<AdminRecord> _topics = const [];
-  bool _loading = false;
-  String _search = '';
-
-  final _searchCtl = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchCtl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadSubjects(String classId) async {
-    setState(() {
-      _classId = classId;
-      _subjectId = null;
-      _subjects = const [];
-      _topics = const [];
-      _search = '';
-      _searchCtl.clear();
-    });
-    final r = await _repo.subjects(classId);
-    if (!mounted) return;
-    setState(() => _subjects = r.getOrElse(() => const []));
-  }
-
-  Future<void> _loadTopics(String subjectId) async {
-    setState(() {
-      _subjectId = subjectId;
-      _loading = true;
-      _topics = const [];
-      _search = '';
-      _searchCtl.clear();
-    });
-    final r = await _repo.topics(_classId!, subjectId);
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _topics = r.getOrElse(() => const []);
-    });
-  }
+class _TopicsPanel extends StatelessWidget {
+  const _TopicsPanel();
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<TopicsPanelCubit>(
+      create: (_) => sl<TopicsPanelCubit>(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-    final classes = context.select<AdminCubit, List<AdminRecord>>((c) => c.state.classes);
+    final classes = context.watch<AdminCubit>().state.classes;
+    final panelState = context.watch<TopicsPanelCubit>().state;
+    final panelCubit = context.read<TopicsPanelCubit>();
 
-    final query = _search.trim().toLowerCase();
+    final query = panelState.search.trim().toLowerCase();
     final visible = query.isEmpty
-        ? _topics
-        : _topics.where((t) => t.name.toLowerCase().contains(query)).toList();
+        ? panelState.topics
+        : panelState.topics.where((t) => t.name.toLowerCase().contains(query)).toList();
 
-    return Padding(
+    return ListView(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      children: [
         // ── Header ──────────────────────────────────────────────────────────
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -78,9 +35,9 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                   style:
                       AppTypography.h3(c.textPrimary).copyWith(fontSize: 22)),
             ),
-            if (_subjectId != null)
+            if (panelState.subjectId != null)
               IconButton(
-                onPressed: () => _loadTopics(_subjectId!),
+                onPressed: () => panelCubit.loadTopics(panelState.subjectId!),
                 icon: Icon(Icons.refresh, size: 20, color: c.textMuted),
                 tooltip: 'Refresh',
               ),
@@ -89,24 +46,24 @@ class _TopicsPanelState extends State<_TopicsPanel> {
         const SizedBox(height: 16),
 
         // ── Class + Subject selector card ────────────────────────────────────
-        _selectorCard(context, c, classes),
+        _selectorCard(context, c, classes, panelCubit, panelState),
         const SizedBox(height: 16),
 
         // ── Topics card ──────────────────────────────────────────────────────
-        if (_subjectId != null) _topicsCard(c, visible),
+        if (panelState.subjectId != null) _topicsCard(c, panelCubit, panelState, visible),
       ],
-      ),
     );
   }
 
-  Widget _selectorCard(BuildContext context, AskAideColors c, List<AdminRecord> classes) {
+  Widget _selectorCard(BuildContext context, AskAideColors c, List<AdminRecord> classes,
+      TopicsPanelCubit panelCubit, TopicsPanelState panelState) {
     final mobile = context.isMobile;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.sectionR,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: mobile
           ? Column(
@@ -116,16 +73,16 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                   label: 'Class',
                   hint: 'Select class…',
                   items: classes,
-                  selectedId: _classId,
-                  onChanged: _loadSubjects,
+                  selectedId: panelState.classId,
+                  onChanged: panelCubit.loadSubjects,
                 ),
                 const SizedBox(height: 12),
                 _PickerField(
                   label: 'Subject',
                   hint: 'Select subject…',
-                  items: _subjects,
-                  selectedId: _subjectId,
-                  onChanged: _loadTopics,
+                  items: panelState.subjects,
+                  selectedId: panelState.subjectId,
+                  onChanged: panelCubit.loadTopics,
                 ),
               ],
             )
@@ -137,8 +94,8 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                     label: 'Class',
                     hint: 'Select class…',
                     items: classes,
-                    selectedId: _classId,
-                    onChanged: _loadSubjects,
+                    selectedId: panelState.classId,
+                    onChanged: panelCubit.loadSubjects,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -146,9 +103,9 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                   child: _PickerField(
                     label: 'Subject',
                     hint: 'Select subject…',
-                    items: _subjects,
-                    selectedId: _subjectId,
-                    onChanged: _loadTopics,
+                    items: panelState.subjects,
+                    selectedId: panelState.subjectId,
+                    onChanged: panelCubit.loadTopics,
                   ),
                 ),
               ],
@@ -156,12 +113,13 @@ class _TopicsPanelState extends State<_TopicsPanel> {
     );
   }
 
-  Widget _topicsCard(AskAideColors c, List<AdminRecord> visible) {
+  Widget _topicsCard(AskAideColors c, TopicsPanelCubit panelCubit, TopicsPanelState panelState,
+      List<AdminRecord> visible) {
     return Container(
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.sectionR,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -176,18 +134,18 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                     style: AppTypography.h4(c.textPrimary)
                         .copyWith(fontSize: 16)),
                 const SizedBox(width: 8),
-                if (!_loading)
+                if (!panelState.loading)
                   Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: c.accent.withValues(alpha: 0.1),
-                      borderRadius: AppRadii.pillR,
+                      borderRadius: BorderRadius.circular(99),
                     ),
                     child: Text(
-                      _search.isEmpty
-                          ? '${_topics.length}'
-                          : '${visible.length} of ${_topics.length}',
+                      panelState.search.isEmpty
+                          ? '${panelState.topics.length}'
+                          : '${visible.length} of ${panelState.topics.length}',
                       style: AppTypography.mono(c.accent, size: 11),
                     ),
                   ),
@@ -196,37 +154,36 @@ class _TopicsPanelState extends State<_TopicsPanel> {
           ),
 
           // ── Search bar ───────────────────────────────────────────────────
-          if (!_loading && _topics.isNotEmpty)
+          if (!panelState.loading && panelState.topics.isNotEmpty)
             Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
               child: TextField(
-                controller: _searchCtl,
-                onChanged: (v) => setState(() => _search = v),
+                controller: panelCubit.searchController,
+                onChanged: panelCubit.setSearch,
                 decoration: InputDecoration(
                   hintText: 'Search topics…',
                   hintStyle: AppTypography.bodyMedium(c.textMuted),
                   prefixIcon:
                       Icon(Icons.search, size: 18, color: c.textMuted),
-                  suffixIcon: _search.isNotEmpty
+                  suffixIcon: panelState.search.isNotEmpty
                       ? IconButton(
                           icon: Icon(Icons.close,
                               size: 16, color: c.textMuted),
-                          onPressed: () =>
-                              setState(() { _search = ''; _searchCtl.clear(); }),
+                          onPressed: panelCubit.clearSearch,
                         )
                       : null,
                   isDense: true,
                   contentPadding:
                       const EdgeInsets.symmetric(vertical: 10),
                   border: OutlineInputBorder(
-                      borderRadius: AppRadii.componentR,
+                      borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: c.border)),
                   enabledBorder: OutlineInputBorder(
-                      borderRadius: AppRadii.componentR,
+                      borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: c.border)),
                   focusedBorder: OutlineInputBorder(
-                      borderRadius: AppRadii.componentR,
+                      borderRadius: BorderRadius.circular(8),
                       borderSide:
                           BorderSide(color: c.accent, width: 1.5)),
                 ),
@@ -235,7 +192,7 @@ class _TopicsPanelState extends State<_TopicsPanel> {
           Divider(height: 1, color: c.border),
 
           // ── Body ────────────────────────────────────────────────────────
-          if (_loading)
+          if (panelState.loading)
             const Padding(
                 padding: EdgeInsets.all(24),
                 child: SkeletonListLoader())
@@ -244,10 +201,10 @@ class _TopicsPanelState extends State<_TopicsPanel> {
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: EmptyState(
                 icon: Icons.library_books_outlined,
-                title: _search.isNotEmpty
-                    ? 'No topics match "$_search"'
+                title: panelState.search.isNotEmpty
+                    ? 'No topics match "${panelState.search}"'
                     : 'No topics yet',
-                hint: _search.isNotEmpty
+                hint: panelState.search.isNotEmpty
                     ? 'Try a different search term.'
                     : 'Topics are generated automatically when a chapter PDF is processed.',
               ),
@@ -256,7 +213,7 @@ class _TopicsPanelState extends State<_TopicsPanel> {
             ...List.generate(visible.length, (i) {
               final topic = visible[i];
               // Index in the full list (for stable numbering regardless of search)
-              final globalIndex = _topics.indexOf(topic);
+              final globalIndex = panelState.topics.indexOf(topic);
               return Column(
                 children: [
                   ListTile(
@@ -267,7 +224,7 @@ class _TopicsPanelState extends State<_TopicsPanel> {
                       height: 32,
                       decoration: BoxDecoration(
                         color: c.accent.withValues(alpha: 0.1),
-                        borderRadius: AppRadii.componentR,
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       alignment: Alignment.center,
                       child: Text(

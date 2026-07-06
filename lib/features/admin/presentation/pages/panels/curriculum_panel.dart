@@ -5,56 +5,20 @@ enum _CurriculumMode { chapters, upload, topics }
 /// Class/subject-scoped curriculum management: list & delete chapters, create a
 /// chapter (Upload), or browse topics. Mirrors ChapterManagement / ChapterUpload
 /// / ChapterTopicView.
-class _CurriculumPanel extends StatefulWidget {
+class _CurriculumPanel extends StatelessWidget {
   const _CurriculumPanel({required this.mode});
   final _CurriculumMode mode;
+
   @override
-  State<_CurriculumPanel> createState() => _CurriculumPanelState();
-}
-
-class _CurriculumPanelState extends State<_CurriculumPanel> {
-  final _repo = sl<AdminRepository>();
-  String? _classId;
-  String? _subjectId;
-  List<AdminRecord> _subjects = const [];
-  List<AdminRecord> _items = const [];
-  final Set<String> _selected = {};
-  bool _loading = false;
-
-  bool get _isChapters => widget.mode == _CurriculumMode.chapters;
-
-  Future<void> _loadSubjects(String classId) async {
-    setState(() {
-      _classId = classId;
-      _subjectId = null;
-      _subjects = const [];
-      _items = const [];
-      _selected.clear();
-    });
-    final r = await _repo.subjects(classId);
-    if (!mounted) return;
-    setState(() => _subjects = r.getOrElse(() => const []));
+  Widget build(BuildContext context) {
+    return BlocProvider<CurriculumPanelCubit>(
+      create: (_) => sl<CurriculumPanelCubit>(),
+      child: Builder(builder: _buildBody),
+    );
   }
 
-  Future<void> _loadItems(String subjectId) async {
-    setState(() {
-      _subjectId = subjectId;
-      _loading = true;
-      _items = const [];
-      _selected.clear();
-    });
-    final classId = _classId!;
-    final r = widget.mode == _CurriculumMode.topics
-        ? await _repo.topics(classId, subjectId)
-        : await _repo.chapters(classId, subjectId);
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _items = r.getOrElse(() => const []);
-    });
-  }
-
-  Future<void> _addChapter() async {
+  Future<void> _addChapter(BuildContext context) async {
+    final panelCubit = context.read<CurriculumPanelCubit>();
     final nameCtl = TextEditingController();
     final orderCtl = TextEditingController();
     final c = context.colors;
@@ -77,117 +41,100 @@ class _CurriculumPanelState extends State<_CurriculumPanel> {
         ],
       ),
     );
-    if (ok == true && _classId != null && _subjectId != null) {
-      final r = await _repo.createChapter(
-          _classId!, _subjectId!, nameCtl.text.trim(), int.tryParse(orderCtl.text.trim()) ?? 0);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(r.isRight() ? 'Chapter created' : 'Could not create chapter')));
-        if (r.isRight()) _loadItems(_subjectId!);
+    if (ok == true) {
+      final success = await panelCubit.addChapter(
+          nameCtl.text.trim(), int.tryParse(orderCtl.text.trim()) ?? 0);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(success ? 'Chapter created' : 'Could not create chapter')));
       }
     }
     nameCtl.dispose();
     orderCtl.dispose();
   }
 
-  Future<void> _deleteChapter(String id) async {
-    final r = await _repo.deleteChapters(_classId!, _subjectId!, [id]);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(r.isRight() ? 'Deleted' : 'Could not delete')));
-      if (r.isRight()) _loadItems(_subjectId!);
-    }
-  }
-
-  void _toggleSelectAll() {
-    setState(() {
-      if (_selected.length == _items.length) {
-        _selected.clear();
-      } else {
-        _selected
-          ..clear()
-          ..addAll(_items.map((e) => e.id));
-      }
-    });
+  Future<void> _deleteChapter(BuildContext context, String id) async {
+    final success = await context.read<CurriculumPanelCubit>().deleteChapter(id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(success ? 'Deleted' : 'Could not delete')));
   }
 
   /// Bulk-deletes the checked chapters (mirrors React ChapterManagement's
   /// multi-select delete with a confirm dialog + count).
-  Future<void> _bulkDelete() async {
-    final n = _selected.length;
+  Future<void> _bulkDelete(BuildContext context) async {
+    final panelCubit = context.read<CurriculumPanelCubit>();
+    final n = panelCubit.state.selected.length;
     final ok = await showConfirmDialog(context,
         title: 'Delete chapters',
         message: 'Delete $n chapter(s)? This cannot be undone.',
         confirmLabel: 'Delete',
         destructive: true);
     if (!ok) return;
-    final r = await _repo.deleteChapters(_classId!, _subjectId!, _selected.toList());
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(r.isRight() ? 'Deleted $n chapter(s)' : 'Could not delete')));
-      if (r.isRight()) {
-        setState(() => _selected.clear());
-        _loadItems(_subjectId!);
-      }
-    }
+    final deleted = await panelCubit.bulkDelete();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(deleted != null ? 'Deleted $deleted chapter(s)' : 'Could not delete')));
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-    final classes = context.select<AdminCubit, List<AdminRecord>>((c) => c.state.classes);
-    final isTopics = widget.mode == _CurriculumMode.topics;
+    final classes = context.watch<AdminCubit>().state.classes;
+    final panelState = context.watch<CurriculumPanelCubit>().state;
+    final panelCubit = context.read<CurriculumPanelCubit>();
+    final isTopics = mode == _CurriculumMode.topics;
+    final isChapters = mode == _CurriculumMode.chapters;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _ClassSubjectSelector(
           classes: classes,
-          classId: _classId,
-          subjects: _subjects,
-          subjectId: _subjectId,
-          onClass: _loadSubjects,
-          onSubject: _loadItems,
+          classId: panelState.classId,
+          subjects: panelState.subjects,
+          subjectId: panelState.subjectId,
+          onClass: panelCubit.loadSubjects,
+          onSubject: (subjectId) => panelCubit.loadItems(subjectId, topics: isTopics),
         ),
-        if (widget.mode != _CurriculumMode.topics && _subjectId != null)
+        if (mode != _CurriculumMode.topics && panelState.subjectId != null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
-                onPressed: _addChapter,
+                onPressed: () => _addChapter(context),
                 icon: const Icon(Icons.add, size: 16),
-                label: Text(widget.mode == _CurriculumMode.upload ? 'Create chapter' : 'Add chapter'),
+                label: Text(mode == _CurriculumMode.upload ? 'Create chapter' : 'Add chapter'),
                 style: FilledButton.styleFrom(
                     backgroundColor: c.accent, foregroundColor: Colors.white),
               ),
             ),
           ),
-        if (_isChapters && _subjectId != null && _items.isNotEmpty)
+        if (isChapters && panelState.subjectId != null && panelState.items.isNotEmpty)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               children: [
                 Checkbox(
                   tristate: true,
-                  value: _selected.isEmpty
+                  value: panelState.selected.isEmpty
                       ? false
-                      : (_selected.length == _items.length ? true : null),
+                      : (panelState.selected.length == panelState.items.length ? true : null),
                   activeColor: c.accent,
-                  onChanged: (_) => _toggleSelectAll(),
+                  onChanged: (_) => panelCubit.toggleSelectAll(),
                 ),
                 Text('Select all', style: AppTypography.bodySmall(c.textSecondary)),
                 const Spacer(),
                 TextButton.icon(
-                  onPressed: () => _loadItems(_subjectId!),
+                  onPressed: () => panelCubit.loadItems(panelState.subjectId!, topics: isTopics),
                   icon: const Icon(Icons.refresh, size: 16),
                   label: const Text('Refresh'),
                 ),
-                if (_selected.isNotEmpty) ...[
+                if (panelState.selected.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   FilledButton.icon(
-                    onPressed: _bulkDelete,
+                    onPressed: () => _bulkDelete(context),
                     icon: const Icon(Icons.delete_outline, size: 16),
-                    label: Text('Delete (${_selected.length})'),
+                    label: Text('Delete (${panelState.selected.length})'),
                     style: FilledButton.styleFrom(
                         backgroundColor: c.danger, foregroundColor: Colors.white),
                   ),
@@ -197,15 +144,15 @@ class _CurriculumPanelState extends State<_CurriculumPanel> {
           ),
         Divider(height: 1, color: c.border),
         Expanded(
-          child: _subjectId == null
+          child: panelState.subjectId == null
               ? EmptyState(
                   icon: Icons.menu_book_outlined,
                   title: isTopics ? 'Pick a class & subject' : 'Pick a class & subject',
                   hint: 'Select above to ${isTopics ? 'browse topics' : 'manage chapters'}.',
                 )
-              : _loading
+              : panelState.loading
                   ? const SkeletonListLoader()
-                  : _items.isEmpty
+                  : panelState.items.isEmpty
                       ? EmptyState(
                           icon: Icons.inbox_outlined,
                           title: isTopics ? 'No topics' : 'No chapters',
@@ -215,26 +162,26 @@ class _CurriculumPanelState extends State<_CurriculumPanel> {
                         )
                       : ListView.separated(
                           padding: const EdgeInsets.all(8),
-                          itemCount: _items.length,
+                          itemCount: panelState.items.length,
                           separatorBuilder: (_, __) => Divider(height: 1, color: c.borderSubtle),
                           itemBuilder: (context, i) => ListTile(
-                            leading: _isChapters
+                            leading: isChapters
                                 ? Checkbox(
-                                    value: _selected.contains(_items[i].id),
+                                    value: panelState.selected.contains(panelState.items[i].id),
                                     activeColor: c.accent,
-                                    onChanged: (v) => setState(() => v == true
-                                        ? _selected.add(_items[i].id)
-                                        : _selected.remove(_items[i].id)),
+                                    onChanged: (_) => panelCubit.toggleItem(panelState.items[i].id),
                                   )
                                 : null,
-                            title: Text(_items[i].name, style: AppTypography.bodyMedium(c.textPrimary)),
-                            subtitle: _items[i].subtitle.isEmpty
+                            title: Text(panelState.items[i].name,
+                                style: AppTypography.bodyMedium(c.textPrimary)),
+                            subtitle: panelState.items[i].subtitle.isEmpty
                                 ? null
-                                : Text(_items[i].subtitle, style: AppTypography.bodySmall(c.textMuted)),
-                            trailing: widget.mode == _CurriculumMode.upload
+                                : Text(panelState.items[i].subtitle,
+                                    style: AppTypography.bodySmall(c.textMuted)),
+                            trailing: mode == _CurriculumMode.upload
                                 ? IconButton(
                                     icon: Icon(Icons.delete_outline, size: 18, color: c.danger),
-                                    onPressed: () => _deleteChapter(_items[i].id),
+                                    onPressed: () => _deleteChapter(context, panelState.items[i].id),
                                   )
                                 : null,
                           ),

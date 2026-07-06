@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -9,6 +10,7 @@ import '../../../profile/presentation/cubit/profile_cubit.dart';
 import '../../domain/entities/study_enums.dart';
 import '../../domain/entities/study_taxonomy.dart';
 import '../bloc/session_bloc.dart';
+import '../cubit/picker_search_cubit.dart';
 
 /// The `/study` configuration funnel: eyebrow + heading, a 4-step progress bar,
 /// cascading Class → Subject → Chapter dropdowns, then Question Type +
@@ -313,7 +315,7 @@ class _SearchableDropdown<T> extends StatelessWidget {
 // Bottom-sheet picker used by _SearchableDropdown
 // ---------------------------------------------------------------------------
 
-class _PickerSheet<T> extends StatefulWidget {
+class _PickerSheet<T> extends StatelessWidget {
   const _PickerSheet({
     super.key,
     required this.title,
@@ -330,30 +332,21 @@ class _PickerSheet<T> extends StatefulWidget {
   final String? Function(T)? disabledLabel;
 
   @override
-  State<_PickerSheet<T>> createState() => _PickerSheetState<T>();
-}
-
-class _PickerSheetState<T> extends State<_PickerSheet<T>> {
-  final _controller = TextEditingController();
-  String _query = '';
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return BlocProvider<PickerSearchCubit>(
+      create: (_) => sl<PickerSearchCubit>(),
+      child: Builder(builder: _buildSheet),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildSheet(BuildContext context) {
     final c = context.colors;
     final mq = MediaQuery.of(context);
-    final filtered = _query.isEmpty
-        ? widget.items
-        : widget.items
-            .where((i) => widget
-                .itemLabel(i)
-                .toLowerCase()
-                .contains(_query.toLowerCase()))
+    final query = context.watch<PickerSearchCubit>().state;
+    final filtered = query.isEmpty
+        ? items
+        : items
+            .where((i) => itemLabel(i).toLowerCase().contains(query.toLowerCase()))
             .toList();
 
     // Hard ceiling: the smaller of 65 % of screen height or the space that
@@ -397,7 +390,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.title.toUpperCase(),
+                      title.toUpperCase(),
                       style: AppTypography.mono(c.accent, size: 11),
                     ),
                   ),
@@ -414,7 +407,6 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: TextField(
-                controller: _controller,
                 style: AppTypography.bodyMedium(c.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search…',
@@ -442,7 +434,7 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
-                onChanged: (v) => setState(() => _query = v),
+                onChanged: (v) => context.read<PickerSearchCubit>().setQuery(v),
               ),
             ),
             const SizedBox(height: AppSpacing.xs),
@@ -461,13 +453,12 @@ class _PickerSheetState<T> extends State<_PickerSheet<T>> {
                       itemCount: filtered.length,
                       itemBuilder: (_, idx) {
                         final item = filtered[idx];
-                        final disabled =
-                            widget.isDisabled?.call(item) ?? false;
+                        final disabled = isDisabled?.call(item) ?? false;
                         return _PickerItem(
-                          label: widget.itemLabel(item),
+                          label: itemLabel(item),
                           disabled: disabled,
                           badgeLabel: disabled
-                              ? widget.disabledLabel?.call(item)
+                              ? disabledLabel?.call(item)
                               : null,
                           onTap: disabled
                               ? null

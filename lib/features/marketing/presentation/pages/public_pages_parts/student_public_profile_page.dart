@@ -1,88 +1,29 @@
 part of '../public_pages.dart';
 
 /// `/student/:userId` — shareable public achievement card.
-/// Holds the public, non-sensitive stats shown on a shareable profile card.
-class _PublicProfileData {
-  _PublicProfileData({
-    required this.name,
-    required this.accountType,
-    required this.questions,
-    required this.accuracy,
-    required this.subjects,
-    required this.currentStreak,
-    required this.longestStreak,
-  });
-  final String name;
-  final String accountType;
-  final int questions;
-  final double accuracy; // 0..100
-  final int subjects;
-  final int currentStreak;
-  final int longestStreak;
-}
-
-class StudentPublicProfilePage extends StatefulWidget {
+class StudentPublicProfilePage extends StatelessWidget {
   const StudentPublicProfilePage({super.key, required this.userId});
   final String userId;
-  @override
-  State<StudentPublicProfilePage> createState() => _StudentPublicProfilePageState();
-}
-
-class _StudentPublicProfilePageState extends State<StudentPublicProfilePage> {
-  _PublicProfileData? _data;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<Map<dynamic, dynamic>> _get(String path) async {
-    try {
-      final res = await sl<Dio>().get(path);
-      return res.dataMap();
-    } catch (_) {
-      return const {};
-    }
-  }
-
-  Future<void> _load() async {
-    final results = await Future.wait([
-      _get('/profile/public/${widget.userId}'),
-      _get(Endpoints.streak(widget.userId)),
-      _get(Endpoints.userProgress(widget.userId)),
-    ]);
-    final profile = results[0];
-    final streak = results[1];
-    final progress = results[2];
-    final acc = progress['overallAccuracy'] is Map ? progress['overallAccuracy'] as Map : const {};
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _data = _PublicProfileData(
-        name: profile.str(['name', 'userName'], 'AskAide Student'),
-        accountType: profile.str(['accountType', 'role']),
-        questions: acc.intval(['totalCount']),
-        accuracy: acc.dbl(['accuracyPercent']),
-        subjects: progress.listAt(['subjects', 'subjectsProgress']).length,
-        currentStreak: streak.intval(['currentStreak']),
-        longestStreak: streak.intval(['longestStreak']),
-      );
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<PublicProfileCubit>(
+      create: (_) => sl<PublicProfileCubit>()..load(userId),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-    final d = _data;
+    final state = context.watch<PublicProfileCubit>().state;
+    final d = state.data;
     return _PublicPage(
       maxWidth: 560,
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(28),
         decoration: context.cardDecoration(),
-        child: _loading
+        child: state.loading
             ? const Shimmer(
                 child: Column(
                   children: [
@@ -136,7 +77,7 @@ class _StudentPublicProfilePageState extends State<StudentPublicProfilePage> {
                   const SizedBox(height: 20),
                   OutlinedButton.icon(
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: '/student/${widget.userId}'));
+                      Clipboard.setData(ClipboardData(text: '/student/$userId'));
                       ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Profile link copied!')));
                     },

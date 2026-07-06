@@ -1,3 +1,5 @@
+export '../../../../core/domain/question_type.dart';
+
 /// Difficulty levels. Medium is the default selection in StudyConfig.
 enum Difficulty {
   easy,
@@ -16,36 +18,5 @@ enum Difficulty {
         Difficulty.easy => 'Easy',
         Difficulty.medium => 'Medium',
         Difficulty.hard => 'Hard',
-      };
-}
-
-/// Question formats the practice screen renders.
-enum QuestionType {
-  mcq,
-  fillInTheBlank;
-
-  static QuestionType fromApi(String? raw) {
-    switch (raw?.toLowerCase().replaceAll(RegExp(r'[\s_-]'), '')) {
-      case 'fillintheblank':
-      case 'fillintheblanks':
-      case 'fillblank':
-      case 'fillblanks':
-      case 'fitb':
-        return QuestionType.fillInTheBlank;
-      case 'mcq':
-      case 'multiplechoice':
-      default:
-        return QuestionType.mcq;
-    }
-  }
-
-  String get apiValue => switch (this) {
-        QuestionType.mcq => 'mcq',
-        QuestionType.fillInTheBlank => 'fill-in-the-blank',
-      };
-
-  String get label => switch (this) {
-        QuestionType.mcq => 'Multiple Choice',
-        QuestionType.fillInTheBlank => 'Fill in the Blank',
       };
 }

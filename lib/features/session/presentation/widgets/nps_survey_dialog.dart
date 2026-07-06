@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../cubit/nps_survey_cubit.dart';
 
 /// Result of the NPS survey: a 0–10 recommendation [score] and optional
 /// free-text [comment].
@@ -26,63 +28,50 @@ Future<NpsResult?> showNpsSurvey(BuildContext context) {
   );
 }
 
-class _NpsSurveyDialog extends StatefulWidget {
+class _NpsSurveyDialog extends StatelessWidget {
   const _NpsSurveyDialog();
 
   @override
-  State<_NpsSurveyDialog> createState() => _NpsSurveyDialogState();
-}
-
-class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
-  int? _score;
-  final _commentController = TextEditingController();
-  bool _submitted = false;
-
-  @override
-  void dispose() {
-    _commentController.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return BlocProvider<NpsSurveyCubit>(
+      create: (_) => sl<NpsSurveyCubit>(),
+      child: Builder(builder: _buildBody),
+    );
   }
 
-  void _submit() {
-    if (_score == null) return;
-    setState(() => _submitted = true);
-    final result = NpsResult(
-      score: _score!,
-      comment: _commentController.text.trim().isEmpty
-          ? null
-          : _commentController.text.trim(),
-    );
+  void _submit(BuildContext context, NpsSurveyCubit cubit) {
+    final result = cubit.submit();
+    if (result == null) return;
     Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) Navigator.of(context).pop(result);
+      if (context.mounted) Navigator.of(context).pop(result);
     });
   }
 
-  Color _scoreColor(AskAideColors c, int val) {
-    final s = _score;
-    if (s == null || val > s) return c.bgSecondary;
-    if (s <= 3) return c.error;
-    if (s <= 6) return c.warning;
+  Color _scoreColor(AskAideColors c, int? selected, int val) {
+    if (selected == null || val > selected) return c.bgSecondary;
+    if (selected <= 3) return c.error;
+    if (selected <= 6) return c.warning;
     return c.success;
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-
-    if (_submitted) {
+    final cubit = context.read<NpsSurveyCubit>();
+    return BlocBuilder<NpsSurveyCubit, NpsSurveyState>(
+      builder: (context, state) {
+    if (state.submitted) {
       return Dialog(
         backgroundColor: c.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.modalR),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('🙏', style: TextStyle(fontSize: 36)),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 12),
               Text('Thank you!', style: AppTypography.h4(c.textPrimary)),
-              const SizedBox(height: AppSpacing.xxs),
+              const SizedBox(height: 4),
               Text('Your feedback helps us improve',
                   textAlign: TextAlign.center,
                   style: AppTypography.bodySmall(c.textSecondary)),
@@ -95,7 +84,7 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
     return Dialog(
       backgroundColor: c.bgCard,
       clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: AppRadii.modalR),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 380),
         child: Padding(
@@ -107,13 +96,13 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
               Row(
                 children: [
                   Icon(LucideIcons.star, size: 18, color: c.accent),
-                  const SizedBox(width: AppSpacing.xs),
+                  const SizedBox(width: 8),
                   Text('Quick Question',
                       style: AppTypography.labelLarge(c.textPrimary)),
                   const Spacer(),
                   InkWell(
                     onTap: () => Navigator.of(context).pop(),
-                    borderRadius: AppRadii.componentR,
+                    borderRadius: BorderRadius.circular(8),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
                       child: Icon(LucideIcons.x, size: 16, color: c.textMuted),
@@ -121,10 +110,10 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: 8),
               Text('How likely are you to recommend AskAide to a classmate?',
                   style: AppTypography.bodyMedium(c.textSecondary)),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: 16),
               // 0–10 score picker
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -134,22 +123,22 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 1.5),
                         child: GestureDetector(
-                          onTap: () => setState(() => _score = val),
+                          onTap: () => cubit.selectScore(val),
                           child: Container(
                             height: 32,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: _scoreColor(c, val),
-                              borderRadius: AppRadii.modalR,
+                              color: _scoreColor(c, state.score, val),
+                              borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: _score == val ? c.accent : c.borderSubtle,
-                                width: _score == val ? 2 : 1,
+                                color: state.score == val ? c.accent : c.borderSubtle,
+                                width: state.score == val ? 2 : 1,
                               ),
                             ),
                             child: Text(
                               '$val',
                               style: AppTypography.bodySmall(
-                                _score != null && val <= _score!
+                                state.score != null && val <= state.score!
                                     ? Colors.white
                                     : c.textMuted,
                               ).copyWith(fontWeight: FontWeight.w700, fontSize: 11),
@@ -172,10 +161,10 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                           .copyWith(fontSize: 10)),
                 ],
               ),
-              if (_score != null) ...[
-                const SizedBox(height: AppSpacing.md),
+              if (state.score != null) ...[
+                const SizedBox(height: 16),
                 TextField(
-                  controller: _commentController,
+                  controller: cubit.comment,
                   maxLength: 200,
                   style: AppTypography.bodyMedium(c.textPrimary),
                   cursorColor: c.accent,
@@ -189,19 +178,19 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 12),
                     enabledBorder: OutlineInputBorder(
-                        borderRadius: AppRadii.componentR,
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(color: c.border)),
                     focusedBorder: OutlineInputBorder(
-                        borderRadius: AppRadii.componentR,
+                        borderRadius: BorderRadius.circular(8),
                         borderSide: BorderSide(color: c.accent)),
                   ),
                 ),
               ],
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _score == null ? null : _submit,
+                  onPressed: state.score == null ? null : () => _submit(context, cubit),
                   style: FilledButton.styleFrom(
                     backgroundColor: c.accent,
                     foregroundColor: Colors.white,
@@ -209,18 +198,18 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
                     disabledForegroundColor: c.textMuted,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: AppRadii.componentR),
+                        borderRadius: BorderRadius.circular(8)),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(LucideIcons.send,
                           size: 16,
-                          color: _score == null ? c.textMuted : Colors.white),
-                      const SizedBox(width: AppSpacing.xs),
+                          color: state.score == null ? c.textMuted : Colors.white),
+                      const SizedBox(width: 8),
                       Text('Submit feedback',
                           style: AppTypography.button(
-                              _score == null ? c.textMuted : Colors.white)),
+                              state.score == null ? c.textMuted : Colors.white)),
                     ],
                   ),
                 ),
@@ -229,6 +218,8 @@ class _NpsSurveyDialogState extends State<_NpsSurveyDialog> {
           ),
         ),
       ),
+    );
+      },
     );
   }
 }

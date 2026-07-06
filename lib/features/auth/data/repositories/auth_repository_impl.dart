@@ -1,8 +1,8 @@
 import 'package:dartz/dartz.dart';
-import 'package:dio/dio.dart';
 
 import '../../../../core/error/exceptions.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/network/api_helpers.dart';
 import '../../../../core/storage/secure_storage_service.dart';
 import '../../domain/entities/auth_session.dart';
 import '../../domain/entities/signup_data.dart';
@@ -21,36 +21,12 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remote;
   final SecureStorageService _storage;
 
-  Future<Either<Failure, T>> _guard<T>(Future<T> Function() body) async {
-    try {
-      return Right(await body());
-    } on UnauthorizedException catch (e) {
-      return Left(UnauthorizedFailure(e.message));
-    } on NetworkException catch (e) {
-      return Left(NetworkFailure(e.message));
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message, statusCode: e.statusCode));
-    } on DioException catch (e) {
-      final inner = e.error;
-      if (inner is ServerException) {
-        return Left(ServerFailure(inner.message, statusCode: inner.statusCode));
-      }
-      if (inner is NetworkException) return Left(NetworkFailure(inner.message));
-      if (inner is UnauthorizedException) {
-        return Left(UnauthorizedFailure(inner.message));
-      }
-      return Left(ServerFailure(e.message ?? 'Network error'));
-    } catch (e) {
-      return Left(UnknownFailure(e.toString()));
-    }
-  }
-
   @override
   Future<Either<Failure, AuthSession>> login({
     required String email,
     required String password,
   }) =>
-      _guard(() async {
+      guardEither(() async {
         final session = (await _remote.login(email, password)).toEntity();
         if (session.token.isEmpty) {
           throw ServerException('No token returned by server');
@@ -71,7 +47,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, AuthSession>> loginWithGoogle(String idToken) =>
-      _guard(() async {
+      guardEither(() async {
         final session = (await _remote.loginWithGoogle(idToken)).toEntity();
         if (session.token.isEmpty) {
           throw ServerException('No token returned by server');
@@ -81,14 +57,14 @@ class AuthRepositoryImpl implements AuthRepository {
       });
 
   @override
-  Future<Either<Failure, Unit>> sendOtp(String email) => _guard(() async {
+  Future<Either<Failure, Unit>> sendOtp(String email) => guardEither(() async {
         await _remote.sendOtp(email);
         return unit;
       });
 
   @override
   Future<Either<Failure, AuthSession>> signup(SignupData data) =>
-      _guard(() async {
+      guardEither(() async {
         final session = (await _remote.signup(data)).toEntity();
         if (session.token.isNotEmpty) {
           await _persistTokens(session);
@@ -98,7 +74,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, Unit>> requestPasswordReset(String email) =>
-      _guard(() async {
+      guardEither(() async {
         await _remote.requestPasswordReset(email);
         return unit;
       });
@@ -109,13 +85,13 @@ class AuthRepositoryImpl implements AuthRepository {
     required String confirmPassword,
     required String token,
   }) =>
-      _guard(() async {
+      guardEither(() async {
         await _remote.resetPassword(password, confirmPassword, token);
         return unit;
       });
 
   @override
-  Future<Either<Failure, Unit>> logout() => _guard(() async {
+  Future<Either<Failure, Unit>> logout() => guardEither(() async {
         // Best-effort server-side revocation of the refresh token, mirroring
         // the web client. Local state is cleared regardless of the outcome.
         final refresh = await _storage.readRefreshToken();

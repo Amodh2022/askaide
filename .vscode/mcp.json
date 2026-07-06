@@ -1,0 +1,14 @@
+{
+  "servers": {
+    "code-review-graph": {
+      "command": "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10",
+      "args": [
+        "-m",
+        "code_review_graph",
+        "serve"
+      ],
+      "cwd": "/Users/a1234/askaide",
+      "type": "stdio"
+    }
+  }
+}

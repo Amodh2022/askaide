@@ -2,62 +2,6 @@ part of '../question_paper_pages.dart';
 
 // ---- Wizard helper widgets --------------------------------------------------
 
-class _StepIndicator extends StatelessWidget {
-  const _StepIndicator({required this.current, required this.steps, required this.onTap});
-  final int current;
-  final List<String> steps;
-  final ValueChanged<int> onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: context.cardDecoration(),
-      child: Row(
-        children: [
-          for (var i = 0; i < steps.length; i++) ...[
-            Expanded(
-              child: InkWell(
-                onTap: () => onTap(i + 1),
-                borderRadius: AppRadii.cardR,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: current == i + 1 ? c.accent : Colors.transparent,
-                    borderRadius: AppRadii.cardR,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        (i + 1) < current ? LucideIcons.circleCheck : LucideIcons.circle,
-                        size: 16,
-                        color: current == i + 1
-                            ? Colors.white
-                            : ((i + 1) < current ? c.success : c.textMuted),
-                      ),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          steps[i],
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.bodySmall(
-                              current == i + 1 ? Colors.white : c.textMuted),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.icon, required this.label});
   final IconData icon;
@@ -142,11 +86,11 @@ class _TextInputState extends State<_TextInput> {
         fillColor: c.bgRaised,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: AppRadii.cardR,
+          borderRadius: BorderRadius.circular(4),
           borderSide: BorderSide(color: c.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: AppRadii.cardR,
+          borderRadius: BorderRadius.circular(4),
           borderSide: BorderSide(color: c.border),
         ),
       ),
@@ -175,7 +119,7 @@ class _NumberStepper extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgRaised,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.cardR,
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -222,7 +166,7 @@ class _DifficultyCounter extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.bgRaised,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.cardR,
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
         children: [
@@ -298,11 +242,11 @@ class _InstructionAdderState extends State<_InstructionAdder> {
               fillColor: c.bgRaised,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
               border: OutlineInputBorder(
-                borderRadius: AppRadii.cardR,
+                borderRadius: BorderRadius.circular(4),
                 borderSide: BorderSide(color: c.border),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: AppRadii.cardR,
+                borderRadius: BorderRadius.circular(4),
                 borderSide: BorderSide(color: c.border),
               ),
             ),
@@ -341,7 +285,7 @@ class _ChipButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? c.accent : c.bgRaised,
           border: Border.all(color: selected ? c.accent : c.border),
-          borderRadius: AppRadii.pillR,
+          borderRadius: BorderRadius.circular(99),
         ),
         child: Text(
           label,

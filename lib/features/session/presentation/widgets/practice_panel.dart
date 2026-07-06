@@ -6,63 +6,26 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../profile/presentation/cubit/profile_cubit.dart';
 import '../../domain/entities/question.dart';
 import '../../domain/entities/study_enums.dart';
-import '../../domain/repositories/session_repository.dart';
 import '../bloc/session_bloc.dart';
+import '../cubit/feedback_form_cubit.dart';
+import '../cubit/generating_message_cubit.dart';
+import '../cubit/practice_ui_cubit.dart';
+import '../cubit/typewriter_cubit.dart';
 import 'nps_survey_dialog.dart';
+import 'question_answer_widget_factory.dart';
 import 'session_result_modal.dart';
 
 /// The in-session practice view: a progress header, the AI question bubble with
 /// MCQ options (or a fill-in-the-blank input), instant correct/wrong feedback,
 /// and Next / End controls. Mirrors the frontend QuestionPractice + CurrentQuestion.
-class PracticePanel extends StatefulWidget {
+class PracticePanel extends StatelessWidget {
   const PracticePanel({super.key});
 
-  @override
-  State<PracticePanel> createState() => _PracticePanelState();
-}
-
-class _PracticePanelState extends State<PracticePanel> {
-  // --- Transient streak badge (mirrors React's Variable Rewards) ---
-  int _prevStreak = 0;
-  String? _streakMessage;
-  bool _streakExcellent = false;
-  Timer? _streakTimer;
-
-  // Guards so the end-of-session modal flow runs exactly once.
-  bool _resultShown = false;
-
-  @override
-  void dispose() {
-    _streakTimer?.cancel();
-    super.dispose();
-  }
-
-  void _handleStreak(int streak) {
-    // Only fire when the streak grows past a threshold (matches React).
-    if (streak > _prevStreak && streak >= 3) {
-      setState(() {
-        if (streak >= 5) {
-          _streakMessage = '🌟 Excellent streak!';
-          _streakExcellent = true;
-        } else {
-          _streakMessage = '🔥 On fire!';
-          _streakExcellent = false;
-        }
-      });
-      _streakTimer?.cancel();
-      _streakTimer = Timer(const Duration(milliseconds: 2500), () {
-        if (mounted) setState(() => _streakMessage = null);
-      });
-    }
-    _prevStreak = streak;
-  }
-
-  Future<void> _runEndOfSessionFlow() async {
+  Future<void> _runEndOfSessionFlow(BuildContext context, PracticeUiCubit uiCubit) async {
     // Capture dependencies up front so we never touch a context across an await.
     final bloc = context.read<SessionBloc>();
     final userId = context.read<ProfileCubit>().state.user?.id ?? '';
@@ -71,13 +34,13 @@ class _PracticePanelState extends State<PracticePanel> {
 
     // 1) Result modal summarising the session.
     await showSessionResultModal(context, summary);
-    if (!mounted) return;
+    if (!context.mounted) return;
 
     // 2) Post-session NPS survey — only when the server says the user is due
     //    one (mirrors React's checkNpsEligibility gate) and not already shown.
     if (bloc.state.npsEligible && !bloc.state.npsHandled) {
       final result = await showNpsSurvey(context);
-      if (!mounted) return;
+      if (!context.mounted) return;
       if (result == null) {
         bloc.add(const NpsDismissed());
       } else {
@@ -95,21 +58,30 @@ class _PracticePanelState extends State<PracticePanel> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<PracticeUiCubit>(
+      create: (_) => sl<PracticeUiCubit>(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
+    final uiCubit = context.read<PracticeUiCubit>();
     return BlocConsumer<SessionBloc, SessionState>(
       listenWhen: (p, n) =>
           p.currentStreak != n.currentStreak ||
           (p.resultSummary == null) != (n.resultSummary == null),
       listener: (context, state) {
-        _handleStreak(state.currentStreak);
-        if (state.resultSummary != null && !_resultShown) {
-          _resultShown = true;
-          _runEndOfSessionFlow().whenComplete(() {
-            if (mounted) _resultShown = false;
+        uiCubit.handleStreak(state.currentStreak);
+        if (state.resultSummary != null && !uiCubit.resultShown) {
+          uiCubit.markResultShown();
+          _runEndOfSessionFlow(context, uiCubit).whenComplete(() {
+            uiCubit.clearResultShown();
           });
         }
       },
       builder: (context, state) {
+        final uiState = context.watch<PracticeUiCubit>().state;
         final q = state.currentQuestion;
         final answered = state.hasAnsweredCurrent;
         final total = state.questions.length;
@@ -148,18 +120,18 @@ class _PracticePanelState extends State<PracticePanel> {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (_streakMessage != null) ...[
+                          if (uiState.streakMessage != null) ...[
                             _StreakBadge(
-                              message: _streakMessage!,
-                              excellent: _streakExcellent,
+                              message: uiState.streakMessage!,
+                              excellent: uiState.streakExcellent,
                             ),
-                            const SizedBox(width: AppSpacing.xs),
+                            const SizedBox(width: 8),
                           ],
                           Icon(LucideIcons.circleCheck, size: 16, color: c.accent),
                           const SizedBox(width: 6),
                           Text('${state.correctCount}',
                               style: AppTypography.bodySmall(c.textMuted)),
-                          const SizedBox(width: AppSpacing.xs),
+                          const SizedBox(width: 8),
                           // Report button — warning styled, mirrors React QuestionPractice
                           GestureDetector(
                             onTap: () => showDialog<void>(
@@ -172,14 +144,14 @@ class _PracticePanelState extends State<PracticePanel> {
                               decoration: BoxDecoration(
                                 color: c.warningBg,
                                 border: Border.all(color: c.warning),
-                                borderRadius: AppRadii.componentR,
+                                borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(LucideIcons.flag,
                                       size: 14, color: c.warning),
-                                  const SizedBox(width: AppSpacing.xxs),
+                                  const SizedBox(width: 4),
                                   Text('Report',
                                       style: AppTypography.mono(c.warning,
                                           size: 11)),
@@ -187,7 +159,7 @@ class _PracticePanelState extends State<PracticePanel> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: AppSpacing.xs),
+                          const SizedBox(width: 8),
                           OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -195,7 +167,7 @@ class _PracticePanelState extends State<PracticePanel> {
                               side: BorderSide(color: c.danger),
                               foregroundColor: c.danger,
                               shape: RoundedRectangleBorder(
-                                  borderRadius: AppRadii.componentR),
+                                  borderRadius: BorderRadius.circular(8)),
                             ),
                             onPressed: state.finishing
                                 ? null
@@ -225,11 +197,11 @@ class _PracticePanelState extends State<PracticePanel> {
                     ],
                   ),
                   // Row 2: chapter name + difficulty chip
-                  const SizedBox(height: AppSpacing.xxs),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Icon(LucideIcons.bookOpen, size: 12, color: c.textMuted),
-                      const SizedBox(width: AppSpacing.xxs),
+                      const SizedBox(width: 4),
                       Flexible(
                         child: Text(
                           state.config.selectedChapter?.name ?? '',
@@ -238,7 +210,7 @@ class _PracticePanelState extends State<PracticePanel> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const SizedBox(width: AppSpacing.xs),
+                      const SizedBox(width: 8),
                       _DifficultyChip(difficulty: state.config.difficulty),
                     ],
                   ),
@@ -261,7 +233,7 @@ class _PracticePanelState extends State<PracticePanel> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: AppSpacing.xs),
+                        const SizedBox(width: 8),
                         Text(
                           'Q${(state.currentIndex + 1).clamp(1, total)}/$total',
                           style: AppTypography.mono(c.textMuted, size: 9),
@@ -331,7 +303,7 @@ class _PracticePanelState extends State<PracticePanel> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text('Next question', style: AppTypography.button(answered ? c.bgPrimary : c.textMuted)),
-                            const SizedBox(width: AppSpacing.xs),
+                            const SizedBox(width: 8),
                             Icon(LucideIcons.arrowRight, size: 16, color: answered ? c.bgPrimary : c.textMuted),
                           ],
                         ),
@@ -372,7 +344,7 @@ class _StreakBadge extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: AppRadii.pillR,
+          borderRadius: BorderRadius.circular(99),
         ),
         child: Text(message,
             style: AppTypography.bodySmall(color)
@@ -386,14 +358,9 @@ class _StreakBadge extends StatelessWidget {
 // Generating view — spinner + cycling status messages
 // ---------------------------------------------------------------------------
 
-class _GeneratingView extends StatefulWidget {
+class _GeneratingView extends StatelessWidget {
   const _GeneratingView();
 
-  @override
-  State<_GeneratingView> createState() => _GeneratingViewState();
-}
-
-class _GeneratingViewState extends State<_GeneratingView> {
   static const _messages = [
     'Generating your questions…',
     'Crafting the perfect challenge…',
@@ -405,54 +372,40 @@ class _GeneratingViewState extends State<_GeneratingView> {
     'Curating questions for you…',
   ];
 
-  int _index = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    // Pick a random starting message so repeated views feel fresh.
-    _index = DateTime.now().millisecondsSinceEpoch % _messages.length;
-    _timer = Timer.periodic(const Duration(seconds: 2), (_) {
-      if (mounted) setState(() => _index = (_index + 1) % _messages.length);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(color: c.accent, strokeWidth: 4),
-          const SizedBox(height: 20),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 400),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.15),
-                  end: Offset.zero,
-                ).animate(anim),
-                child: child,
+    return BlocProvider<GeneratingMessageCubit>(
+      create: (_) => sl<GeneratingMessageCubit>(param1: _messages.length),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: c.accent, strokeWidth: 4),
+            const SizedBox(height: 20),
+            BlocBuilder<GeneratingMessageCubit, int>(
+              builder: (context, index) => AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.15),
+                      end: Offset.zero,
+                    ).animate(anim),
+                    child: child,
+                  ),
+                ),
+                child: Text(
+                  _messages[index],
+                  key: ValueKey(index),
+                  style: AppTypography.bodyMedium(c.textMuted),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
-            child: Text(
-              _messages[_index],
-              key: ValueKey(_index),
-              style: AppTypography.bodyMedium(c.textMuted),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -484,18 +437,18 @@ class _MasteredView extends StatelessWidget {
               alignment: Alignment.center,
               child: Icon(LucideIcons.trophy, size: 32, color: c.accent),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 16),
             Text('🏆 You’ve mastered this selection!',
                 style: AppTypography.h4(c.textPrimary),
                 textAlign: TextAlign.center),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 8),
             Text(
               'You’ve answered every question we have here. Wrap up to see '
               'your results, or pick another chapter or difficulty to keep going.',
               style: AppTypography.bodySmall(c.textSecondary),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: 24),
             FilledButton(
               onPressed: () => context.read<SessionBloc>().add(
                     SessionFinished(
@@ -546,15 +499,15 @@ class _QuestionErrorView extends StatelessWidget {
               alignment: Alignment.center,
               child: Icon(LucideIcons.circleX, size: 28, color: c.danger),
             ),
-            const SizedBox(height: AppSpacing.md),
+            const SizedBox(height: 16),
             Text('Something went wrong',
                 style: AppTypography.labelLarge(c.textPrimary),
                 textAlign: TextAlign.center),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 8),
             Text(message,
                 style: AppTypography.bodySmall(c.textSecondary),
                 textAlign: TextAlign.center),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -568,7 +521,7 @@ class _QuestionErrorView extends StatelessWidget {
                   ),
                   child: const Text('Go Back'),
                 ),
-                const SizedBox(width: AppSpacing.sm),
+                const SizedBox(width: 12),
                 FilledButton(
                   onPressed: () => context
                       .read<SessionBloc>()
@@ -637,7 +590,7 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
           alignment: Alignment.center,
           child: Icon(LucideIcons.bot, size: 18, color: c.accent),
         ),
-        const SizedBox(width: AppSpacing.xs),
+        const SizedBox(width: 8),
         Expanded(
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -659,125 +612,23 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
                   style: AppTypography.h4(c.textPrimary)
                       .copyWith(fontSize: 15, height: 1.55, fontWeight: FontWeight.w400),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-                if (q.type == QuestionType.mcq)
-                  ..._options(c, q)
-                else
-                  _fillInput(c, q),
+                const SizedBox(height: 12),
+                QuestionAnswerWidgetFactoryRegistry.of(q.type).build(
+                  context,
+                  c,
+                  q,
+                  answered: widget.answered,
+                  selectedAnswer: widget.selectedAnswer,
+                  onAnswer: widget.onAnswer,
+                  blankController: _blankController,
+                ),
                 if (widget.answered && widget.feedback != null) ...[
-                  const SizedBox(height: AppSpacing.sm),
+                  const SizedBox(height: 12),
                   _feedback(c, widget.feedback!),
                 ],
               ],
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _options(AskAideColors c, Question q) {
-    return [
-      for (var i = 0; i < q.options.length; i++)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: _optionButton(c, q, q.options[i], i),
-        ),
-    ];
-  }
-
-  Widget _optionButton(AskAideColors c, Question q, String option, int idx) {
-    final show = widget.answered;
-    final isCorrect = show && option == q.correctAnswer;
-    final isWrong = show && option != q.correctAnswer && option == widget.selectedAnswer;
-
-    Color border = c.border;
-    Color bg = c.bgCard;
-    Color fg = c.textPrimary;
-    if (isCorrect) {
-      border = c.accent;
-      bg = c.accentLight;
-      fg = c.accent;
-    } else if (isWrong) {
-      border = c.danger;
-      bg = c.danger.withValues(alpha: 0.08);
-      fg = c.danger;
-    }
-
-    return InkWell(
-      onTap: show ? null : () => widget.onAnswer(option),
-      borderRadius: AppRadii.cardR,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
-        decoration: BoxDecoration(
-          color: bg,
-          border: Border.all(color: border, width: isCorrect || isWrong ? 1.5 : 1),
-          borderRadius: AppRadii.cardR,
-        ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: isCorrect
-                  ? Icon(LucideIcons.circleCheck, size: 15, color: c.accent)
-                  : isWrong
-                      ? Icon(LucideIcons.circleX, size: 15, color: c.danger)
-                      : Container(
-                          decoration: BoxDecoration(
-                              color: c.border, borderRadius: BorderRadius.circular(3)),
-                          alignment: Alignment.center,
-                          child: Text('${idx + 1}',
-                              style: AppTypography.mono(c.textMuted, size: 10)),
-                        ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-                child: Text(option,
-                    style: AppTypography.bodyMedium(fg).copyWith(fontSize: 13.5))),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _fillInput(AskAideColors c, Question q) {
-    if (widget.answered) {
-      return Text('Your answer: ${widget.selectedAnswer ?? ''}',
-          style: AppTypography.bodyMedium(c.textPrimary));
-    }
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _blankController,
-            style: AppTypography.bodyLarge(c.textPrimary),
-            cursorColor: c.accent,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: c.bgCard,
-              hintText: 'Type your answer',
-              hintStyle: AppTypography.bodyMedium(c.textMuted),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: AppRadii.cardR,
-                  borderSide: BorderSide(color: c.border)),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: AppRadii.cardR,
-                  borderSide: BorderSide(color: c.accent)),
-            ),
-            onSubmitted: (v) {
-              if (v.trim().isNotEmpty) widget.onAnswer(v.trim());
-            },
-          ),
-        ),
-        const SizedBox(width: AppSpacing.xs),
-        IconButton(
-          onPressed: () {
-            final v = _blankController.text.trim();
-            if (v.isNotEmpty) widget.onAnswer(v);
-          },
-          icon: Icon(LucideIcons.send, color: c.accent),
         ),
       ],
     );
@@ -789,7 +640,7 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: AppRadii.cardR,
+        borderRadius: BorderRadius.circular(4),
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Column(
@@ -799,13 +650,13 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
             children: [
               Icon(f.isCorrect ? LucideIcons.circleCheck : LucideIcons.circleX,
                   size: 16, color: color),
-              const SizedBox(width: AppSpacing.xs),
+              const SizedBox(width: 8),
               Text(f.isCorrect ? 'Correct!' : 'Not quite',
                   style: AppTypography.labelLarge(color)),
             ],
           ),
           if (!f.isCorrect) ...[
-            const SizedBox(height: AppSpacing.xxs),
+            const SizedBox(height: 4),
             Text('Answer: ${f.correctAnswer}', style: AppTypography.bodySmall(c.textPrimary)),
           ],
           if (f.explanation != null && f.explanation!.isNotEmpty) ...[
@@ -819,48 +670,20 @@ class _QuestionBubbleState extends State<_QuestionBubble> {
 }
 
 /// Types out [text] character-by-character (used for the question prompt).
-class _Typewriter extends StatefulWidget {
+class _Typewriter extends StatelessWidget {
   const _Typewriter({super.key, required this.text, required this.style});
   final String text;
   final TextStyle style;
 
   @override
-  State<_Typewriter> createState() => _TypewriterState();
-}
-
-class _TypewriterState extends State<_Typewriter> {
-  int _count = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _start();
-  }
-
-  void _start() {
-    _timer?.cancel();
-    _count = 0;
-    _timer = Timer.periodic(const Duration(milliseconds: 18), (t) {
-      if (!mounted) return;
-      if (_count >= widget.text.length) {
-        t.cancel();
-      } else {
-        setState(() => _count++);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Text(widget.text.substring(0, _count.clamp(0, widget.text.length)),
-        style: widget.style);
+    return BlocProvider<TypewriterCubit>(
+      create: (_) => sl<TypewriterCubit>(param1: text.length),
+      child: BlocBuilder<TypewriterCubit, int>(
+        builder: (context, count) =>
+            Text(text.substring(0, count.clamp(0, text.length)), style: style),
+      ),
+    );
   }
 }
 
@@ -880,7 +703,7 @@ class _DifficultyChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.accentLight,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.pillR,
+        borderRadius: BorderRadius.circular(99),
       ),
       child: Text(
         difficulty.label.toUpperCase(),
@@ -894,59 +717,8 @@ class _DifficultyChip extends StatelessWidget {
 // Feedback dialog — mirrors React's FeedbackForm (Name* / Email / Feedback*)
 // ---------------------------------------------------------------------------
 
-class _FeedbackDialog extends StatefulWidget {
+class _FeedbackDialog extends StatelessWidget {
   const _FeedbackDialog();
-
-  @override
-  State<_FeedbackDialog> createState() => _FeedbackDialogState();
-}
-
-class _FeedbackDialogState extends State<_FeedbackDialog> {
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _feedbackController = TextEditingController();
-  bool _submitting = false;
-  bool _submitted = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _feedbackController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    final name = _nameController.text.trim();
-    final feedback = _feedbackController.text.trim();
-    if (name.isEmpty || feedback.isEmpty) {
-      setState(() => _error = 'Name and feedback are required.');
-      return;
-    }
-    setState(() {
-      _submitting = true;
-      _error = null;
-    });
-    final result = await sl<SessionRepository>().submitFeedback(
-      name: name,
-      feedback: feedback,
-      email: _emailController.text.trim().isEmpty
-          ? null
-          : _emailController.text.trim(),
-    );
-    if (!mounted) return;
-    result.fold(
-      (failure) => setState(() {
-        _submitting = false;
-        _error = 'Something went wrong. Please try again.';
-      }),
-      (_) => setState(() {
-        _submitting = false;
-        _submitted = true;
-      }),
-    );
-  }
 
   InputDecoration _fieldDecoration(AskAideColors c, String hint) {
     return InputDecoration(
@@ -956,42 +728,52 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
       fillColor: c.bgSecondary,
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       enabledBorder: OutlineInputBorder(
-          borderRadius: AppRadii.componentR,
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: c.border)),
       focusedBorder: OutlineInputBorder(
-          borderRadius: AppRadii.componentR,
+          borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide(color: c.accent)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<FeedbackFormCubit>(
+      create: (_) => sl<FeedbackFormCubit>(),
+      child: Builder(builder: _buildDialog),
+    );
+  }
+
+  Widget _buildDialog(BuildContext context) {
     final c = context.colors;
+    final cubit = context.read<FeedbackFormCubit>();
     return Dialog(
       backgroundColor: c.bgCard,
       shape: RoundedRectangleBorder(
-        borderRadius: AppRadii.componentR,
+        borderRadius: BorderRadius.circular(8),
         side: BorderSide(color: c.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
-        child: _submitted
-            ? _successView(c)
-            : SingleChildScrollView(child: _formView(c)),
+        child: BlocBuilder<FeedbackFormCubit, FeedbackFormState>(
+          builder: (context, state) => state.submitted
+              ? _successView(context, c)
+              : SingleChildScrollView(child: _formView(c, cubit, state)),
+        ),
       ),
     );
   }
 
-  Widget _successView(AskAideColors c) {
+  Widget _successView(BuildContext context, AskAideColors c) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(LucideIcons.circleCheck, size: 40, color: c.success),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: 16),
         Text('Thank you for your feedback!',
             style: AppTypography.h4(c.textPrimary),
             textAlign: TextAlign.center),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: 8),
         Text(
           'Your feedback helps us improve AskAide for everyone.',
           style: AppTypography.bodySmall(c.textMuted),
@@ -1006,8 +788,8 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
     );
   }
 
-  Widget _formView(AskAideColors c) {
-    return Column(
+  Widget _formView(AskAideColors c, FeedbackFormCubit cubit, FeedbackFormState state) {
+    return Builder(builder: (context) => Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1026,7 +808,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.xxs),
+        const SizedBox(height: 4),
         Text('Help us make AskAide better for everyone',
             style: AppTypography.bodySmall(c.textMuted)),
         const SizedBox(height: 20),
@@ -1043,11 +825,11 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         ),
         const SizedBox(height: 6),
         TextField(
-          controller: _nameController,
+          controller: cubit.name,
           style: AppTypography.bodyMedium(c.textPrimary),
           decoration: _fieldDecoration(c, 'Enter your name'),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: 16),
         // Email (optional)
         RichText(
           text: TextSpan(
@@ -1063,12 +845,12 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         ),
         const SizedBox(height: 6),
         TextField(
-          controller: _emailController,
+          controller: cubit.email,
           style: AppTypography.bodyMedium(c.textPrimary),
           keyboardType: TextInputType.emailAddress,
           decoration: _fieldDecoration(c, 'your@email.com'),
         ),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: 16),
         // Feedback (required)
         RichText(
           text: TextSpan(
@@ -1082,24 +864,24 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         ),
         const SizedBox(height: 6),
         TextField(
-          controller: _feedbackController,
+          controller: cubit.feedback,
           style: AppTypography.bodyMedium(c.textPrimary),
           maxLines: 4,
           decoration: _fieldDecoration(
               c, "Tell us what's on your mind…"),
         ),
         // Error box
-        if (_error != null) ...[
-          const SizedBox(height: AppSpacing.sm),
+        if (state.error != null) ...[
+          const SizedBox(height: 12),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: c.danger.withValues(alpha: 0.1),
               border: Border.all(color: c.danger.withValues(alpha: 0.3)),
-              borderRadius: AppRadii.componentR,
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(_error!,
+            child: Text(state.error!,
                 style: AppTypography.bodySmall(c.danger)),
           ),
         ],
@@ -1107,7 +889,7 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
         SizedBox(
           width: double.infinity,
           child: FilledButton(
-            onPressed: _submitting ? null : _submit,
+            onPressed: state.submitting ? null : cubit.submit,
             style: FilledButton.styleFrom(
               backgroundColor: c.accent,
               foregroundColor: Colors.white,
@@ -1115,9 +897,9 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
               disabledForegroundColor: c.textMuted,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                  borderRadius: AppRadii.componentR),
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            child: _submitting
+            child: state.submitting
                 ? const SizedBox(
                     width: 18,
                     height: 18,
@@ -1128,14 +910,14 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(LucideIcons.send, size: 15, color: Colors.white),
-                      const SizedBox(width: AppSpacing.xs),
+                      const SizedBox(width: 8),
                       Text('Submit Feedback',
                           style: AppTypography.button(Colors.white)),
                     ],
                   ),
           ),
         ),
-        const SizedBox(height: AppSpacing.sm),
+        const SizedBox(height: 12),
         Center(
           child: Text(
             'Your feedback is anonymous unless you provide your email',
@@ -1144,6 +926,6 @@ class _FeedbackDialogState extends State<_FeedbackDialog> {
           ),
         ),
       ],
-    );
+    ));
   }
 }

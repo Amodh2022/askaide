@@ -1,19 +1,8 @@
 part of '../role_dashboard_pages.dart';
 
-class _TeacherStudentView extends StatefulWidget {
+class _TeacherStudentView extends StatelessWidget {
   const _TeacherStudentView({required this.subjectId});
   final String subjectId;
-
-  @override
-  State<_TeacherStudentView> createState() => _TeacherStudentViewState();
-}
-
-class _TeacherStudentViewState extends State<_TeacherStudentView> {
-  final Set<String> _openChapters = {};
-
-  void _toggle(String id) => setState(() {
-        _openChapters.contains(id) ? _openChapters.remove(id) : _openChapters.add(id);
-      });
 
   String _timeAgo(String iso) {
     if (iso.isEmpty) return 'Never';
@@ -28,12 +17,20 @@ class _TeacherStudentViewState extends State<_TeacherStudentView> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<ChapterAccordionCubit>(
+      create: (_) => sl<ChapterAccordionCubit>(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
     return BlocBuilder<TeacherStudentCubit, TeacherStudentState>(
       builder: (context, state) {
         if (state.status == TLoad.loading) return const SkeletonListLoader();
         final d = state.data;
         final summary = d.subjectSummary;
+        final openChapters = context.watch<ChapterAccordionCubit>().state;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -44,7 +41,7 @@ class _TeacherStudentViewState extends State<_TeacherStudentView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onTap: () => context.go('/teacher/subject/${widget.subjectId}/students'),
+                    onTap: () => context.go('/teacher/subject/$subjectId/students'),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -157,8 +154,8 @@ class _TeacherStudentViewState extends State<_TeacherStudentView> {
                   for (final ch in d.chapters)
                     _ChapterAccordion(
                       chapter: ch,
-                      isOpen: _openChapters.contains(ch.chapterId),
-                      onToggle: () => _toggle(ch.chapterId),
+                      isOpen: openChapters.contains(ch.chapterId),
+                      onToggle: () => context.read<ChapterAccordionCubit>().toggle(ch.chapterId),
                     ),
 
                   const SizedBox(height: 20),

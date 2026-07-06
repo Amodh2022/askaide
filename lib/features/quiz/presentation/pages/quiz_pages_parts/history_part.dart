@@ -1,15 +1,9 @@
 part of '../quiz_pages.dart';
 
-class _QuizHistoryView extends StatefulWidget {
+class _QuizHistoryView extends StatelessWidget {
   const _QuizHistoryView();
-  @override
-  State<_QuizHistoryView> createState() => _QuizHistoryViewState();
-}
 
-class _QuizHistoryViewState extends State<_QuizHistoryView> {
-  String _query = '';
-
-  void _loadPage(int page) {
+  void _loadPage(BuildContext context, int page) {
     context.read<QuizListCubit>().loadHistory(page: page, limit: 10);
   }
 
@@ -30,7 +24,15 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<QuizHistorySearchCubit>(
+      create: (_) => sl<QuizHistorySearchCubit>(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
+    final searchCubit = context.read<QuizHistorySearchCubit>();
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Center(
@@ -71,7 +73,7 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
               const SizedBox(height: 20),
               // Search
               TextField(
-                onChanged: (v) => setState(() => _query = v),
+                onChanged: searchCubit.setQuery,
                 decoration: InputDecoration(
                   hintText: 'Search by quiz title...',
                   prefixIcon:
@@ -89,7 +91,8 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                 ),
               ),
               const SizedBox(height: 20),
-              BlocBuilder<QuizListCubit, QuizListState>(
+              BlocBuilder<QuizHistorySearchCubit, String>(
+                builder: (context, query) => BlocBuilder<QuizListCubit, QuizListState>(
                 builder: (context, state) {
                   if (state.status == Load.loading) {
                     return const SkeletonListLoader(
@@ -98,7 +101,7 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                   final filtered = state.history
                       .where((h) => h.quizTitle
                           .toLowerCase()
-                          .contains(_query.toLowerCase()))
+                          .contains(query.toLowerCase()))
                       .toList();
                   if (filtered.isEmpty) {
                     return Container(
@@ -107,7 +110,7 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                       child: EmptyState(
                         icon: LucideIcons.history,
                         title: 'No quiz history',
-                        hint: _query.isNotEmpty
+                        hint: query.isNotEmpty
                             ? 'No attempts match your search'
                             : "You haven't completed any quizzes yet",
                       ),
@@ -128,7 +131,7 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                           children: [
                             OutlinedButton(
                               onPressed: state.pagination.page > 1
-                                  ? () => _loadPage(state.pagination.page - 1)
+                                  ? () => _loadPage(context, state.pagination.page - 1)
                                   : null,
                               child: const Text('Previous'),
                             ),
@@ -140,7 +143,7 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                             OutlinedButton(
                               onPressed: state.pagination.page <
                                       state.pagination.pages
-                                  ? () => _loadPage(state.pagination.page + 1)
+                                  ? () => _loadPage(context, state.pagination.page + 1)
                                   : null,
                               child: const Text('Next'),
                             ),
@@ -150,6 +153,7 @@ class _QuizHistoryViewState extends State<_QuizHistoryView> {
                     ],
                   );
                 },
+                ),
               ),
             ],
           ),

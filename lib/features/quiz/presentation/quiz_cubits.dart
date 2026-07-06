@@ -96,71 +96,82 @@ class QuizListCubit extends Cubit<QuizListState> {
 // ---------------------------------------------------------------------------
 // Quiz attempt
 // ---------------------------------------------------------------------------
-class QuizAttemptState extends Equatable {
-  const QuizAttemptState({
-    this.status = Load.initial,
-    this.attempt,
-    this.index = 0,
-    this.answers = const {},
-    this.flagged = const {},
-    this.submitting = false,
-    this.submittedAttemptId,
-    this.error,
-  });
+sealed class QuizSessionState extends Equatable {
+  const QuizSessionState();
+}
 
-  final Load status;
-  final QuizAttempt? attempt;
+class QuizSessionLoading extends QuizSessionState {
+  const QuizSessionLoading();
+  @override
+  List<Object?> get props => [];
+}
+
+class QuizSessionFailed extends QuizSessionState {
+  const QuizSessionFailed(this.message);
+  final String message;
+  @override
+  List<Object?> get props => [message];
+}
+
+/// Common base once an attempt has loaded — carries everything the question
+/// UI needs, so widgets can depend on this instead of the full session state.
+sealed class QuizSessionLoaded extends QuizSessionState {
+  const QuizSessionLoaded({
+    required this.attempt,
+    required this.index,
+    required this.answers,
+    required this.flagged,
+  });
+  final QuizAttempt attempt;
   final int index;
   final Map<String, String> answers; // quizQuestionId -> selectedAnswer
   final Set<String> flagged; // quizQuestionIds marked for review
-  final bool submitting;
-  final String? submittedAttemptId; // set once submission succeeds
-  final String? error;
 
   QuizQuestion? get current =>
-      attempt != null && index >= 0 && index < attempt!.questions.length
-          ? attempt!.questions[index]
+      index >= 0 && index < attempt.questions.length
+          ? attempt.questions[index]
           : null;
-  int get total => attempt?.questions.length ?? 0;
+  int get total => attempt.questions.length;
   int get answeredCount => answers.length;
   int get flaggedCount => flagged.length;
 
-  QuizAttemptState copyWith({
-    Load? status,
-    QuizAttempt? attempt,
-    int? index,
-    Map<String, String>? answers,
-    Set<String>? flagged,
-    bool? submitting,
-    String? submittedAttemptId,
-    String? error,
-  }) =>
-      QuizAttemptState(
-        status: status ?? this.status,
-        attempt: attempt ?? this.attempt,
-        index: index ?? this.index,
-        answers: answers ?? this.answers,
-        flagged: flagged ?? this.flagged,
-        submitting: submitting ?? this.submitting,
-        submittedAttemptId: submittedAttemptId ?? this.submittedAttemptId,
-        error: error,
-      );
-
   @override
-  List<Object?> get props => [
-        status,
-        attempt,
-        index,
-        answers,
-        flagged,
-        submitting,
-        submittedAttemptId,
-        error
-      ];
+  List<Object?> get props => [attempt, index, answers, flagged];
 }
 
-class QuizAttemptCubit extends Cubit<QuizAttemptState> {
-  QuizAttemptCubit(this._repo) : super(const QuizAttemptState());
+class QuizInProgress extends QuizSessionLoaded {
+  const QuizInProgress({
+    required super.attempt,
+    required super.index,
+    required super.answers,
+    required super.flagged,
+  });
+}
+
+class QuizSubmitting extends QuizSessionLoaded {
+  const QuizSubmitting({
+    required super.attempt,
+    required super.index,
+    required super.answers,
+    required super.flagged,
+  });
+}
+
+class QuizSubmitted extends QuizSessionLoaded {
+  const QuizSubmitted({
+    required super.attempt,
+    required super.index,
+    required super.answers,
+    required super.flagged,
+    required this.attemptId,
+  });
+  final String attemptId;
+  @override
+  List<Object?> get props => [...super.props, attemptId];
+}
+
+class QuizAttemptCubit extends Cubit<QuizSessionState> {
+  QuizAttemptCubit(this._repo) : super(const QuizSessionLoading());
   final QuizRepository _repo;
 
   /// When the current question was first shown — the anchor for the per-answer
@@ -170,23 +181,23 @@ class QuizAttemptCubit extends Cubit<QuizAttemptState> {
 
   /// Starts (or resumes) an attempt for a quiz. The `/start` endpoint is
   /// resume-or-create: for an in-progress attempt it returns the same attempt
-  /// with its previously-saved answers, which we hydrate into [state.answers].
+  /// with its previously-saved answers, which we hydrate into the state.
   Future<void> start(String quizId) async {
-    emit(state.copyWith(status: Load.loading));
+    emit(const QuizSessionLoading());
     final r = await _repo.start(quizId);
     r.fold(
-      (f) => emit(state.copyWith(status: Load.error, error: f.message)),
-      (a) => _onAttemptLoaded(a),
+      (f) => emit(QuizSessionFailed(f.message)),
+      _onAttemptLoaded,
     );
   }
 
   /// Resumes / loads an existing attempt by id.
   Future<void> load(String attemptId) async {
-    emit(state.copyWith(status: Load.loading));
+    emit(const QuizSessionLoading());
     final r = await _repo.getAttempt(attemptId);
     r.fold(
-      (f) => emit(state.copyWith(status: Load.error, error: f.message)),
-      (a) => _onAttemptLoaded(a),
+      (f) => emit(QuizSessionFailed(f.message)),
+      _onAttemptLoaded,
     );
   }
 
@@ -194,59 +205,79 @@ class QuizAttemptCubit extends Cubit<QuizAttemptState> {
   /// per-question timer (mirrors the frontend's `setAnswers(savedAnswers)`).
   void _onAttemptLoaded(QuizAttempt a) {
     _questionEnteredAt = DateTime.now();
-    emit(state.copyWith(
-      status: Load.loaded,
+    emit(QuizInProgress(
       attempt: a,
+      index: 0,
       answers: Map<String, String>.from(a.savedAnswers),
+      flagged: const {},
     ));
   }
 
   void select(String answer) {
-    final q = state.current;
+    final s = state;
+    if (s is! QuizInProgress) return;
+    final q = s.current;
     if (q == null) return;
-    final next = Map<String, String>.from(state.answers)..[q.id] = answer;
-    emit(state.copyWith(answers: next));
+    final next = Map<String, String>.from(s.answers)..[q.id] = answer;
+    emit(QuizInProgress(
+        attempt: s.attempt, index: s.index, answers: next, flagged: s.flagged));
     // Fire-and-forget per-question save (mirrors the frontend autosave),
     // reporting the seconds spent on this question since it was shown.
-    final attemptId = state.attempt?.attemptId;
-    if (attemptId != null) {
-      final timeSpent = DateTime.now()
-          .difference(_questionEnteredAt)
-          .inSeconds
-          .clamp(0, 1 << 31);
-      _repo.answer(attemptId,
-          quizQuestionId: q.id, selectedAnswer: answer, timeSpent: timeSpent);
-    }
+    final timeSpent = DateTime.now()
+        .difference(_questionEnteredAt)
+        .inSeconds
+        .clamp(0, 1 << 31);
+    _repo.answer(s.attempt.attemptId,
+        quizQuestionId: q.id, selectedAnswer: answer, timeSpent: timeSpent);
   }
 
   void goTo(int i) {
-    if (i >= 0 && i < state.total) {
+    final s = state;
+    if (s is! QuizInProgress) return;
+    if (i >= 0 && i < s.total) {
       _questionEnteredAt = DateTime.now();
-      emit(state.copyWith(index: i));
+      emit(QuizInProgress(
+          attempt: s.attempt, index: i, answers: s.answers, flagged: s.flagged));
     }
   }
 
-  void next() => goTo(state.index + 1);
-  void prev() => goTo(state.index - 1);
+  void next() {
+    final s = state;
+    if (s is QuizInProgress) goTo(s.index + 1);
+  }
+
+  void prev() {
+    final s = state;
+    if (s is QuizInProgress) goTo(s.index - 1);
+  }
 
   /// Toggles "mark for review" for the current question.
   void toggleFlag() {
-    final q = state.current;
+    final s = state;
+    if (s is! QuizInProgress) return;
+    final q = s.current;
     if (q == null) return;
-    final next = Set<String>.from(state.flagged);
+    final next = Set<String>.from(s.flagged);
     next.contains(q.id) ? next.remove(q.id) : next.add(q.id);
-    emit(state.copyWith(flagged: next));
+    emit(QuizInProgress(
+        attempt: s.attempt, index: s.index, answers: s.answers, flagged: next));
   }
 
   Future<void> submit() async {
-    final attemptId = state.attempt?.attemptId;
-    if (attemptId == null) return;
-    emit(state.copyWith(submitting: true));
-    final r = await _repo.submit(attemptId);
+    final s = state;
+    if (s is! QuizInProgress) return;
+    emit(QuizSubmitting(
+        attempt: s.attempt, index: s.index, answers: s.answers, flagged: s.flagged));
+    final r = await _repo.submit(s.attempt.attemptId);
     r.fold(
-      (f) => emit(state.copyWith(submitting: false, error: f.message)),
-      (_) => emit(
-          state.copyWith(submitting: false, submittedAttemptId: attemptId)),
+      (f) => emit(QuizInProgress(
+          attempt: s.attempt, index: s.index, answers: s.answers, flagged: s.flagged)),
+      (_) => emit(QuizSubmitted(
+          attempt: s.attempt,
+          index: s.index,
+          answers: s.answers,
+          flagged: s.flagged,
+          attemptId: s.attempt.attemptId)),
     );
   }
 }

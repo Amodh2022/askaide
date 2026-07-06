@@ -1,292 +1,155 @@
-import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../bloc/auth_bloc.dart';
+import '../cubit/login_form_cubit.dart';
 import '../widgets/auth_field.dart';
 import '../widgets/auth_scaffold.dart';
 
 /// `/login` — mirrors the frontend Login screen: welcome eyebrow, "Sign in."
 /// heading, email + password (with show/hide), keep-signed-in, error banner,
 /// dark pill submit, disabled Google / School SSO, trust signal, signup link.
-class LoginPage extends StatefulWidget {
+class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
-}
-
-class _LoginPageState extends State<LoginPage> {
-  final _email = TextEditingController();
-  final _password = TextEditingController();
-  bool _showPassword = false;
-  bool _keepSignedIn = true;
-  bool _googleLoading = false;
-  String? _emailError;
-  String? _passwordError;
-
-  @override
-  void dispose() {
-    _email.dispose();
-    _password.dispose();
-    super.dispose();
-  }
-
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _googleLoading = true);
-    try {
-      final webClientId = AppConstants.googleClientId;
-      final iosClientId = AppConstants.googleClientIdIos;
-
-      debugPrint('[GoogleSignIn] platform: $defaultTargetPlatform');
-      debugPrint('[GoogleSignIn] webClientId: ${webClientId.isNotEmpty ? webClientId : "(empty — check GOOGLE_CLIENT_ID in .env)"}');
-
-      final String? platformClientId =
-          defaultTargetPlatform == TargetPlatform.iOS && iosClientId.isNotEmpty
-              ? iosClientId
-              : null;
-
-      if (defaultTargetPlatform == TargetPlatform.iOS) {
-        debugPrint('[GoogleSignIn] iOS clientId: ${platformClientId ?? "(none — will rely on GoogleService-Info.plist)"}');
-      }
-
-      // DIAGNOSTIC: try without serverClientId first to isolate whether the
-      // issue is the Android client registration (error 10 without serverClientId)
-      // or the web client ID cross-project mismatch (error 10 only with serverClientId).
-      const testWithoutServerClientId = bool.fromEnvironment('GSI_NO_SERVER_ID');
-      debugPrint('[GoogleSignIn] serverClientId mode: ${testWithoutServerClientId ? "DISABLED (diagnostic)" : "enabled"}');
-
-      final googleSignIn = GoogleSignIn(
-        clientId: platformClientId,
-        serverClientId: (!testWithoutServerClientId && webClientId.isNotEmpty) ? webClientId : null,
-      );
-
-      debugPrint('[GoogleSignIn] calling signIn()...');
-      final account = await googleSignIn.signIn();
-
-      if (account == null) {
-        debugPrint('[GoogleSignIn] signIn() returned null — user cancelled or sign-in was aborted');
-        return;
-      }
-
-      debugPrint('[GoogleSignIn] account: ${account.email}, displayName: ${account.displayName}');
-
-      final auth = await account.authentication;
-      debugPrint('[GoogleSignIn] accessToken: ${auth.accessToken != null ? "present" : "null"}');
-      debugPrint('[GoogleSignIn] idToken: ${auth.idToken != null ? "present (${auth.idToken!.length} chars)" : "NULL — serverClientId may be wrong or missing"}');
-
-      final idToken = auth.idToken;
-      if (idToken == null) {
-        debugPrint('[GoogleSignIn] ERROR: idToken is null. The serverClientId must be a valid Web OAuth 2.0 client ID from Google Cloud Console.');
-        if (mounted) {
-          context.read<AuthBloc>().add(const AuthGoogleLoginRequested(idToken: ''));
-        }
-        return;
-      }
-
-      debugPrint('[GoogleSignIn] dispatching AuthGoogleLoginRequested...');
-      if (!mounted) return;
-      context.read<AuthBloc>().add(AuthGoogleLoginRequested(idToken: idToken));
-    } catch (e, st) {
-      debugPrint('[GoogleSignIn] EXCEPTION: $e');
-      debugPrint('[GoogleSignIn] STACKTRACE: $st');
-      if (mounted) {
-        context.read<AuthBloc>().add(AuthGoogleLoginFailed(message: e.toString()));
-      }
-    } finally {
-      if (mounted) setState(() => _googleLoading = false);
-    }
-  }
-
-  void _submit() {
-    setState(() {
-      _emailError = _email.text.trim().isEmpty ? 'Email or username is required' : null;
-      _passwordError = _password.text.isEmpty ? 'Password is required' : null;
-    });
-    if (_emailError != null || _passwordError != null) return;
-    context.read<AuthBloc>().add(
-          AuthLoginRequested(email: _email.text.trim(), password: _password.text),
-        );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        if (state.status == AuthStatus.unknown) return const Scaffold();
-        return _LoginForm(
-          state: state,
-          emailController: _email,
-          passwordController: _password,
-          showPassword: _showPassword,
-          keepSignedIn: _keepSignedIn,
-          googleLoading: _googleLoading,
-          emailError: _emailError,
-          passwordError: _passwordError,
-          onSubmit: _submit,
-          onGoogleSignIn: _handleGoogleSignIn,
-          onTogglePassword: () => setState(() => _showPassword = !_showPassword),
-          onToggleKeepSignedIn: (v) => setState(() => _keepSignedIn = v),
-        );
-      },
+    return BlocProvider<LoginFormCubit>(
+      create: (_) => sl<LoginFormCubit>(),
+      child: Builder(builder: _buildBody),
     );
   }
-}
 
-/// The login form extracted into its own widget so [BlocBuilder] doesn't
-/// depend on [Theme] through its builder context — prevents infinite widget
-/// mounting recursion on web.
-class _LoginForm extends StatelessWidget {
-  const _LoginForm({
-    required this.state,
-    required this.emailController,
-    required this.passwordController,
-    required this.showPassword,
-    required this.keepSignedIn,
-    required this.googleLoading,
-    required this.emailError,
-    required this.passwordError,
-    required this.onSubmit,
-    required this.onGoogleSignIn,
-    required this.onTogglePassword,
-    required this.onToggleKeepSignedIn,
-  });
+  Widget _buildBody(BuildContext context) {
+    final cubit = context.read<LoginFormCubit>();
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        // Suppress the form during the cold-start token check so it doesn't
+        // flash before the router redirects authenticated users to /study.
+        if (state.status == AuthStatus.unknown) return const Scaffold();
 
-  final AuthState state;
-  final TextEditingController emailController;
-  final TextEditingController passwordController;
-  final bool showPassword;
-  final bool keepSignedIn;
-  final bool googleLoading;
-  final String? emailError;
-  final String? passwordError;
-  final VoidCallback onSubmit;
-  final VoidCallback onGoogleSignIn;
-  final VoidCallback onTogglePassword;
-  final void Function(bool) onToggleKeepSignedIn;
+        final c = context.colors;
+        final busy = state.action == AuthAction.loading;
+        final failed = state.action == AuthAction.failure;
 
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final busy = state.action == AuthAction.loading;
-    final failed = state.action == AuthAction.failure;
-
-    return AuthScaffold(
-      tag: 'SIGN IN',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const AuthEyebrow('WELCOME BACK'),
-          const AuthHeading(lead: 'Sign', emphasis: 'in.'),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 36),
-            child: Text(
-              'The next 10 minutes of practice are waiting.',
-              style: AppTypography.bodyMedium(c.textMuted),
-            ),
-          ),
-
-          AuthField(
-            label: 'EMAIL ADDRESS',
-            controller: emailController,
-            hintText: 'you@school.in',
-            autofocus: true,
-            keyboardType: TextInputType.emailAddress,
-            errorText: emailError,
-          ),
-          const SizedBox(height: 18),
-
-          AuthField(
-            label: 'PASSWORD',
-            controller: passwordController,
-            hintText: '••••••••',
-            obscureText: !showPassword,
-            errorText: passwordError,
-            onSubmitted: (_) => onSubmit(),
-            trailingLabel: GestureDetector(
-              onTap: () => context.go(RoutePaths.forgotPassword),
-              child: Text('Forgot password?',
-                  style: AppTypography.bodySmall(c.accent).copyWith(fontSize: 12)),
-            ),
-            trailing: IconButton(
-              onPressed: onTogglePassword,
-              icon: Icon(showPassword ? LucideIcons.eye : LucideIcons.eyeOff,
-                  size: 18, color: c.textMuted),
-              tooltip: showPassword ? 'Hide password' : 'Show password',
-            ),
-          ),
-          const SizedBox(height: 18),
-
-          // Keep me signed in
-          GestureDetector(
-            onTap: () => onToggleKeepSignedIn(!keepSignedIn),
-            child: Row(
+        return AuthScaffold(
+          tag: 'SIGN IN',
+          child: BlocBuilder<LoginFormCubit, LoginFormState>(
+            builder: (context, formState) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: Checkbox(
-                    value: keepSignedIn,
-                    onChanged: (v) => onToggleKeepSignedIn(v ?? true),
-                    activeColor: c.accent,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
+                const AuthEyebrow('WELCOME BACK'),
+                const AuthHeading(lead: 'Sign', emphasis: 'in.'),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 36),
+                  child: Text(
+                    'The next 10 minutes of practice are waiting.',
+                    style: AppTypography.bodyMedium(c.textMuted),
                   ),
                 ),
-                const SizedBox(width: AppSpacing.xs),
-                Text('Keep me signed in',
-                    style: AppTypography.bodySmall(c.textMuted)),
+
+                AuthField(
+                  label: 'EMAIL ADDRESS',
+                  controller: cubit.email,
+                  hintText: 'you@school.in',
+                  autofocus: true,
+                  keyboardType: TextInputType.emailAddress,
+                  errorText: formState.emailError,
+                ),
+                const SizedBox(height: 18),
+
+                AuthField(
+                  label: 'PASSWORD',
+                  controller: cubit.password,
+                  hintText: '••••••••',
+                  obscureText: !formState.showPassword,
+                  errorText: formState.passwordError,
+                  onSubmitted: (_) => cubit.submit(),
+                  trailingLabel: GestureDetector(
+                    onTap: () => context.go(RoutePaths.forgotPassword),
+                    child: Text('Forgot password?',
+                        style: AppTypography.bodySmall(c.accent).copyWith(fontSize: 12)),
+                  ),
+                  trailing: IconButton(
+                    onPressed: cubit.toggleShowPassword,
+                    icon: Icon(formState.showPassword ? LucideIcons.eye : LucideIcons.eyeOff,
+                        size: 18, color: c.textMuted),
+                    tooltip: formState.showPassword ? 'Hide password' : 'Show password',
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Keep me signed in
+                GestureDetector(
+                  onTap: cubit.toggleKeepSignedIn,
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: Checkbox(
+                          value: formState.keepSignedIn,
+                          onChanged: (v) => cubit.setKeepSignedIn(v ?? true),
+                          activeColor: c.accent,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('Keep me signed in',
+                          style: AppTypography.bodySmall(c.textMuted)),
+                    ],
+                  ),
+                ),
+
+                if (failed) ...[
+                  const SizedBox(height: 18),
+                  _ErrorBanner(message: state.errorMessage),
+                ],
+
+                const SizedBox(height: 18),
+                _SubmitButton(busy: busy, onPressed: busy ? null : cubit.submit),
+
+                const SizedBox(height: 18),
+                _SsoRow(
+                  onGoogleTap: busy ? null : cubit.handleGoogleSignIn,
+                  googleLoading: formState.googleLoading,
+                ),
+
+                const SizedBox(height: 18),
+                Center(
+                  child: Text('🔒 Your data is encrypted and secure',
+                      style: AppTypography.bodySmall(c.textMuted).copyWith(fontSize: 12)),
+                ),
+
+                const SizedBox(height: 18),
+                Center(
+                  child: GestureDetector(
+                    onTap: () => context.go(RoutePaths.signup),
+                    child: RichText(
+                      text: TextSpan(
+                        style: AppTypography.bodyMedium(c.textPrimary)
+                            .copyWith(fontWeight: FontWeight.w500),
+                        children: [
+                          const TextSpan(text: 'New to AskAide? Create an account '),
+                          TextSpan(text: '→', style: AppTypography.serifEmphasis(c.textPrimary, size: 16)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
-
-          if (failed) ...[
-            const SizedBox(height: 18),
-            _ErrorBanner(message: state.errorMessage),
-          ],
-
-          const SizedBox(height: 18),
-          _SubmitButton(busy: busy, onPressed: busy ? null : onSubmit),
-
-          const SizedBox(height: 18),
-          _SsoRow(
-            onGoogleTap: busy ? null : onGoogleSignIn,
-            googleLoading: googleLoading,
-          ),
-
-          const SizedBox(height: 18),
-          Center(
-            child: Text('🔒 Your data is encrypted and secure',
-                style: AppTypography.bodySmall(c.textMuted).copyWith(fontSize: 12)),
-          ),
-
-          const SizedBox(height: 18),
-          Center(
-            child: GestureDetector(
-              onTap: () => context.go(RoutePaths.signup),
-              child: RichText(
-                text: TextSpan(
-                  style: AppTypography.bodyMedium(c.textPrimary)
-                      .copyWith(fontWeight: FontWeight.w500),
-                  children: [
-                    const TextSpan(text: 'New to AskAide? Create an account '),
-                    TextSpan(text: '→', style: AppTypography.serifEmphasis(c.textPrimary, size: 16)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xs),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -305,7 +168,7 @@ class _ErrorBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: c.danger.withValues(alpha: 0.08),
         border: Border.all(color: c.danger),
-        borderRadius: AppRadii.cardR,
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,7 +179,7 @@ class _ErrorBanner extends StatelessWidget {
                 : "Couldn't sign in — check your email and password.",
             style: AppTypography.bodySmall(c.danger),
           ),
-          const SizedBox(height: AppSpacing.xxs),
+          const SizedBox(height: 4),
           GestureDetector(
             onTap: () => context.go(RoutePaths.forgotPassword),
             child: Text('Forgot password?',
@@ -368,7 +231,7 @@ class _SubmitButton extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text('Sign in to your account', style: AppTypography.button(c.bgPrimary)),
-                  const SizedBox(width: AppSpacing.xs),
+                  const SizedBox(width: 8),
                   Text('→', style: AppTypography.serifEmphasis(c.bgPrimary, size: 16)),
                 ],
               ),
@@ -425,7 +288,7 @@ class _SsoRow extends StatelessWidget {
                   ],
                 ),
         ),
-        const SizedBox(width: AppSpacing.xs),
+        const SizedBox(width: 8),
         btn(child: Text('🏫 School SSO', style: AppTypography.bodySmall(c.textPrimary))),
       ],
     );

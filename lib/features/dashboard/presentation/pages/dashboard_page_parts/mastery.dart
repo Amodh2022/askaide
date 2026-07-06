@@ -4,39 +4,13 @@ class _MasteryOverview extends StatelessWidget {
   const _MasteryOverview({required this.data});
   final DashboardData data;
 
-  static const _states = ['WEAK', 'LEARNING', 'PRACTICING', 'MASTERED'];
-  static const _emoji = {
-    'WEAK': '🔴',
-    'LEARNING': '🟡',
-    'PRACTICING': '🟢',
-    'MASTERED': '🏆',
-  };
-  static const _label = {
-    'WEAK': 'Weak',
-    'LEARNING': 'Learning',
-    'PRACTICING': 'Practicing',
-    'MASTERED': 'Mastered',
-  };
+  static const _states = MasteryVisuals.states;
 
   static String _stateOf(double mastery) {
     if (mastery < 0.4) return 'WEAK';
     if (mastery < 0.6) return 'LEARNING';
     if (mastery < 0.8) return 'PRACTICING';
     return 'MASTERED';
-  }
-
-  Color _stateColor(BuildContext context, String state) {
-    final c = context.colors;
-    switch (state) {
-      case 'WEAK':
-        return c.error;
-      case 'LEARNING':
-        return c.warning;
-      case 'PRACTICING':
-        return c.success;
-      default:
-        return c.accentSecondary;
-    }
   }
 
   @override
@@ -102,14 +76,16 @@ class _MasteryOverview extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        Text(_emoji[_states[i]]!, style: const TextStyle(fontSize: 18)),
+                        Text(MasteryVisuals.emojiFor(_states[i]),
+                            style: const TextStyle(fontSize: 18)),
                         const SizedBox(height: 2),
                         Text('${counts[_states[i]]}',
                             style: AppTypography.statNumber(c.textPrimary, size: 18)),
                         const SizedBox(height: 2),
-                        Text(_label[_states[i]]!.toUpperCase(),
+                        Text(MasteryVisuals.labelFor(_states[i]).toUpperCase(),
                             textAlign: TextAlign.center,
-                            style: AppTypography.mono(_stateColor(context, _states[i]), size: 9)),
+                            style: AppTypography.mono(
+                                MasteryVisuals.colorFor(_states[i], c), size: 9)),
                       ],
                     ),
                   ),
@@ -130,7 +106,7 @@ class _MasteryOverview extends StatelessWidget {
                       if ((counts[s] ?? 0) > 0)
                         Expanded(
                           flex: counts[s]!,
-                          child: Container(color: _stateColor(context, s)),
+                          child: Container(color: MasteryVisuals.colorFor(s, c)),
                         ),
                   ],
                 ),
@@ -145,14 +121,14 @@ class _MasteryOverview extends StatelessWidget {
               color: c.error,
               title: 'NEEDS WORK',
               subjects: weakest,
-              stateColor: _stateColor,
+              stateColor: (ctx, s) => MasteryVisuals.colorFor(s, ctx.colors),
             );
             final strongest0 = _TopicList(
               icon: LucideIcons.arrowUpRight,
               color: c.success,
               title: 'STRONGEST',
               subjects: strongest,
-              stateColor: _stateColor,
+              stateColor: (ctx, s) => MasteryVisuals.colorFor(s, ctx.colors),
             );
             if (twoCol) {
               return Row(

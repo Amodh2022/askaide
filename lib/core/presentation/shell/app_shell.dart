@@ -6,9 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../features/profile/domain/entities/account_type.dart';
-import '../../../features/profile/domain/entities/user.dart';
 import '../../../features/profile/presentation/cubit/profile_cubit.dart';
 import '../../../features/session/presentation/bloc/session_bloc.dart';
+import '../../di/injection.dart';
 import '../../router/route_paths.dart';
 import '../../sound/sound_cubit.dart';
 import '../../theme/app_colors.dart';
@@ -17,7 +17,8 @@ import '../../theme/app_typography.dart';
 import '../../theme/theme_cubit.dart';
 import '../../utils/responsive.dart';
 import '../widgets/brand_logo.dart';
-import '../widgets/confirm_dialog.dart';
+import 'cubit/nav_visibility_cubit.dart';
+import 'cubit/sidebar_cubit.dart';
 import 'nav_items.dart';
 import 'widgets/app_sidebar.dart';
 import 'widgets/mobile_bottom_nav.dart';
@@ -71,47 +72,59 @@ class _PublicScaffold extends StatelessWidget {
   }
 }
 
-class _AuthenticatedScaffold extends StatefulWidget {
+class _AuthenticatedScaffold extends StatelessWidget {
   const _AuthenticatedScaffold({required this.child});
   final Widget child;
 
-  @override
-  State<_AuthenticatedScaffold> createState() => _AuthenticatedScaffoldState();
-}
-
-class _AuthenticatedScaffoldState extends State<_AuthenticatedScaffold> {
-  bool _sidebarOpen = true;
+  /// Sidebar collapsible on tablet-width screens (768–1024px).
+  /// On larger desktops the sidebar is always pinned open.
+  bool _isCollapsible(BuildContext context) => context.screenWidth < 1024;
 
   @override
   Widget build(BuildContext context) {
-    if (context.isDesktop) {
+    if (!context.isDesktop) return _MobileAuthScaffold(child: child);
+
+    if (!_isCollapsible(context)) {
       return Scaffold(
         body: SafeArea(
           bottom: false,
           child: Row(
             children: [
-              _CollapsibleSidebar(
-                open: _sidebarOpen,
-                onToggle: () => setState(() => _sidebarOpen = !_sidebarOpen),
-              ),
-              Expanded(
-                child: Stack(
-                  children: [
-                    Positioned.fill(child: widget.child),
-                  ],
-                ),
-              ),
+              const AppSidebar(),
+              Expanded(child: Stack(children: [Positioned.fill(child: child)])),
             ],
           ),
         ),
       );
     }
 
-    return _MobileAuthScaffold(child: widget.child);
+    return BlocProvider<SidebarCubit>(
+      create: (_) => sl<SidebarCubit>(),
+      child: Builder(
+        builder: (context) => Scaffold(
+          body: SafeArea(
+            bottom: false,
+            child: Row(
+              children: [
+                BlocBuilder<SidebarCubit, bool>(
+                  builder: (context, open) => _CollapsibleSidebar(
+                    open: open,
+                    onToggle: () => context.read<SidebarCubit>().toggle(),
+                  ),
+                ),
+                Expanded(
+                  child: Stack(children: [Positioned.fill(child: child)]),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
-/// Animated sidebar that collapses to icon-only mode (~64px) on all desktop sizes.
+/// Animated sidebar that collapses to icon-only mode (~64px) on tablets.
 class _CollapsibleSidebar extends StatelessWidget {
   const _CollapsibleSidebar({required this.open, required this.onToggle});
   final bool open;
@@ -125,11 +138,7 @@ class _CollapsibleSidebar extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOut,
       width: open ? AppSpacing.sidebarWidth : _collapsedWidth,
-      child: RepaintBoundary(
-        child: open
-            ? AppSidebar(onCollapse: onToggle)
-            : _CollapsedSidebar(onToggle: onToggle),
-      ),
+      child: open ? const AppSidebar() : _CollapsedSidebar(onToggle: onToggle),
     );
   }
 }
@@ -142,7 +151,7 @@ class _CollapsedSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final user = context.select<ProfileCubit, User?>((cu) => cu.state.user);
+    final user = context.watch<ProfileCubit>().state.user;
     final role = user?.accountType ?? AccountType.student;
     final items = navItemsFor(role);
     final location = GoRouterState.of(context).uri.path;
@@ -157,30 +166,9 @@ class _CollapsedSidebar extends StatelessWidget {
       child: Column(
         children: [
           const SizedBox(height: 18),
-          // Brand mark only (full wordmark doesn't fit in 64px rail)
-          Builder(builder: (context) {
-            final c = context.colors;
-            final isDarkMark =
-                Theme.of(context).brightness == Brightness.dark;
-            return Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: c.accent,
-                borderRadius: BorderRadius.circular(28 * 0.28),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                'a',
-                style: AppTypography.h4(
-                  isDarkMark
-                      ? const Color(0xFF14140F)
-                      : Colors.white,
-                ).copyWith(fontSize: 28 * 0.62, height: 1),
-              ),
-            );
-          }),
-          const SizedBox(height: AppSpacing.md),
+          // Logo
+          const BrandLogo(size: 22),
+          const SizedBox(height: 16),
           // User avatar only
           CircleAvatar(
             radius: 16,
@@ -190,9 +178,9 @@ class _CollapsedSidebar extends StatelessWidget {
               style: AppTypography.labelLarge(c.accent).copyWith(fontSize: 11),
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
+          const SizedBox(height: 16),
           Divider(height: 1, color: c.borderSubtle),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 8),
           // Nav items
           Expanded(
             child: ListView(
@@ -208,7 +196,7 @@ class _CollapsedSidebar extends StatelessWidget {
             ),
           ),
           Divider(height: 1, color: c.borderSubtle),
-          const SizedBox(height: AppSpacing.xxs),
+          const SizedBox(height: 4),
           // Theme toggle
           _CollapsedIcon(
             icon: isDark ? LucideIcons.sun : LucideIcons.moon,
@@ -226,7 +214,7 @@ class _CollapsedSidebar extends StatelessWidget {
             color: c.accent,
             onTap: onToggle,
           ),
-          const SizedBox(height: AppSpacing.xs),
+          const SizedBox(height: 8),
         ],
       ),
     );
@@ -251,23 +239,9 @@ class _CollapsedNavIcon extends StatelessWidget {
           borderRadius: AppRadii.modalR,
           child: InkWell(
             borderRadius: AppRadii.modalR,
-            onTap: () async {
+            onTap: () {
               context.read<SoundCubit>().playClick();
-              final sessionBloc = context.read<SessionBloc>();
-              if (sessionBloc.state.panel == SessionPanel.practice) {
-                final confirmed = await showConfirmDialog(
-                  context,
-                  title: 'End Session?',
-                  message: 'Do you want to end your current practice session?',
-                  confirmLabel: 'End Session',
-                  destructive: true,
-                );
-                if (!confirmed || !context.mounted) return;
-                // End session: reset to config panel, stay on study.
-                sessionBloc.add(const BackToConfigRequested());
-                return;
-              }
-              if (context.mounted) context.go(item.path);
+              context.go(item.path);
             },
             child: SizedBox(
               height: 40,
@@ -338,16 +312,9 @@ class _CollapsedIcon extends StatelessWidget {
 /// On iOS the glass bottom nav floats over the body (so content scrolls behind
 /// it with no opaque background) and auto-hides on scroll-down / reveals on
 /// scroll-up. Other platforms keep the Material bar in the normal scaffold slot.
-class _MobileAuthScaffold extends StatefulWidget {
+class _MobileAuthScaffold extends StatelessWidget {
   const _MobileAuthScaffold({required this.child});
   final Widget child;
-
-  @override
-  State<_MobileAuthScaffold> createState() => _MobileAuthScaffoldState();
-}
-
-class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
-  bool _navVisible = true;
 
   bool get _isIOS => defaultTargetPlatform == TargetPlatform.iOS;
 
@@ -365,12 +332,13 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
   }
 
   /// Hide the floating nav while scrolling down, reveal it while scrolling up.
-  bool _onScroll(ScrollNotification n) {
+  bool _onScroll(BuildContext context, ScrollNotification n) {
     if (n is UserScrollNotification) {
-      if (n.direction == ScrollDirection.reverse && _navVisible) {
-        setState(() => _navVisible = false);
-      } else if (n.direction == ScrollDirection.forward && !_navVisible) {
-        setState(() => _navVisible = true);
+      final cubit = context.read<NavVisibilityCubit>();
+      if (n.direction == ScrollDirection.reverse) {
+        cubit.hide();
+      } else if (n.direction == ScrollDirection.forward) {
+        cubit.show();
       }
     }
     return false;
@@ -378,6 +346,13 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<NavVisibilityCubit>(
+      create: (_) => sl<NavVisibilityCubit>(),
+      child: Builder(builder: (context) => _buildScaffold(context)),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     final c = context.colors;
     final location = GoRouterState.of(context).uri.path;
     final showNav = _showBottomNav(location);
@@ -420,19 +395,21 @@ class _MobileAuthScaffoldState extends State<_MobileAuthScaffold> {
             Positioned.fill(
               child: _isIOS
                   ? NotificationListener<ScrollNotification>(
-                      onNotification: _onScroll,
-                      child: widget.child,
+                      onNotification: (n) => _onScroll(context, n),
+                      child: child,
                     )
-                  : widget.child,
+                  : child,
             ),
             if (_isIOS && showNav && !isPracticing)
               Align(
                 alignment: Alignment.bottomCenter,
-                child: AnimatedSlide(
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOut,
-                  offset: _navVisible ? Offset.zero : const Offset(0, 1),
-                  child: const MobileBottomNav(),
+                child: BlocBuilder<NavVisibilityCubit, bool>(
+                  builder: (context, navVisible) => AnimatedSlide(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOut,
+                    offset: navVisible ? Offset.zero : const Offset(0, 1),
+                    child: const MobileBottomNav(),
+                  ),
                 ),
               ),
             // AiAssistantWidget(bottomOffset: _assistantBottomOffset(context)),

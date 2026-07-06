@@ -16,6 +16,7 @@ import '../../../session/domain/entities/study_taxonomy.dart' as tax;
 import '../../../session/presentation/bloc/session_bloc.dart';
 import '../../data/progress_models.dart';
 import '../../data/progress_repository.dart';
+import '../cubit/ai_coach_cubit.dart';
 import '../cubit/progress_cubit.dart';
 
 /// Shimmer skeleton matching the progress page's layout: selectors, gauge cards,
@@ -1178,44 +1179,22 @@ class _TopicRow extends StatelessWidget {
 }
 
 /// Collapsible "AI Learning Coach" card that lazily loads a markdown insight.
-class _AiCoachCard extends StatefulWidget {
+class _AiCoachCard extends StatelessWidget {
   const _AiCoachCard({required this.loader});
   final Future<String?> Function() loader;
-  @override
-  State<_AiCoachCard> createState() => _AiCoachCardState();
-}
-
-class _AiCoachCardState extends State<_AiCoachCard> {
-  bool _open = false;
-  bool _loading = false;
-  String? _insight;
-  String? _error;
-
-  Future<void> _toggle() async {
-    if (_insight != null) {
-      setState(() => _open = !_open);
-      return;
-    }
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    final res = await widget.loader();
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      if (res == null || res.isEmpty) {
-        _error = 'Failed to load AI insight. Please try again.';
-      } else {
-        _insight = res;
-        _open = true;
-      }
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<AiCoachCubit>(
+      create: (_) => sl<AiCoachCubit>(),
+      child: Builder(builder: _buildCard),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
     final c = context.colors;
+    final cubit = context.read<AiCoachCubit>();
+    final state = context.watch<AiCoachCubit>().state;
     return Container(
       width: double.infinity,
       decoration: context.cardDecoration(),
@@ -1223,7 +1202,7 @@ class _AiCoachCardState extends State<_AiCoachCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           InkWell(
-            onTap: _loading ? null : _toggle,
+            onTap: state.loading ? null : () => cubit.toggle(loader),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -1258,9 +1237,9 @@ class _AiCoachCardState extends State<_AiCoachCard> {
                         ]),
                         const SizedBox(height: 2),
                         Text(
-                          _loading
+                          state.loading
                               ? 'Analyzing your progress...'
-                              : _open
+                              : state.open
                                   ? 'Click to hide insights'
                                   : 'Get personalized study recommendations',
                           style: AppTypography.bodySmall(c.textMuted),
@@ -1268,21 +1247,21 @@ class _AiCoachCardState extends State<_AiCoachCard> {
                       ],
                     ),
                   ),
-                  if (_loading)
+                  if (state.loading)
                     const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2))
                   else
                     Icon(
-                        _open ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                        state.open ? LucideIcons.chevronUp : LucideIcons.chevronDown,
                         size: 18,
                         color: c.accent),
                 ],
               ),
             ),
           ),
-          if (_open && _insight != null)
+          if (state.open && state.insight != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Container(
@@ -1292,13 +1271,13 @@ class _AiCoachCardState extends State<_AiCoachCard> {
                   border: Border.all(color: c.border),
                   borderRadius: AppRadii.cardR,
                 ),
-                child: MarkdownBody(data: _insight!),
+                child: MarkdownBody(data: state.insight!),
               ),
             ),
-          if (_error != null)
+          if (state.error != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Text(_error!, style: AppTypography.bodySmall(c.danger)),
+              child: Text(state.error!, style: AppTypography.bodySmall(c.danger)),
             ),
         ],
       ),

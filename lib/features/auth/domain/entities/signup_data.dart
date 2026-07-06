@@ -21,8 +21,10 @@ class SignupData extends Equatable {
   final String accountType;
   final bool marketingOptIn;
 
+  static const int minPasswordLength = 6;
+
   bool get passwordsMatch => password == confirmPassword;
-  bool get isPasswordValid => password.length >= 6;
+  bool get isPasswordValid => password.length >= minPasswordLength;
 
   SignupData copyWith({
     String? name,

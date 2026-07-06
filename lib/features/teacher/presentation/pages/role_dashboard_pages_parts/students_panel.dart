@@ -1,49 +1,8 @@
 part of '../role_dashboard_pages.dart';
 
-class _TeacherStudentsView extends StatefulWidget {
+class _TeacherStudentsView extends StatelessWidget {
   const _TeacherStudentsView({required this.subjectId});
   final String subjectId;
-
-  @override
-  State<_TeacherStudentsView> createState() => _TeacherStudentsViewState();
-}
-
-class _TeacherStudentsViewState extends State<_TeacherStudentsView> {
-  String _search = '';
-  String _statusFilter = 'all';
-  String _sortBy = 'mastery';
-  bool _sortDesc = true;
-
-  List<StudentRow> _filter(List<StudentRow> list) {
-    var result = [...list];
-    if (_search.isNotEmpty) {
-      final q = _search.toLowerCase();
-      result = result.where((s) =>
-          s.name.toLowerCase().contains(q) || s.email.toLowerCase().contains(q)).toList();
-    }
-    if (_statusFilter != 'all') {
-      result = result.where((s) {
-        final st = s.status.toUpperCase();
-        switch (_statusFilter) {
-          case 'struggling': return st.contains('NEEDS') || st.contains('WEAK');
-          case 'top': return st == 'STRONG';
-          case 'inactive': return st == 'INACTIVE' || s.daysInactive > 3;
-          default: return true;
-        }
-      }).toList();
-    }
-    result.sort((a, b) {
-      int cmp;
-      switch (_sortBy) {
-        case 'name': cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
-        case 'coverage': cmp = a.coverage.compareTo(b.coverage);
-        case 'lastActive': cmp = a.lastPracticed.compareTo(b.lastPracticed);
-        default: cmp = a.mastery.compareTo(b.mastery);
-      }
-      return _sortDesc ? -cmp : cmp;
-    });
-    return result;
-  }
 
   String _lastActive(String iso) {
     if (iso.isEmpty) return 'Never';
@@ -59,10 +18,20 @@ class _TeacherStudentsViewState extends State<_TeacherStudentsView> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<StudentFilterCubit>(
+      create: (_) => sl<StudentFilterCubit>(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
+    final filterCubit = context.read<StudentFilterCubit>();
+    final filterState = context.watch<StudentFilterCubit>().state;
     return BlocBuilder<TeacherStudentsCubit, TeacherStudentsState>(
       builder: (context, state) {
-        final students = state.status == TLoad.loaded ? _filter(state.students) : <StudentRow>[];
+        final students =
+            state.status == TLoad.loaded ? filterCubit.apply(state.students) : <StudentRow>[];
 
         return SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
@@ -73,7 +42,7 @@ class _TeacherStudentsViewState extends State<_TeacherStudentsView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GestureDetector(
-                    onTap: () => context.go('/teacher/subject/${widget.subjectId}'),
+                    onTap: () => context.go('/teacher/subject/$subjectId'),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -92,7 +61,7 @@ class _TeacherStudentsViewState extends State<_TeacherStudentsView> {
 
                   // Filters
                   TextField(
-                    onChanged: (v) => setState(() => _search = v),
+                    onChanged: filterCubit.setSearch,
                     style: AppTypography.bodySmall(c.textPrimary),
                     cursorColor: c.accent,
                     decoration: InputDecoration(
@@ -113,32 +82,32 @@ class _TeacherStudentsViewState extends State<_TeacherStudentsView> {
                     children: [
                       Expanded(
                         child: _DropdownPill<String>(
-                          value: _statusFilter,
+                          value: filterState.statusFilter,
                           items: const [
                             ('all', 'All Students'),
                             ('struggling', 'Struggling'),
                             ('top', 'Top Performers'),
                             ('inactive', 'Inactive'),
                           ],
-                          onChanged: (v) => setState(() => _statusFilter = v),
+                          onChanged: filterCubit.setStatusFilter,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: _DropdownPill<String>(
-                          value: _sortBy,
+                          value: filterState.sortBy,
                           items: const [
                             ('mastery', 'Sort: Mastery'),
                             ('name', 'Sort: Name'),
                             ('coverage', 'Sort: Coverage'),
                             ('lastActive', 'Sort: Last Active'),
                           ],
-                          onChanged: (v) => setState(() => _sortBy = v),
+                          onChanged: filterCubit.setSortBy,
                         ),
                       ),
                       const SizedBox(width: 8),
                       GestureDetector(
-                        onTap: () => setState(() => _sortDesc = !_sortDesc),
+                        onTap: filterCubit.toggleSortDesc,
                         child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
@@ -190,7 +159,7 @@ class _TeacherStudentsViewState extends State<_TeacherStudentsView> {
                           for (int i = 0; i < students.length; i++) ...[
                             _StudentTableRow(
                               student: students[i],
-                              subjectId: widget.subjectId,
+                              subjectId: subjectId,
                               lastActiveLabel: _lastActive(students[i].lastPracticed),
                             ),
                             if (i < students.length - 1) Divider(height: 1, color: c.border),

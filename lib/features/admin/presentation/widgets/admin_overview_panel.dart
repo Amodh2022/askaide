@@ -8,7 +8,9 @@ import '../../../../core/presentation/widgets/page_header.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/theme/state_visuals.dart';
 import '../../data/admin_feature.dart';
+import '../cubit/admin_overview_cubit.dart';
 
 /// Shimmer skeleton mirroring the admin overview's metric cards + charts layout.
 class _AdminOverviewSkeleton extends StatelessWidget {
@@ -137,134 +139,23 @@ class _AdminOverviewSkeleton extends StatelessWidget {
 /// Engagement sections with real charts (donut/bar/line/stacked) and the
 /// coverage-by-class & recent-failures tables. Date range + class/subject
 /// filters drive the filtered endpoints.
-class AdminOverviewPanel extends StatefulWidget {
+class AdminOverviewPanel extends StatelessWidget {
   const AdminOverviewPanel({super.key});
 
   @override
-  State<AdminOverviewPanel> createState() => _AdminOverviewPanelState();
-}
-
-// React PALETTE: indigo, green, amber, red, cyan, purple.
-const _palette = [
-  Color(0xFF6366F1),
-  Color(0xFF10B981),
-  Color(0xFFF59E0B),
-  Color(0xFFEF4444),
-  Color(0xFF06B6D4),
-  Color(0xFF8B5CF6),
-];
-const _green = Color(0xFF10B981);
-const _amber = Color(0xFFF59E0B);
-const _red = Color(0xFFEF4444);
-const _cyan = Color(0xFF06B6D4);
-
-Color _difficultyColor(String d) {
-  switch (d.toLowerCase()) {
-    case 'easy':
-      return _green;
-    case 'medium':
-      return _amber;
-    case 'hard':
-      return _red;
-    default:
-      return _palette[4];
-  }
-}
-
-Color _masteryColor(String s) {
-  switch (s.toUpperCase()) {
-    case 'WEAK':
-      return _red;
-    case 'LEARNING':
-      return _amber;
-    case 'PRACTICING':
-      return _cyan;
-    case 'MASTERED':
-      return _green;
-    default:
-      return _palette[5];
-  }
-}
-
-class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
-  final _repo = sl<AdminRepository>();
-
-  late DateTimeRange _range;
-  String? _classId;
-  String? _subjectId;
-  List<AdminRecord> _subjects = const [];
-
-  Map<String, dynamic>? _overview, _users, _content, _jobs, _engagement;
-  bool _loading = true;
-  bool _error = false;
-  TimeOfDay? _updatedAt;
-
-  @override
-  void initState() {
-    super.initState();
-    final now = DateTime.now();
-    _range = DateTimeRange(start: now.subtract(const Duration(days: 29)), end: now);
-    _load();
-  }
-
-  static String _fmt(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = false;
-    });
-    final from = _fmt(_range.start);
-    final to = _fmt(_range.end);
-    final results = await Future.wait([
-      _repo.overviewMetrics(),
-      _repo.userMetrics(from: from, to: to),
-      _repo.contentMetrics(classId: _classId, subjectId: _subjectId),
-      _repo.questionJobMetrics(),
-      _repo.engagementMetrics(from: from, to: to, classId: _classId, subjectId: _subjectId),
-    ]);
-    if (!mounted) return;
-    final maps = results
-        .map((r) => r.fold<Map<String, dynamic>?>((_) => null, (m) => m))
-        .toList();
-    setState(() {
-      _loading = false;
-      _error = results.every((r) => r.isLeft());
-      _overview = maps[0];
-      _users = maps[1];
-      _content = maps[2];
-      _jobs = maps[3];
-      _engagement = maps[4];
-      _updatedAt = TimeOfDay.now();
-    });
-  }
-
-  Future<void> _onClass(String? classId) async {
-    setState(() {
-      _classId = classId;
-      _subjectId = null;
-      _subjects = const [];
-    });
-    if (classId != null) {
-      final r = await _repo.subjects(classId);
-      if (mounted) setState(() => _subjects = r.getOrElse(() => const []));
-    }
-    _load();
-  }
-
-  void _quickRange(int days) {
-    final now = DateTime.now();
-    setState(() => _range =
-        DateTimeRange(start: now.subtract(Duration(days: days - 1)), end: now));
-    _load();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    return BlocProvider<AdminOverviewCubit>(
+      create: (_) => sl<AdminOverviewCubit>()..load(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-    if (_loading) return const _AdminOverviewSkeleton();
-    if (_error) {
+    final cubit = context.read<AdminOverviewCubit>();
+    final state = context.watch<AdminOverviewCubit>().state;
+    if (state.loading) return const _AdminOverviewSkeleton();
+    if (state.error) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -276,7 +167,7 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
             ),
             const SizedBox(height: 12),
             FilledButton(
-              onPressed: _load,
+              onPressed: cubit.load,
               style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
               child: const Text('Retry'),
             ),
@@ -289,19 +180,23 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       children: [
-        _toolbar(c),
+        _toolbar(context, c, cubit, state),
         const SizedBox(height: 16),
-        _glance(c),
-        _section(c, 'USERS & GROWTH', 'Accounts, roles, and signups', _usersBody(c)),
-        _section(c, 'CONTENT & CATALOG', 'Curriculum coverage and question bank', _contentBody(c)),
-        _section(c, 'QUESTION GENERATION HEALTH', 'AI generation job success and failures', _jobsBody(c)),
-        _section(c, 'ENGAGEMENT & LEARNING', 'Activity, mastery, and feedback', _engagementBody(c)),
+        _glance(context, c, state),
+        _section(c, 'USERS & GROWTH', 'Accounts, roles, and signups', _usersBody(context, c, state)),
+        _section(c, 'CONTENT & CATALOG', 'Curriculum coverage and question bank',
+            _contentBody(context, c, state)),
+        _section(c, 'QUESTION GENERATION HEALTH', 'AI generation job success and failures',
+            _jobsBody(context, c, state)),
+        _section(c, 'ENGAGEMENT & LEARNING', 'Activity, mastery, and feedback',
+            _engagementBody(context, c, state)),
       ],
     );
   }
 
   // ── Toolbar ──
-  Widget _toolbar(AskAideColors c) {
+  Widget _toolbar(
+      BuildContext context, AskAideColors c, AdminOverviewCubit cubit, AdminOverviewState state) {
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       spacing: 8,
@@ -313,46 +208,41 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
               context: context,
               firstDate: DateTime(2020),
               lastDate: DateTime.now(),
-              initialDateRange: _range,
+              initialDateRange: state.range,
             );
-            if (picked != null) {
-              setState(() => _range = picked);
-              _load();
-            }
+            if (picked != null) cubit.setRange(picked);
           },
           icon: const Icon(Icons.date_range, size: 16),
-          label: Text('${_fmt(_range.start)} → ${_fmt(_range.end)}',
+          label: Text(
+              '${AdminOverviewCubit.fmtDate(state.range.start)} → ${AdminOverviewCubit.fmtDate(state.range.end)}',
               style: AppTypography.bodySmall(c.textSecondary)),
         ),
         for (final n in const [7, 30, 90])
           OutlinedButton(
-            onPressed: () => _quickRange(n),
+            onPressed: () => cubit.quickRange(n),
             style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
             child: Text('${n}D', style: AppTypography.mono(c.textMuted, size: 11)),
           ),
-        _filterDropdown('All classes', _classId, context.watch<AdminCubit>().state.classes, _onClass),
+        _filterDropdown(context, 'All classes', state.classId,
+            context.watch<AdminCubit>().state.classes, cubit.selectClass),
         _filterDropdown(
-            _classId == null ? 'Select class first' : 'All subjects',
-            _subjectId,
-            _subjects,
-            _classId == null
-                ? null
-                : (v) {
-                    setState(() => _subjectId = v);
-                    _load();
-                  }),
+            context,
+            state.classId == null ? 'Select class first' : 'All subjects',
+            state.subjectId,
+            state.subjects,
+            state.classId == null ? null : cubit.selectSubject),
         IconButton(
           tooltip: 'Refresh',
-          onPressed: _load,
+          onPressed: cubit.load,
           icon: Icon(Icons.refresh, size: 18, color: c.accent),
         ),
-        if (_updatedAt != null)
-          Text('Updated ${_updatedAt!.format(context)}', style: AppTypography.mono(c.textMuted, size: 10)),
+        if (state.updatedAt != null)
+          Text('Updated ${state.updatedAt!.format(context)}', style: AppTypography.mono(c.textMuted, size: 10)),
       ],
     );
   }
 
-  Widget _filterDropdown(String hint, String? value, List<AdminRecord> items,
+  Widget _filterDropdown(BuildContext context, String hint, String? value, List<AdminRecord> items,
       ValueChanged<String?>? onChanged) {
     final c = context.colors;
     return Container(
@@ -382,10 +272,10 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
   }
 
   // ── Platform at a glance ──
-  Widget _glance(AskAideColors c) {
-    final o = _overview ?? const {};
+  Widget _glance(BuildContext context, AskAideColors c, AdminOverviewState state) {
+    final o = state.overview ?? const {};
     final totalChapters = o.intval(['totalChapters']);
-    return _cardGrid([
+    return _cardGrid(context, [
       _Stat('Total Users', '${o.intval(['totalUsers'])}',
           sub: '${o.intval(['totalStudents'])} students · ${o.intval(['totalTeachers'])} teachers'),
       _Stat('Schools', '${o.intval(['totalSchools'])}'),
@@ -398,8 +288,8 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
   }
 
   // ── Users & Growth ──
-  Widget _usersBody(AskAideColors c) {
-    final u = _users ?? const {};
+  Widget _usersBody(BuildContext context, AskAideColors c, AdminOverviewState state) {
+    final u = state.users ?? const {};
     final byRole = (u['byRole'] as List?) ?? const [];
     final status = (u['status'] as Map?) ?? const {};
     final signups = (u['signupsByDay'] as List?) ?? const [];
@@ -420,7 +310,7 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _cardGrid([
+        _cardGrid(context, [
           _Stat('Total Users', '$totalUsers'),
           _Stat('Active Users', '${status.intval(['active'])}'),
           _Stat('Approved Users', '${status.intval(['approved'])}'),
@@ -442,8 +332,8 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
   }
 
   // ── Content & Catalog ──
-  Widget _contentBody(AskAideColors c) {
-    final ct = _content ?? const {};
+  Widget _contentBody(BuildContext context, AskAideColors c, AdminOverviewState state) {
+    final ct = state.content ?? const {};
     final counts = (ct['counts'] as Map?) ?? const {};
     final coverage = (ct['coverage'] as Map?) ?? const {};
     final bank = (ct['questionBank'] as List?) ?? const [];
@@ -465,13 +355,14 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
     ];
     final diffSlices = [
       for (final d in difficulties)
-        _Slice(d, (pivot[d]?.values.fold<int>(0, (s, v) => s + v) ?? 0).toDouble(), _difficultyColor(d)),
+        _Slice(d, (pivot[d]?.values.fold<int>(0, (s, v) => s + v) ?? 0).toDouble(),
+            DifficultyVisuals.colorFor(d, c)),
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _cardGrid([
+        _cardGrid(context, [
           _Stat('Classes', '${counts.intval(['classes'])}'),
           _Stat('Subjects', '${counts.intval(['subjects'])}'),
           _Stat('Chapters', '${counts.intval(['chapters'])}'),
@@ -516,8 +407,8 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
   }
 
   // ── Question Generation Health ──
-  Widget _jobsBody(AskAideColors c) {
-    final j = _jobs ?? const {};
+  Widget _jobsBody(BuildContext context, AskAideColors c, AdminOverviewState state) {
+    final j = state.jobs ?? const {};
     final byStatus = (j['byStatus'] as Map?) ?? const {};
     final failures = (j['recentFailures'] as List?) ?? const [];
     final failPct = j.intval(['failureRatePct']);
@@ -531,7 +422,7 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _cardGrid([
+        _cardGrid(context, [
           _Stat('Total Jobs', '${j.intval(['total'])}'),
           _Stat('Completed', '${byStatus.intval(['completed'])}', color: _green),
           _Stat('Failed', '${byStatus.intval(['failed'])}', color: _red),
@@ -547,8 +438,8 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
   }
 
   // ── Engagement & Learning ──
-  Widget _engagementBody(AskAideColors c) {
-    final e = _engagement ?? const {};
+  Widget _engagementBody(BuildContext context, AskAideColors c, AdminOverviewState state) {
+    final e = state.engagement ?? const {};
     final active = (e['activeLearners'] as Map?) ?? const {};
     final accuracy = (e['accuracy'] as Map?) ?? const {};
     final streaks = (e['streaks'] as Map?) ?? const {};
@@ -571,7 +462,8 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
 
     final masterySegs = [
       for (final m in mastery.whereType<Map>())
-        _Slice(m.str(['state'], 'state'), m.intval(['count']).toDouble(), _masteryColor(m.str(['state']))),
+        _Slice(m.str(['state'], 'state'), m.intval(['count']).toDouble(),
+            MasteryVisuals.colorFor(m.str(['state']), c)),
     ];
     final sentSlices = [
       for (final k in const ['positive', 'neutral', 'negative'])
@@ -583,7 +475,7 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _cardGrid([
+        _cardGrid(context, [
           _Stat('Daily Active', '${active.intval(['dau'])}'),
           _Stat('Weekly Active', '${active.intval(['wau'])}'),
           _Stat('Monthly Active', '${active.intval(['mau'])}'),
@@ -1014,7 +906,7 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
         child: Center(child: Text('No data', style: AppTypography.bodySmall(c.textMuted))),
       );
 
-  Widget _cardGrid(List<_Stat> stats, {String? label}) {
+  Widget _cardGrid(BuildContext context, List<_Stat> stats, {String? label}) {
     final c = context.colors;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1080,6 +972,19 @@ class _AdminOverviewPanelState extends State<AdminOverviewPanel> {
   static String _truncate(String s, [int max = 80]) =>
       s.length <= max ? s : '${s.substring(0, max)}…';
 }
+
+// React PALETTE: indigo, green, amber, red, cyan, purple.
+const _palette = [
+  Color(0xFF6366F1),
+  Color(0xFF10B981),
+  Color(0xFFF59E0B),
+  Color(0xFFEF4444),
+  Color(0xFF06B6D4),
+  Color(0xFF8B5CF6),
+];
+const _green = Color(0xFF10B981);
+const _amber = Color(0xFFF59E0B);
+const _red = Color(0xFFEF4444);
 
 class _Stat {
   _Stat(this.label, this.value, {this.sub, this.color});

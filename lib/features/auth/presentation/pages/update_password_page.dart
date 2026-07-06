@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/presentation/widgets/btn_spinner.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -10,54 +11,26 @@ import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/responsive.dart';
 import '../bloc/auth_bloc.dart';
+import '../cubit/update_password_form_cubit.dart';
 
 /// `/update-password/:id` — completes a password reset. Two-column on desktop
 /// (branding + form card), single card on mobile. Token comes from the path.
-class UpdatePasswordPage extends StatefulWidget {
+class UpdatePasswordPage extends StatelessWidget {
   const UpdatePasswordPage({super.key, required this.token});
 
   final String token;
 
   @override
-  State<UpdatePasswordPage> createState() => _UpdatePasswordPageState();
-}
-
-class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
-  final _password = TextEditingController();
-  final _confirm = TextEditingController();
-  bool _showPassword = false;
-  bool _showConfirm = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _password.addListener(() => setState(() {}));
-    _confirm.addListener(() => setState(() {}));
-  }
-
-  @override
-  void dispose() {
-    _password.dispose();
-    _confirm.dispose();
-    super.dispose();
-  }
-
-  bool get _match =>
-      _password.text.isNotEmpty && _confirm.text.isNotEmpty && _password.text == _confirm.text;
-  bool get _conflict => _confirm.text.isNotEmpty && _password.text != _confirm.text;
-
-  void _submit() {
-    if (_password.text.isEmpty || _confirm.text.isEmpty) return;
-    context.read<AuthBloc>().add(AuthResetPasswordSubmitted(
-          password: _password.text,
-          confirmPassword: _confirm.text,
-          token: widget.token,
-        ));
-  }
-
-  @override
   Widget build(BuildContext context) {
+    return BlocProvider<UpdatePasswordFormCubit>(
+      create: (_) => sl<UpdatePasswordFormCubit>(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
+    final cubit = context.read<UpdatePasswordFormCubit>();
     return Scaffold(
       backgroundColor: c.bgPrimary,
       body: BlocConsumer<AuthBloc, AuthState>(
@@ -74,17 +47,22 @@ class _UpdatePasswordPageState extends State<UpdatePasswordPage> {
         },
         builder: (context, state) {
           final busy = state.action == AuthAction.loading;
-          final form = _FormCard(
-            password: _password,
-            confirm: _confirm,
-            showPassword: _showPassword,
-            showConfirm: _showConfirm,
-            match: _match,
-            conflict: _conflict,
-            busy: busy,
-            onTogglePassword: () => setState(() => _showPassword = !_showPassword),
-            onToggleConfirm: () => setState(() => _showConfirm = !_showConfirm),
-            onSubmit: _submit,
+          final form = BlocBuilder<UpdatePasswordFormCubit, UpdatePasswordFormState>(
+            builder: (context, formState) => AnimatedBuilder(
+              animation: Listenable.merge([cubit.password, cubit.confirm]),
+              builder: (context, _) => _FormCard(
+                password: cubit.password,
+                confirm: cubit.confirm,
+                showPassword: formState.showPassword,
+                showConfirm: formState.showConfirm,
+                match: cubit.match,
+                conflict: cubit.conflict,
+                busy: busy,
+                onTogglePassword: cubit.toggleShowPassword,
+                onToggleConfirm: cubit.toggleShowConfirm,
+                onSubmit: () => cubit.submit(token),
+              ),
+            ),
           );
 
           if (context.isDesktop) {

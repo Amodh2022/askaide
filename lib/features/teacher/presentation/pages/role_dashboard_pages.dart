@@ -8,7 +8,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../../core/di/injection.dart';
 import '../../../../core/presentation/widgets/shimmer.dart';
-import '../../../ai_assistant/domain/repositories/ai_assistant_repository.dart';
 import '../../../../core/presentation/widgets/page_header.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
@@ -16,6 +15,9 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../parent/parent_feature.dart';
 import '../../../profile/presentation/cubit/profile_cubit.dart';
 import '../../data/teacher_feature.dart';
+import '../cubit/chapter_accordion_cubit.dart';
+import '../cubit/student_filter_cubit.dart';
+import '../cubit/teacher_ai_generator_cubit.dart';
 
 part 'role_dashboard_pages_parts/shared.dart';
 part 'role_dashboard_pages_parts/home_panel.dart';
@@ -150,10 +152,16 @@ class TeacherStudentPage extends StatelessWidget {
 
 // ─── AI Generator ─────────────────────────────────────────────────────────────
 
-class TeacherAiGeneratorPage extends StatefulWidget {
+class TeacherAiGeneratorPage extends StatelessWidget {
   const TeacherAiGeneratorPage({super.key});
+
   @override
-  State<TeacherAiGeneratorPage> createState() => _TeacherAiGeneratorPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider<TeacherAiGeneratorCubit>(
+      create: (_) => sl<TeacherAiGeneratorCubit>(),
+      child: const _TeacherAiGeneratorView(),
+    );
+  }
 }
 
 // ─── Parent Dashboard ──────────────────────────────────────────────────────────

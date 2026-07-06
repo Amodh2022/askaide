@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../../di/injection.dart';
-import '../../../../features/ai_assistant/domain/repositories/ai_assistant_repository.dart';
 import '../../../theme/app_colors.dart';
 import '../../../theme/app_tokens.dart';
 import '../../../theme/app_typography.dart';
+import '../cubit/ai_assistant_cubit.dart';
 
 /// Floating AI assistant. Tapping the FAB opens a chat panel that renders
 /// markdown answers, wired to the live `/ai-assistant` endpoint.
-class AiAssistantWidget extends StatefulWidget {
+class AiAssistantWidget extends StatelessWidget {
   const AiAssistantWidget({
     super.key,
     this.bottomOffset = AppSpacing.md,
@@ -22,97 +23,43 @@ class AiAssistantWidget extends StatefulWidget {
   final double bottomOffset;
 
   @override
-  State<AiAssistantWidget> createState() => _AiAssistantWidgetState();
-}
-
-class _ChatMessage {
-  _ChatMessage(this.text, {required this.fromUser});
-  String text; // mutable so streamed chunks can append in place
-  final bool fromUser;
-}
-
-class _AiAssistantWidgetState extends State<AiAssistantWidget> {
-  bool _open = false;
-  final _controller = TextEditingController();
-  final _messages = <_ChatMessage>[
-    _ChatMessage(
-      "Hi! I'm your **AskAide** study buddy. Ask me to explain a concept or "
-      'suggest what to practice next.',
-      fromUser: false,
-    ),
-  ];
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  bool _sending = false;
-
-  Future<void> _send() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty || _sending) return;
-    final reply = _ChatMessage('', fromUser: false);
-    setState(() {
-      _messages.add(_ChatMessage(text, fromUser: true));
-      _controller.clear();
-      _sending = true;
-    });
-    // Stream the assistant's reply token-by-token (SSE).
-    final buffer = StringBuffer();
-    var added = false;
-    await for (final chunk in sl<AiChatRepository>().stream(text)) {
-      if (!mounted) return;
-      buffer.write(chunk);
-      setState(() {
-        if (!added) {
-          _messages.add(reply);
-          added = true;
-        }
-        reply.text = buffer.toString();
-        _sending = false; // first chunk arrived → hide the thinking dots
-      });
-    }
-    if (!mounted) return;
-    setState(() {
-      if (!added) {
-        _messages.add(_ChatMessage(
-            "Sorry — I couldn't reach the assistant just now.",
-            fromUser: false));
-      }
-      _sending = false;
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    return BlocProvider<AiAssistantCubit>(
+      create: (_) => sl<AiAssistantCubit>(),
+      child: Builder(builder: (context) => _buildStack(context)),
+    );
+  }
+
+  Widget _buildStack(BuildContext context) {
     final c = context.colors;
-    return Stack(
-      children: [
-        if (_open)
+    final cubit = context.read<AiAssistantCubit>();
+    return BlocBuilder<AiAssistantCubit, AiAssistantState>(
+      builder: (context, state) => Stack(
+        children: [
+          if (state.open)
+            Positioned(
+              right: AppSpacing.md,
+              bottom: bottomOffset + 68,
+              child: _ChatPanel(
+                messages: state.messages,
+                controller: cubit.controller,
+                sending: state.sending,
+                onSend: cubit.send,
+                onClose: cubit.togglePanel,
+              ),
+            ),
           Positioned(
             right: AppSpacing.md,
-            bottom: widget.bottomOffset + 68,
-            child: _ChatPanel(
-              messages: _messages,
-              controller: _controller,
-              sending: _sending,
-              onSend: _send,
-              onClose: () => setState(() => _open = false),
+            bottom: bottomOffset,
+            child: FloatingActionButton(
+              backgroundColor: c.accent,
+              onPressed: cubit.togglePanel,
+              child: Icon(state.open ? LucideIcons.x : LucideIcons.sparkles,
+                  color: Colors.white),
             ),
           ),
-        Positioned(
-          right: AppSpacing.md,
-          bottom: widget.bottomOffset,
-          child: FloatingActionButton(
-            backgroundColor: c.accent,
-            onPressed: () => setState(() => _open = !_open),
-            child: Icon(_open ? LucideIcons.x : LucideIcons.sparkles,
-                color: Colors.white),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -125,7 +72,7 @@ class _ChatPanel extends StatelessWidget {
     required this.onSend,
     required this.onClose,
   });
-  final List<_ChatMessage> messages;
+  final List<ChatMessage> messages;
   final TextEditingController controller;
   final bool sending;
   final VoidCallback onSend;
@@ -219,7 +166,7 @@ class _ChatPanel extends StatelessWidget {
 
 class _Bubble extends StatelessWidget {
   const _Bubble({required this.message});
-  final _ChatMessage message;
+  final ChatMessage message;
 
   @override
   Widget build(BuildContext context) {

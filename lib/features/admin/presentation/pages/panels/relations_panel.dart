@@ -1,58 +1,57 @@
 part of '../admin_dashboard_page.dart';
 
-class _RelationsPanel extends StatefulWidget {
-  const _RelationsPanel({super.key});
+class _RelationsPanel extends StatelessWidget {
+  const _RelationsPanel();
+
   @override
-  State<_RelationsPanel> createState() => _RelationsPanelState();
-}
-
-class _RelationsPanelState extends State<_RelationsPanel> {
-  final _repo = sl<AdminRepository>();
-
-  String? _schoolId;            // local school selection
-  List<AdminLink> _links = const [];
-  bool _loading = false;
-
-  // committed filter values (empty = all)
-  String _fTeacher = '', _fClass = '', _fSubject = '', _fSection = '';
-
-  int get _activeFilterCount => [_fTeacher, _fClass, _fSubject, _fSection]
-      .where((f) => f.isNotEmpty)
-      .length;
-
-  Future<void> _load(String schoolId) async {
-    setState(() {
-      _schoolId = schoolId;
-      _loading = true;
-      _links = const [];
-      _fTeacher = '';
-      _fClass = '';
-      _fSubject = '';
-      _fSection = '';
-    });
-    final r = await _repo.teacherStudentLinksDetailed(schoolId);
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _links = r.getOrElse(() => const []);
-    });
+  Widget build(BuildContext context) {
+    return BlocProvider<RelationsCubit>(
+      create: (_) => sl<RelationsCubit>(),
+      child: Builder(builder: _buildBody),
+    );
   }
 
-  List<String> _uniq(String Function(AdminLink) sel) =>
-      ({for (final l in _links) if (sel(l).isNotEmpty) sel(l)}.toList()..sort());
+  Widget _buildBody(BuildContext context) {
+    final cubit = context.read<RelationsCubit>();
+    return BlocBuilder<RelationsCubit, RelationsState>(
+      builder: (context, relState) {
+        final c = context.colors;
+        final adminState = context.watch<AdminCubit>().state;
+        final filtered = relState.filtered;
 
-  void _openFilterSheet() {
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // ── Page title ───────────────────────────────────────────────────
+            Text('Relation Management',
+                style: AppTypography.h3(c.textPrimary).copyWith(fontSize: 22)),
+            const SizedBox(height: 16),
+
+            // ── School selector card ─────────────────────────────────────────
+            _schoolCard(c, adminState, cubit, relState),
+            const SizedBox(height: 16),
+
+            // ── Relations card ────────────────────────────────────────────────
+            if (relState.schoolId != null)
+              _relationsCard(context, c, cubit, relState, filtered),
+          ],
+        );
+      },
+    );
+  }
+
+  void _openFilterSheet(BuildContext context, RelationsCubit cubit, RelationsState relState) {
     final c = context.colors;
     // Start from current committed values so re-opening shows last applied state.
-    String tmpTeacher = _fTeacher,
-        tmpClass = _fClass,
-        tmpSubject = _fSubject,
-        tmpSection = _fSection;
+    String tmpTeacher = relState.teacherFilter,
+        tmpClass = relState.classFilter,
+        tmpSubject = relState.subjectFilter,
+        tmpSection = relState.sectionFilter;
 
-    final teachers = _uniq((l) => l.teacherName);
-    final classes  = _uniq((l) => l.className);
-    final subjects = _uniq((l) => l.subjectName);
-    final sections = _uniq((l) => l.sectionName);
+    final teachers = cubit.uniq((l) => l.teacherName);
+    final classes  = cubit.uniq((l) => l.className);
+    final subjects = cubit.uniq((l) => l.subjectName);
+    final sections = cubit.uniq((l) => l.sectionName);
 
     showModalBottomSheet<void>(
       context: context,
@@ -75,7 +74,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                     color: c.bgPrimary,
                     border: Border.all(
                         color: value.isNotEmpty ? c.accent : c.border),
-                    borderRadius: AppRadii.componentR,
+                    borderRadius: BorderRadius.circular(8),
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
@@ -123,7 +122,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                   height: 4,
                   decoration: BoxDecoration(
                       color: c.border,
-                      borderRadius: AppRadii.pillR),
+                      borderRadius: BorderRadius.circular(99)),
                 ),
                 const SizedBox(height: 16),
 
@@ -200,12 +199,12 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                       Expanded(
                         child: FilledButton(
                           onPressed: () {
-                            setState(() {
-                              _fTeacher = tmpTeacher;
-                              _fClass = tmpClass;
-                              _fSubject = tmpSubject;
-                              _fSection = tmpSection;
-                            });
+                            cubit.applyFilters(
+                              teacherFilter: tmpTeacher,
+                              classFilter: tmpClass,
+                              subjectFilter: tmpSubject,
+                              sectionFilter: tmpSection,
+                            );
                             Navigator.pop(bsCtx);
                           },
                           style: FilledButton.styleFrom(
@@ -229,68 +228,36 @@ class _RelationsPanelState extends State<_RelationsPanel> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final schools = context.select<AdminCubit, List<AdminSchool>>((c) => c.state.schools);
-
-    final filtered = _links
-        .where((l) =>
-            (_fTeacher.isEmpty || l.teacherName == _fTeacher) &&
-            (_fClass.isEmpty || l.className == _fClass) &&
-            (_fSubject.isEmpty || l.subjectName == _fSubject) &&
-            (_fSection.isEmpty || l.sectionName == _fSection))
-        .toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-        // ── Page title ───────────────────────────────────────────────────────
-        Text('Relation Management',
-            style: AppTypography.h3(c.textPrimary).copyWith(fontSize: 22)),
-        const SizedBox(height: 16),
-
-        // ── School selector card ─────────────────────────────────────────────
-        _schoolCard(c, schools),
-        const SizedBox(height: 16),
-
-        // ── Relations card ───────────────────────────────────────────────────
-        if (_schoolId != null) _relationsCard(c, filtered),
-      ],
-      ),
-    );
-  }
-
-  Widget _schoolCard(AskAideColors c, List<AdminSchool> schools) {
+  Widget _schoolCard(
+      AskAideColors c, AdminState state, RelationsCubit cubit, RelationsState relState) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.sectionR,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: _PickerField(
         label: 'School',
         hint: 'Select a school…',
-        items: schools
+        items: state.schools
             .map((s) => AdminRecord(
                 id: s.id,
                 name: s.code.isEmpty ? s.name : '${s.name} (${s.code})'))
             .toList(),
-        selectedId: _schoolId,
-        onChanged: _load,
+        selectedId: relState.schoolId,
+        onChanged: cubit.load,
       ),
     );
   }
 
-  Widget _relationsCard(AskAideColors c, List<AdminLink> filtered) {
+  Widget _relationsCard(BuildContext context, AskAideColors c, RelationsCubit cubit,
+      RelationsState relState, List<AdminLink> filtered) {
     return Container(
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.sectionR,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -310,20 +277,21 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                       horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: c.accent.withValues(alpha: 0.1),
-                    borderRadius: AppRadii.pillR,
+                    borderRadius: BorderRadius.circular(99),
                   ),
                   child: Text(
-                    _loading
+                    relState.loading
                         ? '…'
-                        : '${filtered.length} of ${_links.length}',
+                        : '${filtered.length} of ${relState.links.length}',
                     style: AppTypography.mono(c.accent, size: 11),
                   ),
                 ),
                 const Spacer(),
                 // Refresh
                 IconButton(
-                  onPressed:
-                      _loading ? null : () => _load(_schoolId!),
+                  onPressed: relState.loading
+                      ? null
+                      : () => cubit.load(relState.schoolId!),
                   icon: Icon(Icons.refresh,
                       size: 18, color: c.textMuted),
                   tooltip: 'Refresh',
@@ -334,23 +302,24 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                   clipBehavior: Clip.none,
                   children: [
                     OutlinedButton.icon(
-                      onPressed:
-                          (_loading || _links.isEmpty) ? null : _openFilterSheet,
+                      onPressed: (relState.loading || relState.links.isEmpty)
+                          ? null
+                          : () => _openFilterSheet(context, cubit, relState),
                       icon: const Icon(Icons.tune, size: 16),
                       label: const Text('Filter'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: _activeFilterCount > 0
+                        foregroundColor: relState.activeFilterCount > 0
                             ? c.accent
                             : c.textSecondary,
                         side: BorderSide(
-                            color: _activeFilterCount > 0
+                            color: relState.activeFilterCount > 0
                                 ? c.accent
                                 : c.border),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                       ),
                     ),
-                    if (_activeFilterCount > 0)
+                    if (relState.activeFilterCount > 0)
                       Positioned(
                         top: -6,
                         right: -6,
@@ -362,7 +331,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
                               shape: BoxShape.circle),
                           alignment: Alignment.center,
                           child: Text(
-                            '$_activeFilterCount',
+                            '${relState.activeFilterCount}',
                             style: AppTypography.mono(Colors.white,
                                 size: 10),
                           ),
@@ -376,7 +345,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
           Divider(height: 1, color: c.border),
 
           // ── Body ───────────────────────────────────────────────────────────
-          if (_loading)
+          if (relState.loading)
             const Padding(
                 padding: EdgeInsets.all(24),
                 child: SkeletonListLoader())
@@ -385,10 +354,10 @@ class _RelationsPanelState extends State<_RelationsPanel> {
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: EmptyState(
                 icon: Icons.account_tree_outlined,
-                title: _activeFilterCount > 0
+                title: relState.activeFilterCount > 0
                     ? 'No records match filters'
                     : 'No relations yet',
-                hint: _activeFilterCount > 0
+                hint: relState.activeFilterCount > 0
                     ? 'Try adjusting or clearing the active filters.'
                     : 'Relations will appear once teacher–student links are created.',
               ),
@@ -460,7 +429,7 @@ class _RelationsPanelState extends State<_RelationsPanel> {
             const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
             color: c.accentLight,
-            borderRadius: AppRadii.pillR),
+            borderRadius: BorderRadius.circular(99)),
         child: Text(name, style: AppTypography.bodySmall(c.accent)),
       );
 }

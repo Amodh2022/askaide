@@ -1,25 +1,20 @@
 part of '../question_paper_pages.dart';
 
-class _PreviewView extends StatefulWidget {
+class _PreviewView extends StatelessWidget {
   const _PreviewView({required this.paperId});
   final String paperId;
-  @override
-  State<_PreviewView> createState() => _PreviewViewState();
-}
 
-class _PreviewViewState extends State<_PreviewView> {
-  bool _printing = false;
-
-  Future<void> _printPdf(PaperPreview preview) async {
-    setState(() => _printing = true);
+  Future<void> _printPdf(BuildContext context, PaperPreview preview) async {
+    final cubit = context.read<PaperPreviewCubit>();
+    cubit.setPrinting(true);
     try {
       // Download the server-rendered PDF (same output as the web app) and hand
       // it to the native share/save sheet.
       final repo = sl<QuestionPaperRepository>();
-      final r = await repo.downloadPdf(widget.paperId);
+      final r = await repo.downloadPdf(paperId);
       await r.fold(
         (f) async {
-          if (mounted) {
+          if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Failed to download PDF: ${f.message}')));
           }
@@ -31,7 +26,7 @@ class _PreviewViewState extends State<_PreviewView> {
         ),
       );
     } finally {
-      if (mounted) setState(() => _printing = false);
+      cubit.setPrinting(false);
     }
   }
 
@@ -44,17 +39,16 @@ class _PreviewViewState extends State<_PreviewView> {
         final hasQuestions = preview != null && preview.questions.isNotEmpty;
 
         // Split questions into sections matching the PDF / frontend layout.
-        final mcqs = preview?.questions
-                .where((q) => q.questionType == 'mcq')
-                .toList() ??
-            const [];
-        final fills = preview?.questions
-                .where((q) => q.questionType == 'fillblanks')
-                .toList() ??
-            const [];
-        final hasSections = mcqs.isNotEmpty || fills.isNotEmpty;
-        final ordered =
-            hasSections ? [...mcqs, ...fills] : (preview?.questions ?? const []);
+        final sections =
+            QuestionSectionFactory.groupSections(preview?.questions ?? const []);
+        final hasSections = sections.isNotEmpty;
+        final sectionOffsets = <int>[
+          for (var i = 0, total = 0; i < sections.length; total += sections[i].questions.length, i++)
+            total,
+        ];
+        final ordered = hasSections
+            ? [for (final s in sections) ...s.questions]
+            : (preview?.questions ?? const []);
         final hasAnswers =
             ordered.any((q) => q.correctAnswer.isNotEmpty);
 
@@ -89,10 +83,10 @@ class _PreviewViewState extends State<_PreviewView> {
                                   style: AppTypography.bodySmall(c.accent)),
                             ),
                             FilledButton.icon(
-                              onPressed: (!hasQuestions || _printing)
+                              onPressed: (!hasQuestions || state.printing)
                                   ? null
-                                  : () => _printPdf(preview),
-                              icon: _printing
+                                  : () => _printPdf(context, preview),
+                              icon: state.printing
                                   ? const SizedBox(
                                       width: 14,
                                       height: 14,
@@ -255,47 +249,29 @@ class _PreviewViewState extends State<_PreviewView> {
                                     Divider(color: c.border),
                                     const SizedBox(height: 16),
                                   ],
-                                  // ---- Section A — MCQ ----
-                                  if (hasSections && mcqs.isNotEmpty) ...[
-                                    Text(
-                                        'Section A — Multiple Choice Questions',
-                                        style: AppTypography.labelLarge(
-                                            c.textPrimary)),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                        'Answer all questions. Choose the correct option.',
-                                        style:
-                                            AppTypography.bodySmall(c.textMuted)
-                                                .copyWith(
-                                                    fontStyle:
-                                                        FontStyle.italic)),
-                                    const SizedBox(height: 12),
-                                    for (var i = 0; i < mcqs.length; i++)
-                                      _PaperQuestionTile(
-                                          index: i + 1, q: mcqs[i]),
-                                  ],
-                                  // ---- Section B — Fill Blanks ----
-                                  if (hasSections && fills.isNotEmpty) ...[
-                                    if (mcqs.isNotEmpty)
+                                  // ---- Sections, one per question type ----
+                                  if (hasSections)
+                                    for (var s = 0; s < sections.length; s++) ...[
+                                      if (s > 0) const SizedBox(height: 12),
+                                      Text(sections[s].spec.sectionLabel,
+                                          style: AppTypography.labelLarge(
+                                              c.textPrimary)),
+                                      const SizedBox(height: 4),
+                                      Text(sections[s].spec.sectionInstruction,
+                                          style: AppTypography.bodySmall(
+                                                  c.textMuted)
+                                              .copyWith(
+                                                  fontStyle: FontStyle.italic)),
                                       const SizedBox(height: 12),
-                                    Text('Section B — Fill in the Blanks',
-                                        style: AppTypography.labelLarge(
-                                            c.textPrimary)),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                        'Fill in the blanks with the correct answer.',
-                                        style:
-                                            AppTypography.bodySmall(c.textMuted)
-                                                .copyWith(
-                                                    fontStyle:
-                                                        FontStyle.italic)),
-                                    const SizedBox(height: 12),
-                                    for (var i = 0; i < fills.length; i++)
-                                      _PaperQuestionTile(
-                                          index: mcqs.length + i + 1,
-                                          q: fills[i],
-                                          showOptions: false),
-                                  ],
+                                      for (var i = 0;
+                                          i < sections[s].questions.length;
+                                          i++)
+                                        _PaperQuestionTile(
+                                            index: sectionOffsets[s] + i + 1,
+                                            q: sections[s].questions[i],
+                                            showOptions:
+                                                sections[s].spec.showOptions),
+                                    ],
                                   // ---- Flat list (no type info) ----
                                   if (!hasSections)
                                     for (var i = 0;

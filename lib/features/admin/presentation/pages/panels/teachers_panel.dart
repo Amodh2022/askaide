@@ -1,160 +1,71 @@
 part of '../admin_dashboard_page.dart';
 
-class _TeachersPanel extends StatefulWidget {
-  const _TeachersPanel({super.key});
-  @override
-  State<_TeachersPanel> createState() => _TeachersPanelState();
-}
-
-class _TeachersPanelState extends State<_TeachersPanel> {
-  final _formKey = GlobalKey<FormState>();
-  List<_PersonRow> _rows = [_PersonRow()];
-  bool _creating = false;
-
-  String? _editingId;
-  final _editName = TextEditingController();
-  final _editEmail = TextEditingController();
-  bool _editSaving = false;
-  String? _deletingId;
-
-  @override
-  void dispose() {
-    for (final r in _rows) {
-      r.dispose();
-    }
-    _editName.dispose();
-    _editEmail.dispose();
-    super.dispose();
-  }
-
-  void _snack(String m) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
-
-  String _genPassword() {
-    const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
-    var x = DateTime.now().microsecondsSinceEpoch;
-    final b = StringBuffer();
-    for (var i = 0; i < 8; i++) {
-      x = x * 1103515245 + 12345;
-      b.write(chars[(x.abs() ~/ 65536) % chars.length]);
-    }
-    return '${b}Aa1!';
-  }
-
-  void _generate(int i) {
-    final name = _rows[i].name.text.trim();
-    if (name.isEmpty) {
-      _snack('Please enter a name first');
-      return;
-    }
-    final clean = name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-    final rand = DateTime.now().microsecondsSinceEpoch % 1000;
-    setState(() {
-      _rows[i].email.text = '$clean.$rand@school.com';
-      _rows[i].password.text = _genPassword();
-    });
-    _snack('Credentials generated!');
-  }
-
-  Future<void> _submit() async {
-    final schoolId = context.read<AdminCubit>().state.selectedSchoolId;
-    if (schoolId == null) {
-      _snack('Please select a school first');
-      return;
-    }
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _creating = true);
-    final payload = [
-      for (final r in _rows)
-        {
-          'name': r.name.text.trim(),
-          'email': r.email.text.trim(),
-          'password': r.password.text.trim(),
-          if (r.phone.text.trim().isNotEmpty) 'phone': r.phone.text.trim(),
-        }
-    ];
-    final n = payload.length;
-    final ok = await context.read<AdminCubit>().createTeachers(payload);
-    if (!mounted) return;
-    setState(() => _creating = false);
-    _snack(ok ? 'Successfully created $n teacher${n != 1 ? 's' : ''}' : 'Failed to create teachers');
-    if (ok) {
-      setState(() {
-        for (final r in _rows) {
-          r.dispose();
-        }
-        _rows = [_PersonRow()];
-      });
-    }
-  }
-
-  void _openEdit(AdminRecord t) => setState(() {
-        _editingId = t.id;
-        _editName.text = t.name;
-        _editEmail.text = t.subtitle;
-      });
-
-  Future<void> _saveEdit(String id) async {
-    if (_editName.text.trim().isEmpty || _editEmail.text.trim().isEmpty) {
-      _snack('Name and email are required');
-      return;
-    }
-    setState(() => _editSaving = true);
-    final ok = await context.read<AdminCubit>().updateTeacher(id, {
-      'name': _editName.text.trim(),
-      'email': _editEmail.text.trim(),
-    });
-    if (!mounted) return;
-    setState(() {
-      _editSaving = false;
-      if (ok) _editingId = null;
-    });
-    _snack(ok ? 'Teacher updated' : 'Failed to update teacher');
-  }
-
-  Future<void> _delete(String id) async {
-    setState(() => _deletingId = id);
-    await context.read<AdminCubit>().deleteTeacher(id);
-    if (mounted) setState(() => _deletingId = null);
-  }
+class _TeachersPanel extends StatelessWidget {
+  const _TeachersPanel();
 
   @override
   Widget build(BuildContext context) {
+    final admin = context.read<AdminCubit>();
+    return BlocProvider<TeachersPanelCubit>(
+      create: (_) => sl<TeachersPanelCubit>(param1: admin),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  void _snack(BuildContext context, String m) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m)));
+
+  void _generate(BuildContext context, int i) {
+    final err = context.read<TeachersPanelCubit>().generateCredentials(i);
+    _snack(context, err ?? 'Credentials generated!');
+  }
+
+  Future<void> _submit(BuildContext context) async {
+    final cubit = context.read<TeachersPanelCubit>();
+    if (!cubit.formKey.currentState!.validate()) return;
+    final msg = await cubit.submit();
+    if (!context.mounted || msg == null) return;
+    _snack(context, msg);
+  }
+
+  Future<void> _saveEdit(BuildContext context, String id) async {
+    final msg = await context.read<TeachersPanelCubit>().saveEdit(id);
+    if (!context.mounted || msg == null) return;
+    _snack(context, msg);
+  }
+
+  Future<void> _delete(BuildContext context, String id) =>
+      context.read<TeachersPanelCubit>().delete(id);
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-    return BlocBuilder<AdminCubit, AdminState>(
-      buildWhen: (p, n) =>
-          p.selectedSchoolId != n.selectedSchoolId ||
-          p.teachers != n.teachers ||
-          p.schools != n.schools,
-      builder: (context, state) {
-        final hasSchool = state.selectedSchoolId != null;
-        return Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-            Text('Teacher Management', style: AppTypography.h3(c.textPrimary).copyWith(fontSize: 22)),
-            const SizedBox(height: 16),
-            _createCard(c, state, hasSchool),
-            if (hasSchool) ...[
-              const SizedBox(height: 16),
-              _listCard(c, state.teachers),
-            ],
-          ],
-          ),
-        );
-      },
+    final adminState = context.watch<AdminCubit>().state;
+    final panelState = context.watch<TeachersPanelCubit>().state;
+    final hasSchool = adminState.selectedSchoolId != null;
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text('Teacher Management', style: AppTypography.h3(c.textPrimary).copyWith(fontSize: 22)),
+        const SizedBox(height: 16),
+        _createCard(context, c, adminState, panelState, hasSchool),
+        if (hasSchool) ...[
+          const SizedBox(height: 16),
+          _listCard(context, c, adminState.teachers, panelState),
+        ],
+      ],
     );
   }
 
   // ── Create card ──
-  Widget _createCard(AskAideColors c, AdminState state, bool hasSchool) {
+  Widget _createCard(BuildContext context, AskAideColors c, AdminState state,
+      TeachersPanelState panelState, bool hasSchool) {
+    final cubit = context.read<TeachersPanelCubit>();
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.sectionR,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -177,7 +88,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
               children: [
                 Text('Add New Teachers', style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 16)),
                 TextButton.icon(
-                  onPressed: () => setState(() => _rows.add(_PersonRow())),
+                  onPressed: cubit.addRow,
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Add Row'),
                 ),
@@ -185,20 +96,23 @@ class _TeachersPanelState extends State<_TeachersPanel> {
             ),
             Divider(height: 16, color: c.border),
             Form(
-              key: _formKey,
+              key: cubit.formKey,
               child: Column(
-                children: [for (var i = 0; i < _rows.length; i++) _createRow(c, i)],
+                children: [
+                  for (var i = 0; i < panelState.rows.length; i++)
+                    _createRow(context, c, panelState, i),
+                ],
               ),
             ),
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
-                onPressed: _creating ? null : _submit,
-                icon: _creating
-                    ? const BtnSpinner()
+                onPressed: panelState.creating ? null : () => _submit(context),
+                icon: panelState.creating
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.save, size: 18),
-                label: Text('Create ${_rows.length} Teacher${_rows.length != 1 ? 's' : ''}'),
+                label: Text('Create ${panelState.rows.length} Teacher${panelState.rows.length != 1 ? 's' : ''}'),
                 style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
               ),
             ),
@@ -208,23 +122,37 @@ class _TeachersPanelState extends State<_TeachersPanel> {
     );
   }
 
-  Widget _createRow(AskAideColors c, int i) {
-    final r = _rows[i];
+  Widget _createRow(BuildContext context, AskAideColors c, TeachersPanelState panelState, int i) {
+    final cubit = context.read<TeachersPanelCubit>();
+    final r = panelState.rows[i];
     final mobile = context.isMobile;
-    final nameField = _tf(c, 'Full Name *', r.name,
+    final nameField = AdminFormField(
+        label: 'Full Name *',
+        controller: r.name,
         hint: 'John Doe',
         requiredField: true,
         trailing: IconButton(
           tooltip: 'Auto-generate email & password',
-          onPressed: () => _generate(i),
+          onPressed: () => _generate(context, i),
           icon: Icon(Icons.auto_fix_high, size: 18, color: c.accent),
         ));
-    final emailField = _tf(c, 'Email *', r.email, hint: 'john@school.com', requiredField: true, email: true);
-    final passField = _tf(c, 'Password *', r.password, hint: 'Secret123!', requiredField: true, minLen: 6);
-    final phoneField = _tf(c, 'Phone', r.phone, hint: '+1234567890');
-    final remove = _rows.length > 1
+    final emailField = AdminFormField(
+        label: 'Email *',
+        controller: r.email,
+        hint: 'john@school.com',
+        requiredField: true,
+        email: true);
+    final passField = AdminFormField(
+        label: 'Password *',
+        controller: r.password,
+        hint: 'Secret123!',
+        requiredField: true,
+        minLen: 6,
+        minLenMessage: 'Min 6');
+    final phoneField = AdminFormField(label: 'Phone', controller: r.phone, hint: '+1234567890');
+    final remove = panelState.rows.length > 1
         ? IconButton(
-            onPressed: () => setState(() => _rows.removeAt(i).dispose()),
+            onPressed: () => cubit.removeRow(i),
             icon: Icon(Icons.delete_outline, size: 18, color: c.textMuted),
           )
         : const SizedBox(width: 40);
@@ -235,13 +163,13 @@ class _TeachersPanelState extends State<_TeachersPanel> {
       decoration: BoxDecoration(
         color: c.bgPrimary,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.componentR,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: mobile
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (_rows.length > 1)
+                if (panelState.rows.length > 1)
                   Align(alignment: Alignment.centerRight, child: remove),
                 nameField,
                 const SizedBox(height: 10),
@@ -268,44 +196,15 @@ class _TeachersPanelState extends State<_TeachersPanel> {
     );
   }
 
-  Widget _tf(AskAideColors c, String label, TextEditingController ctl,
-      {String? hint, bool requiredField = false, bool email = false, int? minLen, Widget? trailing}) {
-    final field = TextFormField(
-      controller: ctl,
-      keyboardType: email ? TextInputType.emailAddress : TextInputType.text,
-      style: AppTypography.bodySmall(c.textPrimary),
-      decoration: InputDecoration(hintText: hint, isDense: true),
-      validator: (v) {
-        final t = (v ?? '').trim();
-        if (requiredField && t.isEmpty) return 'Required';
-        if (email && t.isNotEmpty && !RegExp(r'^\S+@\S+$').hasMatch(t)) return 'Invalid';
-        if (minLen != null && t.isNotEmpty && t.length < minLen) return 'Min $minLen';
-        return null;
-      },
-    );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label.toUpperCase(), style: AppTypography.mono(c.textMuted, size: 10)),
-        const SizedBox(height: 6),
-        trailing == null
-            ? field
-            : Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Expanded(child: field),
-                trailing,
-              ]),
-      ],
-    );
-  }
-
   // ── List card ──
-  Widget _listCard(AskAideColors c, List<AdminRecord> teachers) {
+  Widget _listCard(BuildContext context, AskAideColors c, List<AdminRecord> teachers,
+      TeachersPanelState panelState) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.sectionR,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -326,9 +225,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
               ),
             )
           else if (context.isMobile)
-            Column(
-              children: List.generate(teachers.length, (i) => _teacherCardMobile(c, teachers[i])),
-            )
+            Column(children: [for (final t in teachers) _teacherCardMobile(context, c, t, panelState)])
           else ...[
             Row(children: [
               Expanded(flex: 4, child: Text('NAME', style: AppTypography.mono(c.textMuted, size: 10))),
@@ -336,15 +233,16 @@ class _TeachersPanelState extends State<_TeachersPanel> {
               SizedBox(width: 96, child: Text('ACTIONS', textAlign: TextAlign.right, style: AppTypography.mono(c.textMuted, size: 10))),
             ]),
             Divider(height: 12, color: c.border),
-            for (final t in teachers) _teacherRowDesktop(c, t),
+            for (final t in teachers) _teacherRowDesktop(context, c, t, panelState),
           ],
         ],
       ),
     );
   }
 
-  Widget _teacherRowDesktop(AskAideColors c, AdminRecord t) {
-    final editing = _editingId == t.id;
+  Widget _teacherRowDesktop(BuildContext context, AskAideColors c, AdminRecord t, TeachersPanelState panelState) {
+    final cubit = context.read<TeachersPanelCubit>();
+    final editing = panelState.editingId == t.id;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -353,7 +251,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
           Expanded(
             flex: 4,
             child: editing
-                ? _inlineField(c, _editName)
+                ? _inlineField(c, cubit.editName)
                 : Text(t.name,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.bodyMedium(c.textPrimary)),
@@ -362,34 +260,35 @@ class _TeachersPanelState extends State<_TeachersPanel> {
           Expanded(
             flex: 5,
             child: editing
-                ? _inlineField(c, _editEmail)
+                ? _inlineField(c, cubit.editEmail)
                 : Text(t.subtitle,
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.bodySmall(c.textSecondary)),
           ),
-          SizedBox(width: 96, child: _actions(c, t, editing)),
+          SizedBox(width: 96, child: _actions(context, c, t, editing, panelState)),
         ],
       ),
     );
   }
 
-  Widget _teacherCardMobile(AskAideColors c, AdminRecord t) {
-    final editing = _editingId == t.id;
+  Widget _teacherCardMobile(BuildContext context, AskAideColors c, AdminRecord t, TeachersPanelState panelState) {
+    final cubit = context.read<TeachersPanelCubit>();
+    final editing = panelState.editingId == t.id;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: c.bgPrimary,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.componentR,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: editing
           ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              _inlineField(c, _editName),
+              _inlineField(c, cubit.editName),
               const SizedBox(height: 8),
-              _inlineField(c, _editEmail),
+              _inlineField(c, cubit.editEmail),
               const SizedBox(height: 8),
-              Align(alignment: Alignment.centerRight, child: _actions(c, t, true)),
+              Align(alignment: Alignment.centerRight, child: _actions(context, c, t, true, panelState)),
             ])
           : Row(children: [
               Expanded(
@@ -402,7 +301,7 @@ class _TeachersPanelState extends State<_TeachersPanel> {
                       style: AppTypography.bodySmall(c.textMuted)),
                 ]),
               ),
-              _actions(c, t, false),
+              _actions(context, c, t, false, panelState),
             ]),
     );
   }
@@ -414,35 +313,36 @@ class _TeachersPanelState extends State<_TeachersPanel> {
           isDense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           enabledBorder: OutlineInputBorder(
-              borderRadius: AppRadii.componentR, borderSide: BorderSide(color: c.accent)),
+              borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: c.accent)),
           focusedBorder: OutlineInputBorder(
-              borderRadius: AppRadii.componentR, borderSide: BorderSide(color: c.accent)),
+              borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: c.accent)),
         ),
       );
 
-  Widget _actions(AskAideColors c, AdminRecord t, bool editing) {
+  Widget _actions(BuildContext context, AskAideColors c, AdminRecord t, bool editing, TeachersPanelState panelState) {
+    final cubit = context.read<TeachersPanelCubit>();
     if (editing) {
       return Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.end, children: [
         IconButton(
-          onPressed: _editSaving ? null : () => _saveEdit(t.id),
-          icon: _editSaving
+          onPressed: panelState.editSaving ? null : () => _saveEdit(context, t.id),
+          icon: panelState.editSaving
               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
               : Icon(Icons.check, size: 18, color: c.success),
         ),
         IconButton(
-          onPressed: () => setState(() => _editingId = null),
+          onPressed: cubit.cancelEdit,
           icon: Icon(Icons.close, size: 18, color: c.textMuted),
         ),
       ]);
     }
     return Row(mainAxisSize: MainAxisSize.min, mainAxisAlignment: MainAxisAlignment.end, children: [
       IconButton(
-        onPressed: () => _openEdit(t),
+        onPressed: () => cubit.openEdit(t),
         icon: Icon(Icons.edit_outlined, size: 18, color: c.textMuted),
       ),
       IconButton(
-        onPressed: _deletingId == t.id ? null : () => _delete(t.id),
-        icon: _deletingId == t.id
+        onPressed: panelState.deletingId == t.id ? null : () => _delete(context, t.id),
+        icon: panelState.deletingId == t.id
             ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
             : Icon(Icons.delete_outline, size: 18, color: c.danger),
       ),
@@ -453,4 +353,3 @@ class _TeachersPanelState extends State<_TeachersPanel> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Students tab
 // ─────────────────────────────────────────────────────────────────────────────
-

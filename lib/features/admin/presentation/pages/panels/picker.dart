@@ -1,6 +1,6 @@
 part of '../admin_dashboard_page.dart';
 
-class _PickerSheet extends StatefulWidget {
+class _PickerSheet extends StatelessWidget {
   const _PickerSheet({
     required this.title,
     required this.items,
@@ -11,25 +11,20 @@ class _PickerSheet extends StatefulWidget {
   final String? selectedId;
 
   @override
-  State<_PickerSheet> createState() => _PickerSheetState();
-}
-
-class _PickerSheetState extends State<_PickerSheet> {
-  final _searchCtl = TextEditingController();
-
-  @override
-  void dispose() {
-    _searchCtl.dispose();
-    super.dispose();
+  Widget build(BuildContext context) {
+    return BlocProvider<AdminPickerSearchCubit>(
+      create: (_) => sl<AdminPickerSearchCubit>(),
+      child: Builder(builder: _buildSheet),
+    );
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildSheet(BuildContext context) {
     final c = context.colors;
-    final query = _searchCtl.text.trim().toLowerCase();
+    final cubit = context.read<AdminPickerSearchCubit>();
+    final query = context.watch<AdminPickerSearchCubit>().state.trim().toLowerCase();
     final visible = query.isEmpty
-        ? widget.items
-        : widget.items
+        ? items
+        : items
             .where((it) =>
                 it.name.toLowerCase().contains(query) ||
                 it.subtitle.toLowerCase().contains(query))
@@ -55,11 +50,11 @@ class _PickerSheetState extends State<_PickerSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
                 children: [
-                  Text(widget.title,
+                  Text(title,
                       style: AppTypography.h4(c.textPrimary)
                           .copyWith(fontSize: 18)),
                   const Spacer(),
-                  if (widget.items.isNotEmpty)
+                  if (items.isNotEmpty)
                     Text('${visible.length}',
                         style: AppTypography.mono(c.textMuted, size: 11)),
                 ],
@@ -69,18 +64,17 @@ class _PickerSheetState extends State<_PickerSheet> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: TextField(
-                controller: _searchCtl,
                 autofocus: true,
-                onChanged: (_) => setState(() {}),
+                onChanged: cubit.setQuery,
                 decoration: InputDecoration(
-                  hintText: 'Search ${widget.title}…',
+                  hintText: 'Search $title…',
                   hintStyle: AppTypography.bodyMedium(c.textMuted),
                   prefixIcon:
                       Icon(Icons.search, size: 18, color: c.textMuted),
-                  suffixIcon: _searchCtl.text.isNotEmpty
+                  suffixIcon: query.isNotEmpty
                       ? IconButton(
                           icon: Icon(Icons.close, size: 16, color: c.textMuted),
-                          onPressed: () => setState(() => _searchCtl.clear()),
+                          onPressed: () => cubit.setQuery(''),
                         )
                       : null,
                   isDense: true,
@@ -121,7 +115,7 @@ class _PickerSheetState extends State<_PickerSheet> {
                           Divider(height: 1, color: c.borderSubtle),
                       itemBuilder: (ctx2, i) {
                         final item = visible[i];
-                        final sel = item.id == widget.selectedId;
+                        final sel = item.id == selectedId;
                         return ListTile(
                           title: Text(item.name,
                               style: AppTypography.bodyMedium(

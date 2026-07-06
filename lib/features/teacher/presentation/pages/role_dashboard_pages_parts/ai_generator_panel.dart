@@ -1,30 +1,13 @@
 part of '../role_dashboard_pages.dart';
 
-class _TeacherAiGeneratorPageState extends State<TeacherAiGeneratorPage> {
-  final _prompt = TextEditingController();
-  String? _answer;
-  bool _loading = false;
-
-  @override
-  void dispose() {
-    _prompt.dispose();
-    super.dispose();
-  }
-
-  Future<void> _go() async {
-    if (_prompt.text.trim().isEmpty) return;
-    setState(() { _loading = true; _answer = null; });
-    final r = await sl<AiTeacherToolsRepository>().ask(_prompt.text.trim());
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _answer = r.fold((f) => 'Error: ${f.message}', (a) => a);
-    });
-  }
+class _TeacherAiGeneratorView extends StatelessWidget {
+  const _TeacherAiGeneratorView();
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final cubit = context.read<TeacherAiGeneratorCubit>();
+    final state = context.watch<TeacherAiGeneratorCubit>().state;
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Center(
@@ -38,7 +21,7 @@ class _TeacherAiGeneratorPageState extends State<TeacherAiGeneratorPage> {
                   subtitle: 'Ask the assistant to generate questions, notes, or explanations.'),
               const SizedBox(height: 20),
               TextField(
-                controller: _prompt,
+                controller: cubit.prompt,
                 maxLines: 4,
                 style: AppTypography.bodyLarge(c.textPrimary),
                 cursorColor: c.accent,
@@ -55,17 +38,17 @@ class _TeacherAiGeneratorPageState extends State<TeacherAiGeneratorPage> {
               ),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: _loading ? null : _go,
+                onPressed: state.loading ? null : cubit.generate,
                 style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
-                child: Text(_loading ? 'Generating…' : 'Generate'),
+                child: Text(state.loading ? 'Generating…' : 'Generate'),
               ),
-              if (_answer != null) ...[
+              if (state.answer != null) ...[
                 const SizedBox(height: 20),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   decoration: context.cardDecoration(),
-                  child: MarkdownBody(data: _answer!),
+                  child: MarkdownBody(data: state.answer!),
                 ),
               ],
             ],

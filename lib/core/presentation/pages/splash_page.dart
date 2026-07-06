@@ -14,17 +14,16 @@ class SplashPage extends StatelessWidget {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.bgPrimary,
-      body: Center(
+      body: const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const BrandLogo(size: 40),
-            const SizedBox(height: 28),
-            SizedBox(
-              width: 22,
-              height: 22,
-              child: CircularProgressIndicator(strokeWidth: 2.5, color: c.accent),
-            ),
+            BrandLogo(size: 40),
+            // SizedBox(
+            //   width: 22,
+            //   height: 22,
+            //   child: CircularProgressIndicator(strokeWidth: 2.5, color: c.accent),
+            // ),
           ],
         ),
       ),

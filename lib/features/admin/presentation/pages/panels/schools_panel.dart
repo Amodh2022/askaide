@@ -1,106 +1,36 @@
 part of '../admin_dashboard_page.dart';
 
-class _SchoolsPanel extends StatefulWidget {
-  const _SchoolsPanel({super.key});
-  @override
-  State<_SchoolsPanel> createState() => _SchoolsPanelState();
-}
-
-class _SchoolsPanelState extends State<_SchoolsPanel> {
-  final _formKey = GlobalKey<FormState>();
-  final _name = TextEditingController();
-  final _code = TextEditingController();
-  final _address = TextEditingController();
-  final _board = TextEditingController();
-  final _phone = TextEditingController();
-  final _email = TextEditingController();
-  final _website = TextEditingController();
-
-  bool _isCreating = false;
-  AdminSchool? _editing;
-  bool _saving = false;
-  final Set<String> _deletingIds = {};
-
-  bool get _formOpen => _isCreating || _editing != null;
-
-  List<TextEditingController> get _all =>
-      [_name, _code, _address, _board, _phone, _email, _website];
+class _SchoolsPanel extends StatelessWidget {
+  const _SchoolsPanel();
 
   @override
-  void dispose() {
-    for (final c in _all) {
-      c.dispose();
-    }
-    super.dispose();
+  Widget build(BuildContext context) {
+    return BlocProvider<SchoolsPanelCubit>(
+      create: (_) => sl<SchoolsPanelCubit>(),
+      child: Builder(builder: _buildBody),
+    );
   }
 
-  void _resetFields() {
-    for (final c in _all) {
-      c.clear();
-    }
-  }
-
-  void _startCreate() => setState(() {
-        _editing = null;
-        _isCreating = true;
-        _resetFields();
-      });
-
-  void _startEdit(AdminSchool s) => setState(() {
-        _editing = s;
-        _isCreating = false;
-        _resetFields();
-        _name.text = s.name;
-        _code.text = s.code;
-      });
-
-  void _cancel() => setState(() {
-        _editing = null;
-        _isCreating = false;
-        _resetFields();
-      });
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
-    final cubit = context.read<AdminCubit>();
-    final editing = _editing;
-    final bool ok;
-    if (editing != null) {
-      ok = await cubit.updateSchool(editing.id, {
-        'schoolName': _name.text.trim(),
-        'schoolCode': _code.text.trim(),
-      });
-    } else {
-      ok = await cubit.createSchool({
-        'schoolName': _name.text.trim(),
-        'schoolCode': _code.text.trim(),
-        'schoolAddress': _address.text.trim(),
-        'schoolBoard': _board.text.trim(),
-        if (_phone.text.trim().isNotEmpty) 'schoolPhone': _phone.text.trim(),
-        if (_email.text.trim().isNotEmpty) 'schoolEmail': _email.text.trim(),
-        if (_website.text.trim().isNotEmpty) 'schoolWebsite': _website.text.trim(),
-      });
-    }
-    if (!mounted) return;
-    setState(() => _saving = false);
+  Future<void> _submit(BuildContext context) async {
+    final panelCubit = context.read<SchoolsPanelCubit>();
+    if (!panelCubit.formKey.currentState!.validate()) return;
+    final editing = panelCubit.state.editing;
+    final ok = await panelCubit.submit(context.read<AdminCubit>());
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(ok
             ? (editing != null ? 'School updated successfully' : 'School created successfully')
             : 'Operation failed')));
-    if (ok) _cancel();
   }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-    final status = context.select<AdminCubit, ALoad>((c) => c.state.status);
-    final schools = context.select<AdminCubit, List<AdminSchool>>((c) => c.state.schools);
-    return Padding(
+    final state = context.watch<AdminCubit>().state;
+    final panelState = context.watch<SchoolsPanelCubit>().state;
+    final panelCubit = context.read<SchoolsPanelCubit>();
+    return ListView(
       padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -108,62 +38,112 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
                 child: Text('School Management',
                     overflow: TextOverflow.ellipsis,
                     style: AppTypography.h3(c.textPrimary).copyWith(fontSize: 22))),
-            if (!_formOpen)
+            if (!panelState.formOpen)
               FilledButton.icon(
-                onPressed: _startCreate,
+                onPressed: panelCubit.startCreate,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add School'),
                 style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
               ),
           ],
         ),
-        if (_formOpen) ...[
+        if (panelState.formOpen) ...[
           const SizedBox(height: 16),
-          _formCard(c),
+          _formCard(context, c, panelCubit, panelState),
         ],
         const SizedBox(height: 16),
-        if (status == ALoad.loading && schools.isEmpty)
+        if (state.status == ALoad.loading && state.schools.isEmpty)
           const SkeletonListLoader()
         else
-          _grid(c, schools),
+          _grid(context, c, state.schools, panelCubit, panelState),
       ],
-      ),
     );
   }
 
-  Widget _formCard(AskAideColors c) {
+  Widget _formCard(BuildContext context, AskAideColors c, SchoolsPanelCubit panelCubit,
+      SchoolsPanelState panelState) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.sectionR,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Form(
-        key: _formKey,
+        key: panelCubit.formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(_editing != null ? 'Edit School' : 'Create New School',
+                Text(panelState.editing != null ? 'Edit School' : 'Create New School',
                     style: AppTypography.h4(c.textPrimary).copyWith(fontSize: 18)),
-                IconButton(onPressed: _cancel, icon: Icon(Icons.close, size: 20, color: c.textMuted)),
+                IconButton(
+                    onPressed: panelCubit.cancel,
+                    icon: Icon(Icons.close, size: 20, color: c.textMuted)),
               ],
             ),
             const SizedBox(height: 8),
             LayoutBuilder(builder: (context, box) {
               final w = box.maxWidth > 520 ? (box.maxWidth - 12) / 2 : box.maxWidth;
               final fields = <Widget>[
-                _field(c, 'School Name *', _name, hint: 'e.g. Greenwood High', requiredMsg: 'School Name is required'),
-                _field(c, 'School Code *', _code, hint: 'e.g. GW001', requiredMsg: 'School Code is required'),
-                if (_editing == null) ...[
-                  _field(c, 'Address *', _address, requiredMsg: 'Address is required'),
-                  _field(c, 'Board *', _board, hint: 'e.g. CBSE', requiredMsg: 'Board is required'),
-                  _field(c, 'Phone', _phone),
-                  _field(c, 'Email', _email, email: true),
-                  _field(c, 'Website', _website),
+                AdminFormField(
+                    label: 'School Name *',
+                    controller: panelCubit.name,
+                    hint: 'e.g. Greenwood High',
+                    requiredField: true,
+                    requiredMessage: 'School Name is required',
+                    labelColor: c.textSecondary,
+                    dense: false,
+                    applyBodyStyle: false),
+                AdminFormField(
+                    label: 'School Code *',
+                    controller: panelCubit.code,
+                    hint: 'e.g. GW001',
+                    requiredField: true,
+                    requiredMessage: 'School Code is required',
+                    labelColor: c.textSecondary,
+                    dense: false,
+                    applyBodyStyle: false),
+                if (panelState.editing == null) ...[
+                  AdminFormField(
+                      label: 'Address *',
+                      controller: panelCubit.address,
+                      requiredField: true,
+                      requiredMessage: 'Address is required',
+                      labelColor: c.textSecondary,
+                      dense: false,
+                      applyBodyStyle: false),
+                  AdminFormField(
+                      label: 'Board *',
+                      controller: panelCubit.board,
+                      hint: 'e.g. CBSE',
+                      requiredField: true,
+                      requiredMessage: 'Board is required',
+                      labelColor: c.textSecondary,
+                      dense: false,
+                      applyBodyStyle: false),
+                  AdminFormField(
+                      label: 'Phone',
+                      controller: panelCubit.phone,
+                      labelColor: c.textSecondary,
+                      dense: false,
+                      applyBodyStyle: false),
+                  AdminFormField(
+                      label: 'Email',
+                      controller: panelCubit.email,
+                      email: true,
+                      emailMessage: 'Enter a valid email',
+                      labelColor: c.textSecondary,
+                      dense: false,
+                      applyBodyStyle: false),
+                  AdminFormField(
+                      label: 'Website',
+                      controller: panelCubit.website,
+                      labelColor: c.textSecondary,
+                      dense: false,
+                      applyBodyStyle: false),
                 ],
               ];
               return Wrap(
@@ -176,14 +156,16 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                TextButton(onPressed: _cancel, child: Text('Cancel', style: AppTypography.button(c.textSecondary))),
+                TextButton(
+                    onPressed: panelCubit.cancel,
+                    child: Text('Cancel', style: AppTypography.button(c.textSecondary))),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  onPressed: _saving ? null : _submit,
-                  icon: _saving
-                      ? const BtnSpinner()
+                  onPressed: panelState.saving ? null : () => _submit(context),
+                  icon: panelState.saving
+                      ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : const Icon(Icons.save, size: 18),
-                  label: Text(_editing != null ? 'Update School' : 'Create School'),
+                  label: Text(panelState.editing != null ? 'Update School' : 'Create School'),
                   style: FilledButton.styleFrom(backgroundColor: c.accent, foregroundColor: Colors.white),
                 ),
               ],
@@ -194,46 +176,21 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
     );
   }
 
-  Widget _field(AskAideColors c, String label, TextEditingController ctl,
-      {String? hint, String? requiredMsg, bool email = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label.toUpperCase(), style: AppTypography.mono(c.textSecondary, size: 10)),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: ctl,
-          keyboardType: email ? TextInputType.emailAddress : TextInputType.text,
-          decoration: InputDecoration(hintText: hint),
-          validator: (v) {
-            final t = (v ?? '').trim();
-            if (requiredMsg != null && t.isEmpty) return requiredMsg;
-            if (email && t.isNotEmpty && !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)) {
-              return 'Enter a valid email';
-            }
-            return null;
-          },
-        ),
-      ],
-    );
-  }
-
-  Future<void> _confirmDelete(AdminSchool s) async {
+  Future<void> _confirmDelete(BuildContext context, SchoolsPanelCubit panelCubit, AdminSchool s) async {
     final ok = await showConfirmDialog(context,
         title: 'Delete school',
         message: 'Delete "${s.name}"? This cannot be undone.',
         confirmLabel: 'Delete',
         destructive: true);
-    if (!ok || !mounted) return;
-    setState(() => _deletingIds.add(s.id));
-    final success = await context.read<AdminCubit>().deleteSchool(s.id);
-    if (!mounted) return;
-    setState(() => _deletingIds.remove(s.id));
+    if (!ok || !context.mounted) return;
+    final success = await panelCubit.deleteSchool(context.read<AdminCubit>(), s.id);
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(success ? 'School deleted' : 'Could not delete school')));
   }
 
-  Widget _grid(AskAideColors c, List<AdminSchool> schools) {
+  Widget _grid(BuildContext context, AskAideColors c, List<AdminSchool> schools,
+      SchoolsPanelCubit panelCubit, SchoolsPanelState panelState) {
     if (schools.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
@@ -252,19 +209,22 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
         runSpacing: 16,
         children: [
           for (final s in schools)
-            SizedBox(width: cols == 1 ? box.maxWidth : w, child: _card(c, s)),
+            SizedBox(
+                width: cols == 1 ? box.maxWidth : w,
+                child: _card(context, c, panelCubit, panelState, s)),
         ],
       );
     });
   }
 
-  Widget _card(AskAideColors c, AdminSchool s) {
+  Widget _card(BuildContext context, AskAideColors c, SchoolsPanelCubit panelCubit,
+      SchoolsPanelState panelState, AdminSchool s) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.sectionR,
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,12 +245,14 @@ class _SchoolsPanelState extends State<_SchoolsPanel> {
                 ),
               ),
               IconButton(
-                onPressed: () => _startEdit(s),
+                onPressed: () => panelCubit.startEdit(s),
                 icon: Icon(Icons.edit_outlined, size: 18, color: c.textMuted),
               ),
               IconButton(
-                onPressed: _deletingIds.contains(s.id) ? null : () => _confirmDelete(s),
-                icon: _deletingIds.contains(s.id)
+                onPressed: panelState.deletingIds.contains(s.id)
+                    ? null
+                    : () => _confirmDelete(context, panelCubit, s),
+                icon: panelState.deletingIds.contains(s.id)
                     ? const SizedBox(
                         width: 18,
                         height: 18,

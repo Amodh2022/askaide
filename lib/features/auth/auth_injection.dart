@@ -5,6 +5,10 @@ import 'data/repositories/auth_repository_impl.dart';
 import 'domain/repositories/auth_repository.dart';
 import 'domain/usecases/auth_usecases.dart';
 import 'presentation/bloc/auth_bloc.dart';
+import 'presentation/cubit/forgot_password_form_cubit.dart';
+import 'presentation/cubit/login_form_cubit.dart';
+import 'presentation/cubit/signup_form_cubit.dart';
+import 'presentation/cubit/update_password_form_cubit.dart';
 
 void registerAuth(GetIt sl) {
   sl
@@ -30,5 +34,12 @@ void registerAuth(GetIt sl) {
         resetPassword: sl(),
         logout: sl(),
       ),
-    );
+    )
+    // ---- Page-scoped form cubits (fresh instance per page mount) --------
+    ..registerFactory<LoginFormCubit>(() => LoginFormCubit(sl<AuthBloc>()))
+    ..registerFactory<SignupFormCubit>(() => SignupFormCubit(sl<AuthBloc>()))
+    ..registerFactory<ForgotPasswordFormCubit>(
+        () => ForgotPasswordFormCubit(sl<AuthBloc>()))
+    ..registerFactory<UpdatePasswordFormCubit>(
+        () => UpdatePasswordFormCubit(sl<AuthBloc>()));
 }

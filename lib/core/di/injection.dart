@@ -5,6 +5,7 @@ import 'package:get_it/get_it.dart';
 
 import '../../features/admin/admin_injection.dart';
 import '../../features/ai_assistant/ai_assistant_injection.dart';
+import '../../features/ai_assistant/domain/repositories/ai_assistant_repository.dart';
 import '../../features/auth/auth_injection.dart';
 import '../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../features/dashboard/dashboard_injection.dart';
@@ -18,6 +19,9 @@ import '../../features/session/session_injection.dart';
 import '../../features/teacher/teacher_injection.dart';
 import '../network/dio_client.dart';
 import '../network/network_info.dart';
+import '../presentation/shell/cubit/ai_assistant_cubit.dart';
+import '../presentation/shell/cubit/nav_visibility_cubit.dart';
+import '../presentation/shell/cubit/sidebar_cubit.dart';
 import '../sound/sound_cubit.dart';
 import '../sound/sound_service.dart';
 import '../storage/local_storage_service.dart';
@@ -50,6 +54,13 @@ Future<void> configureDependencies(LocalStorageService localStorage) async {
     ..registerLazySingleton<ThemeCubit>(() => ThemeCubit(sl()))
     ..registerLazySingleton<SoundService>(() => SoundService(sl()))
     ..registerLazySingleton<SoundCubit>(() => SoundCubit(sl(), sl()));
+
+  // ---- Shell-scoped cubits (one fresh instance per widget mount) ---------
+  sl
+    ..registerFactory<SidebarCubit>(SidebarCubit.new)
+    ..registerFactory<NavVisibilityCubit>(NavVisibilityCubit.new)
+    ..registerFactory<AiAssistantCubit>(
+        () => AiAssistantCubit(sl<AiChatRepository>()));
 }
 
 /// Core / external services plus the cross-cutting [TaxonomyRepository].

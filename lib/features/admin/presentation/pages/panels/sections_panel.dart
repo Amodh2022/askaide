@@ -1,47 +1,35 @@
 part of '../admin_dashboard_page.dart';
 
-class _SectionsPanel extends StatefulWidget {
-  const _SectionsPanel({super.key});
+class _SectionsPanel extends StatelessWidget {
+  const _SectionsPanel();
+
   @override
-  State<_SectionsPanel> createState() => _SectionsPanelState();
-}
-
-class _SectionsPanelState extends State<_SectionsPanel> {
-  final _repo = sl<AdminRepository>();
-  String? _classId;
-  List<AdminSection> _sections = const [];
-  bool _loading = false;
-
-  String? get _schoolId => context.read<AdminCubit>().state.selectedSchoolId;
-
-  Future<void> _load() async {
-    final schoolId = _schoolId;
-    if (schoolId == null || _classId == null) return;
-    setState(() => _loading = true);
-    final r = await _repo.sectionsDetailed(schoolId, _classId!);
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _sections = r.getOrElse(() => const []);
-    });
+  Widget build(BuildContext context) {
+    return BlocProvider<SectionsPanelCubit>(
+      create: (_) => sl<SectionsPanelCubit>(),
+      child: Builder(builder: _buildBody),
+    );
   }
 
-  void _selectClass(String classId) {
-    setState(() {
-      _classId = classId;
-      _sections = const [];
-    });
-    _load();
+  String? _schoolId(BuildContext context) =>
+      context.read<AdminCubit>().state.selectedSchoolId;
+
+  void _selectClass(BuildContext context, String classId) {
+    final schoolId = _schoolId(context);
+    if (schoolId == null) return;
+    context.read<SectionsPanelCubit>().selectClass(classId, schoolId);
   }
 
-  void _after(bool ok, String okMsg, String failMsg) {
-    if (!mounted) return;
+  void _after(BuildContext context, bool ok, String okMsg, String failMsg) {
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(ok ? okMsg : failMsg)));
-    if (ok) _load();
+    final schoolId = _schoolId(context);
+    if (ok && schoolId != null) context.read<SectionsPanelCubit>().load(schoolId);
   }
 
-  Future<void> _addSingle() async {
+  Future<void> _addSingle(BuildContext context) async {
+    final repo = sl<AdminRepository>();
     final c = context.colors;
     final nameCtl = TextEditingController();
     final maxCtl = TextEditingController(text: '40');
@@ -73,17 +61,20 @@ class _SectionsPanelState extends State<_SectionsPanel> {
               onPressed: saving
                   ? null
                   : () async {
-                      final schoolId = _schoolId;
-                      final classId = _classId;
+                      final schoolId = _schoolId(context);
+                      final classId = context.read<SectionsPanelCubit>().state.classId;
                       if (schoolId == null || classId == null) return;
                       setLocal(() => saving = true);
-                      final r = await _repo.createSection(nameCtl.text.trim(), schoolId,
+                      final r = await repo.createSection(nameCtl.text.trim(), schoolId,
                           classId: classId, maxStrength: int.tryParse(maxCtl.text.trim()));
                       if (dctx.mounted) Navigator.pop(dctx);
-                      if (mounted) _after(r.isRight(), 'Section created', 'Could not create section');
+                      if (context.mounted) {
+                        _after(context, r.isRight(), 'Section created', 'Could not create section');
+                      }
                     },
               child: saving
-                  ? const BtnSpinner(size: 16)
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Create'),
             ),
           ],
@@ -96,7 +87,8 @@ class _SectionsPanelState extends State<_SectionsPanel> {
     });
   }
 
-  Future<void> _addBulk() async {
+  Future<void> _addBulk(BuildContext context) async {
+    final repo = sl<AdminRepository>();
     final c = context.colors;
     final ctl = TextEditingController(text: 'A, B, C, D');
     var saving = false;
@@ -127,8 +119,8 @@ class _SectionsPanelState extends State<_SectionsPanel> {
               onPressed: saving
                   ? null
                   : () async {
-                      final schoolId = _schoolId;
-                      final classId = _classId;
+                      final schoolId = _schoolId(context);
+                      final classId = context.read<SectionsPanelCubit>().state.classId;
                       if (schoolId == null || classId == null) return;
                       final names = ctl.text
                           .split(',')
@@ -137,12 +129,16 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                           .toList();
                       if (names.isEmpty) return;
                       setLocal(() => saving = true);
-                      final r = await _repo.createSectionsBulk(schoolId, classId, names);
+                      final r = await repo.createSectionsBulk(schoolId, classId, names);
                       if (dctx.mounted) Navigator.pop(dctx);
-                      if (mounted) _after(r.isRight(), 'Created ${names.length} sections', 'Could not create sections');
+                      if (context.mounted) {
+                        _after(context, r.isRight(), 'Created ${names.length} sections',
+                            'Could not create sections');
+                      }
                     },
               child: saving
-                  ? const BtnSpinner(size: 16)
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Create'),
             ),
           ],
@@ -152,7 +148,8 @@ class _SectionsPanelState extends State<_SectionsPanel> {
     Future.microtask(ctl.dispose);
   }
 
-  Future<void> _edit(AdminSection s) async {
+  Future<void> _edit(BuildContext context, AdminSection s) async {
+    final repo = sl<AdminRepository>();
     final c = context.colors;
     final nameCtl = TextEditingController(text: s.name);
     final maxCtl = TextEditingController(text: '${s.maxStrength}');
@@ -193,16 +190,19 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                   ? null
                   : () async {
                       setLocal(() => saving = true);
-                      final r = await _repo.updateSection(s.id, {
+                      final r = await repo.updateSection(s.id, {
                         'name': nameCtl.text.trim(),
                         'maxStrength': int.tryParse(maxCtl.text.trim()) ?? s.maxStrength,
                         'isActive': active,
                       });
                       if (dctx.mounted) Navigator.pop(dctx);
-                      if (mounted) _after(r.isRight(), 'Section updated', 'Could not update section');
+                      if (context.mounted) {
+                        _after(context, r.isRight(), 'Section updated', 'Could not update section');
+                      }
                     },
               child: saving
-                  ? const BtnSpinner(size: 16)
+                  ? const SizedBox(width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                   : const Text('Save'),
             ),
           ],
@@ -215,24 +215,23 @@ class _SectionsPanelState extends State<_SectionsPanel> {
     });
   }
 
-  Future<void> _delete(AdminSection s) async {
+  Future<void> _delete(BuildContext context, AdminSection s) async {
     final ok = await showConfirmDialog(context,
         title: 'Delete Section',
         message: 'Are you sure you want to delete this section?',
         confirmLabel: 'Delete',
         destructive: true);
-    if (!ok) return;
-    final r = await _repo.deleteSection(s.id);
-    _after(r.isRight(), 'Section deleted', 'Could not delete section');
+    if (!ok || !context.mounted) return;
+    final r = await sl<AdminRepository>().deleteSection(s.id);
+    if (!context.mounted) return;
+    _after(context, r.isRight(), 'Section deleted', 'Could not delete section');
   }
 
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
-    final schools = context.select<AdminCubit, List<AdminSchool>>((c) => c.state.schools);
-    final classes = context.select<AdminCubit, List<AdminRecord>>((c) => c.state.classes);
-    final selectedSchoolId = context.select<AdminCubit, String?>((c) => c.state.selectedSchoolId);
+    final state = context.watch<AdminCubit>().state;
+    final panelState = context.watch<SectionsPanelCubit>().state;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -241,16 +240,13 @@ class _SectionsPanelState extends State<_SectionsPanel> {
           child: _PickerField(
             label: 'School',
             hint: 'Select school…',
-            items: schools
+            items: state.schools
                 .map((s) => AdminRecord(id: s.id, name: s.name))
                 .toList(),
-            selectedId: selectedSchoolId,
+            selectedId: state.selectedSchoolId,
             onChanged: (v) {
               context.read<AdminCubit>().selectSchool(v);
-              setState(() {
-                _classId = null;
-                _sections = const [];
-              });
+              context.read<SectionsPanelCubit>().resetClass();
             },
           ),
         ),
@@ -259,25 +255,25 @@ class _SectionsPanelState extends State<_SectionsPanel> {
           child: _PickerField(
             label: 'Class',
             hint: 'Select class…',
-            items: classes,
-            selectedId: _classId,
-            onChanged: _selectClass,
+            items: state.classes,
+            selectedId: panelState.classId,
+            onChanged: (classId) => _selectClass(context, classId),
           ),
         ),
-        if (_classId != null)
+        if (panelState.classId != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 OutlinedButton.icon(
-                  onPressed: _addBulk,
+                  onPressed: () => _addBulk(context),
                   icon: const Icon(Icons.playlist_add, size: 16),
                   label: const Text('Bulk add'),
                 ),
                 const SizedBox(width: 8),
                 FilledButton.icon(
-                  onPressed: _addSingle,
+                  onPressed: () => _addSingle(context),
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Add section'),
                   style: FilledButton.styleFrom(
@@ -286,17 +282,17 @@ class _SectionsPanelState extends State<_SectionsPanel> {
               ],
             ),
           ),
-        if (_sections.isNotEmpty) ...[
+        if (panelState.sections.isNotEmpty) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
             child: Wrap(
               spacing: 16,
               runSpacing: 6,
               children: [
-                _stat(c, '${_sections.length}', 'Sections', Icons.layers_outlined),
-                _stat(c, '${_sections.fold(0, (s, e) => s + e.currentStrength)}',
+                _stat(c, '${panelState.sections.length}', 'Sections', Icons.layers_outlined),
+                _stat(c, '${panelState.sections.fold(0, (s, e) => s + e.currentStrength)}',
                     'Enrolled', Icons.people_outline),
-                _stat(c, '${_sections.fold(0, (s, e) => s + e.maxStrength)}',
+                _stat(c, '${panelState.sections.fold(0, (s, e) => s + e.maxStrength)}',
                     'Capacity', Icons.event_seat_outlined),
               ],
             ),
@@ -305,27 +301,27 @@ class _SectionsPanelState extends State<_SectionsPanel> {
         ] else
           const SizedBox(height: 8),
         Divider(height: 1, color: c.border),
-        _classId == null
+        Expanded(
+          child: panelState.classId == null
               ? const EmptyState(
                   icon: Icons.class_outlined,
                   title: 'Pick a class',
                   hint: 'Select a class to view its sections.',
                 )
-              : _loading
+              : panelState.loading
                   ? const SkeletonListLoader()
-                  : _sections.isEmpty
+                  : panelState.sections.isEmpty
                       ? const EmptyState(
                           icon: Icons.inbox_outlined,
                           title: 'No sections',
                           hint: 'Create one with the buttons above.',
                         )
                       : ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(12),
-                          itemCount: _sections.length,
-                          itemBuilder: (_, i) => _sectionCard(_sections[i]),
+                          itemCount: panelState.sections.length,
+                          itemBuilder: (_, i) => _sectionCard(context, panelState.sections[i]),
                         ),
+        ),
       ],
     );
   }
@@ -345,7 +341,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
     );
   }
 
-  Widget _sectionCard(AdminSection s) {
+  Widget _sectionCard(BuildContext context, AdminSection s) {
     final c = context.colors;
     final fillRatio =
         s.maxStrength > 0 ? s.currentStrength / s.maxStrength : 0.0;
@@ -356,7 +352,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
       decoration: BoxDecoration(
         color: c.bgCard,
         border: Border.all(color: c.border),
-        borderRadius: AppRadii.componentR,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,7 +371,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                   color: s.isActive
                       ? c.accent.withValues(alpha: 0.12)
                       : c.danger.withValues(alpha: 0.12),
-                  borderRadius: AppRadii.pillR,
+                  borderRadius: BorderRadius.circular(99),
                 ),
                 child: Text(
                   s.isActive ? 'Active' : 'Inactive',
@@ -390,7 +386,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   icon: Icon(Icons.edit_outlined, size: 17, color: c.textMuted),
-                  onPressed: () => _edit(s),
+                  onPressed: () => _edit(context, s),
                 ),
               ),
               SizedBox(
@@ -399,7 +395,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
                   visualDensity: VisualDensity.compact,
                   padding: EdgeInsets.zero,
                   icon: Icon(Icons.delete_outline, size: 17, color: c.danger),
-                  onPressed: () => _delete(s),
+                  onPressed: () => _delete(context, s),
                 ),
               ),
             ],
@@ -423,7 +419,7 @@ class _SectionsPanelState extends State<_SectionsPanel> {
           ),
           const SizedBox(height: 6),
           ClipRRect(
-            borderRadius: AppRadii.cardR,
+            borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: fillRatio.clamp(0.0, 1.0),
               backgroundColor: c.border,

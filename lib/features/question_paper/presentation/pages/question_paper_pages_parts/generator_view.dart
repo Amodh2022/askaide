@@ -5,12 +5,8 @@ class _GeneratorView extends StatelessWidget {
 
   void _onNext(BuildContext context, QpGenState state) {
     final cubit = context.read<QpGeneratorCubit>();
-    if (state.step == 1 && !state.step1Valid) {
-      _toast(context, 'Enter a title and pick a subject and class.');
-      return;
-    }
-    if (state.step == 2 && !state.step2Valid) {
-      _toast(context, 'Select at least one chapter and one question.');
+    if (!state.step.isValid(state)) {
+      _toast(context, state.step.validationMessage);
       return;
     }
     cubit.next();
@@ -84,14 +80,13 @@ class _GeneratorView extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _StepIndicator(
-                    current: state.step,
-                    steps: const ['Setup', 'Questions', 'Options'],
+                  StepIndicator(
+                    current: state.step.ordinal + 1,
+                    steps: qpWizardSteps.map((s) => s.label).toList(),
                     onTap: (i) {
-                      if (i < state.step ||
-                          (state.step == 1 && state.step1Valid) ||
-                          (state.step == 2 && state.step2Valid)) {
-                        cubit.goToStep(i);
+                      final target = qpWizardSteps[i - 1];
+                      if (target.ordinal < state.step.ordinal || state.step.isValid(state)) {
+                        cubit.goToStep(target);
                       }
                     },
                   ),
@@ -103,22 +98,24 @@ class _GeneratorView extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (state.step == 1) ..._step1(context, cubit, state),
-                        if (state.step == 2) ..._step2(context, cubit, state),
-                        if (state.step == 3) ..._step3(context, cubit, state),
+                        ...switch (state.step) {
+                          QpSetupStep() => _step1(context, cubit, state),
+                          QpQuestionsStep() => _step2(context, cubit, state),
+                          QpOptionsStep() => _step3(context, cubit, state),
+                        },
                         const SizedBox(height: 20),
                         Divider(color: c.border),
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            if (state.step > 1)
+                            if (state.step.ordinal > 0)
                               OutlinedButton.icon(
                                 onPressed: cubit.back,
                                 icon: const Icon(LucideIcons.chevronLeft, size: 16),
                                 label: const Text('Back'),
                               ),
                             const Spacer(),
-                            if (state.step < 3)
+                            if (state.step.ordinal < qpWizardSteps.length - 1)
                               FilledButton.icon(
                                 onPressed: () => _onNext(context, state),
                                 icon: const Icon(LucideIcons.chevronRight, size: 16),
@@ -277,40 +274,20 @@ class _GeneratorView extends StatelessWidget {
         Text('No chapters available for this class & subject.',
             style: AppTypography.bodySmall(c.textMuted))
       else
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final ch in state.chapters)
-              FilterChip(
-                label: Text(ch.name),
-                selected: state.chapterIds.contains(ch.id),
-                onSelected: (_) => cubit.toggleChapter(ch.id),
-                selectedColor: c.accentLight,
-                checkmarkColor: c.accent,
-              ),
-          ],
+        ChipPicker<TaxItem>(
+          items: state.chapters,
+          isSelected: (ch) => state.chapterIds.contains(ch.id),
+          onToggle: (ch) => cubit.toggleChapter(ch.id),
+          labelOf: (ch) => ch.name,
         ),
       const SizedBox(height: 18),
       Text('QUESTION TYPES', style: AppTypography.mono(c.textMuted, size: 10)),
       const SizedBox(height: 6),
-      Row(
-        children: [
-          for (final t in const [
-            ['mcq', 'MCQ'],
-            ['fillblanks', 'Fill Blanks'],
-          ])
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: FilterChip(
-                label: Text(t[1]),
-                selected: state.questionTypes.contains(t[0]),
-                onSelected: (_) => cubit.toggleType(t[0]),
-                selectedColor: c.accentLight,
-                checkmarkColor: c.accent,
-              ),
-            ),
-        ],
+      ChipPicker<QuestionType>(
+        items: QuestionType.values,
+        isSelected: (t) => state.questionTypes.contains(t),
+        onToggle: (t) => cubit.toggleType(t),
+        labelOf: (t) => t.chipLabel,
       ),
       const SizedBox(height: 18),
       Row(
@@ -326,19 +303,19 @@ class _GeneratorView extends StatelessWidget {
         children: [
           Expanded(
             child: _DifficultyCounter(
-              label: 'Easy', marks: '1 mark', color: c.success,
+              label: 'Easy', marks: '1 mark', color: DifficultyVisuals.colorFor('easy', c),
               value: state.easy, onChanged: cubit.setEasy),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: _DifficultyCounter(
-              label: 'Medium', marks: '2 marks', color: c.warning,
+              label: 'Medium', marks: '2 marks', color: DifficultyVisuals.colorFor('medium', c),
               value: state.medium, onChanged: cubit.setMedium),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: _DifficultyCounter(
-              label: 'Hard', marks: '3 marks', color: c.error,
+              label: 'Hard', marks: '3 marks', color: DifficultyVisuals.colorFor('hard', c),
               value: state.hard, onChanged: cubit.setHard),
           ),
         ],

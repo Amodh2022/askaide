@@ -6,6 +6,12 @@ import 'data/repositories/session_repository_impl.dart';
 import 'domain/repositories/session_repository.dart';
 import 'domain/usecases/session_usecases.dart';
 import 'presentation/bloc/session_bloc.dart';
+import 'presentation/cubit/feedback_form_cubit.dart';
+import 'presentation/cubit/generating_message_cubit.dart';
+import 'presentation/cubit/nps_survey_cubit.dart';
+import 'presentation/cubit/picker_search_cubit.dart';
+import 'presentation/cubit/practice_ui_cubit.dart';
+import 'presentation/cubit/typewriter_cubit.dart';
 
 void registerSession(GetIt sl) {
   sl
@@ -36,5 +42,15 @@ void registerSession(GetIt sl) {
         saveSession: sl(),
         networkInfo: sl(),
       ),
-    );
+    )
+    // ---- Widget-scoped cubits (fresh instance per widget mount) ----------
+    ..registerFactory<NpsSurveyCubit>(NpsSurveyCubit.new)
+    ..registerFactory<PracticeUiCubit>(PracticeUiCubit.new)
+    ..registerFactory<PickerSearchCubit>(PickerSearchCubit.new)
+    ..registerFactory<FeedbackFormCubit>(
+        () => FeedbackFormCubit(sl<SessionRepository>()))
+    ..registerFactoryParam<GeneratingMessageCubit, int, void>(
+        (messageCount, _) => GeneratingMessageCubit(messageCount))
+    ..registerFactoryParam<TypewriterCubit, int, void>(
+        (textLength, _) => TypewriterCubit(textLength));
 }

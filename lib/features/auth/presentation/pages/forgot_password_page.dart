@@ -2,47 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../bloc/auth_bloc.dart';
+import '../cubit/forgot_password_form_cubit.dart';
 import '../widgets/auth_field.dart';
 import '../widgets/auth_scaffold.dart';
 
 /// `/forgot-password` — two states: request form, then an "email sent"
 /// confirmation with a resend button. Wired to AuthPasswordResetRequested.
-class ForgotPasswordPage extends StatefulWidget {
+class ForgotPasswordPage extends StatelessWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
-}
-
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final _email = TextEditingController();
-  bool _emailSent = false;
-
-  @override
-  void dispose() {
-    _email.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (_email.text.trim().isEmpty) return;
-    context.read<AuthBloc>().add(AuthPasswordResetRequested(_email.text.trim()));
-  }
-
-  @override
   Widget build(BuildContext context) {
+    return BlocProvider<ForgotPasswordFormCubit>(
+      create: (_) => sl<ForgotPasswordFormCubit>(),
+      child: Builder(builder: _buildBody),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final c = context.colors;
+    final cubit = context.read<ForgotPasswordFormCubit>();
     return AuthScaffold(
       tag: 'ACCOUNT RECOVERY',
       child: BlocConsumer<AuthBloc, AuthState>(
         listenWhen: (p, n) => p.action != n.action,
         listener: (context, state) {
           if (state.action == AuthAction.resetEmailSent) {
-            setState(() => _emailSent = true);
+            cubit.markEmailSent();
             ScaffoldMessenger.of(context)
                 .showSnackBar(const SnackBar(content: Text('Reset email sent successfully')));
           } else if (state.action == AuthAction.failure) {
@@ -52,13 +43,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         },
         builder: (context, state) {
           final busy = state.action == AuthAction.loading;
-          return _emailSent ? _sentView(c, busy) : _formView(c, busy);
+          return BlocBuilder<ForgotPasswordFormCubit, bool>(
+            builder: (context, emailSent) =>
+                emailSent ? _sentView(context, c, cubit, busy) : _formView(context, c, cubit, busy),
+          );
         },
       ),
     );
   }
 
-  Widget _formView(AskAideColors c, bool busy) => Column(
+  Widget _formView(BuildContext context, AskAideColors c, ForgotPasswordFormCubit cubit, bool busy) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const AuthEyebrow('FORGOT PASSWORD'),
@@ -70,13 +64,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
           AuthField(
             label: 'EMAIL ADDRESS',
-            controller: _email,
+            controller: cubit.email,
             hintText: 'you@school.in',
             keyboardType: TextInputType.emailAddress,
-            onSubmitted: (_) => _submit(),
+            onSubmitted: (_) => cubit.submit(),
           ),
           const SizedBox(height: 20),
-          _darkPill(c, busy, 'Send reset link', _submit),
+          _darkPill(c, busy, 'Send reset link', cubit.submit),
           const SizedBox(height: 24),
           Center(
             child: GestureDetector(
@@ -87,7 +81,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
         ],
       );
 
-  Widget _sentView(AskAideColors c, bool busy) => Column(
+  Widget _sentView(BuildContext context, AskAideColors c, ForgotPasswordFormCubit cubit, bool busy) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const AuthEyebrow('EMAIL SENT'),
@@ -100,7 +94,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 children: [
                   const TextSpan(text: 'We sent a reset link to '),
                   TextSpan(
-                      text: _email.text.trim(),
+                      text: cubit.email.text.trim(),
                       style: AppTypography.bodyMedium(c.textPrimary)
                           .copyWith(fontWeight: FontWeight.w600)),
                   const TextSpan(text: ". Check your spam if it doesn't arrive."),
@@ -108,7 +102,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
             ),
           ),
-          _darkPill(c, busy, 'Resend email', _submit, withArrow: false),
+          _darkPill(c, busy, 'Resend email', cubit.submit, withArrow: false),
           const SizedBox(height: 12),
           Center(
             child: GestureDetector(

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../../../core/di/injection.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_tokens.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../data/dashboard_models.dart';
+import '../cubit/show_all_cubit.dart';
 
 /// Icon in a rounded gradient tile — the leading icon on several
 /// dashboard/profile cards (achievements, leaderboard, referral, mastery).
@@ -217,15 +220,9 @@ class MetricSegment extends StatelessWidget {
 /// The full achievements grid from the frontend: progress bar, earned/total
 /// count, and a 6-up grid of badge tiles (locked tiles are dimmed + locked).
 /// Used on both the dashboard and the profile page.
-class AchievementsCard extends StatefulWidget {
+class AchievementsCard extends StatelessWidget {
   const AchievementsCard({super.key, required this.earned});
   final List<String> earned;
-  @override
-  State<AchievementsCard> createState() => _AchievementsCardState();
-}
-
-class _AchievementsCardState extends State<AchievementsCard> {
-  bool _showAll = false;
 
   static const _maxVisible = 6;
 
@@ -250,7 +247,7 @@ class _AchievementsCardState extends State<AchievementsCard> {
   ];
 
   bool _isEarned(({String id, String name, String emoji}) badge) {
-    final hay = widget.earned.map((e) => e.toLowerCase());
+    final hay = earned.map((e) => e.toLowerCase());
     final id = badge.id.toLowerCase();
     final name = badge.name.toLowerCase();
     return hay.any((e) => e.contains(id) || e.contains(name));
@@ -258,7 +255,15 @@ class _AchievementsCardState extends State<AchievementsCard> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider<ShowAllCubit>(
+      create: (_) => sl<ShowAllCubit>(),
+      child: Builder(builder: _buildCard),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
     final c = context.colors;
+    final showAll = context.watch<ShowAllCubit>().state;
     final earnedFlags = {for (final b in _catalog) b.id: _isEarned(b)};
     final earnedCount = earnedFlags.values.where((v) => v).length;
     final total = _catalog.length;
@@ -270,7 +275,7 @@ class _AchievementsCardState extends State<AchievementsCard> {
         if (!ea && eb) return 1;
         return 0;
       });
-    final visible = _showAll ? sorted : sorted.take(_maxVisible).toList();
+    final visible = showAll ? sorted : sorted.take(_maxVisible).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -295,7 +300,7 @@ class _AchievementsCardState extends State<AchievementsCard> {
               ),
               if (sorted.length > _maxVisible)
                 TextButton(
-                  onPressed: () => setState(() => _showAll = !_showAll),
+                  onPressed: () => context.read<ShowAllCubit>().toggle(),
                   style: TextButton.styleFrom(
                     foregroundColor: c.accent,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -303,7 +308,7 @@ class _AchievementsCardState extends State<AchievementsCard> {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: Text(_showAll ? 'Show Less' : 'View All',
+                  child: Text(showAll ? 'Show Less' : 'View All',
                       style: AppTypography.bodySmall(c.accent)),
                 ),
             ],

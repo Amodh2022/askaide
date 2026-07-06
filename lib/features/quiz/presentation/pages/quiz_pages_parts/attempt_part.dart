@@ -6,11 +6,12 @@ class _QuizAttemptView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return BlocConsumer<QuizAttemptCubit, QuizAttemptState>(
-      listenWhen: (p, n) => p.submittedAttemptId != n.submittedAttemptId,
+    return BlocConsumer<QuizAttemptCubit, QuizSessionState>(
+      listenWhen: (p, n) =>
+          n is QuizSubmitted && (p is! QuizSubmitted || p.attemptId != n.attemptId),
       listener: (context, state) {
-        final id = state.submittedAttemptId;
-        if (id == null) return;
+        if (state is! QuizSubmitted) return;
+        final id = state.attemptId;
         // Celebration overlay, then navigate to the result (mirrors the frontend).
         showDialog<void>(
           context: context,
@@ -26,32 +27,42 @@ class _QuizAttemptView extends StatelessWidget {
       },
       builder: (context, state) {
         final cubit = context.read<QuizAttemptCubit>();
-        if (state.status == Load.loading) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2.5, color: c.accent),
-                ),
-                const SizedBox(height: 16),
-                Text('Loading quiz...',
-                    style: AppTypography.mono(c.textMuted, size: 13)),
-              ],
-            ),
-          );
-        }
-        if (state.status == Load.error || state.attempt == null) {
-          return Center(
-              child: Text(state.error ?? 'Could not load quiz',
-                  style: AppTypography.bodyMedium(c.danger)));
-        }
+        return switch (state) {
+          QuizSessionLoading() => _loadingView(c),
+          QuizSessionFailed(:final message) => _errorView(c, message),
+          QuizSessionLoaded() => _sessionView(context, c, cubit, state),
+        };
+      },
+    );
+  }
+
+  Widget _loadingView(AskAideColors c) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: c.accent),
+          ),
+          const SizedBox(height: 16),
+          Text('Loading quiz...', style: AppTypography.mono(c.textMuted, size: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _errorView(AskAideColors c, String message) {
+    return Center(
+        child: Text(message, style: AppTypography.bodyMedium(c.danger)));
+  }
+
+  Widget _sessionView(BuildContext context, AskAideColors c,
+      QuizAttemptCubit cubit, QuizSessionLoaded state) {
         final answeredCount = state.answeredCount;
         final progress = state.total == 0 ? 0.0 : answeredCount / state.total;
-        final deadline = state.attempt!.deadline;
+        final deadline = state.attempt.deadline;
 
         return Column(
           children: [
@@ -75,7 +86,7 @@ class _QuizAttemptView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(state.attempt!.title,
+                        Text(state.attempt.title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTypography.h4(c.textPrimary)
@@ -89,8 +100,7 @@ class _QuizAttemptView extends StatelessWidget {
                     _CountdownTimer(
                         deadline: deadline,
                         onExpire: () {
-                          if (!state.submitting &&
-                              state.submittedAttemptId == null) {
+                          if (state is QuizInProgress) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                   content:
@@ -102,9 +112,9 @@ class _QuizAttemptView extends StatelessWidget {
                     const SizedBox(width: 10),
                   ],
                   FilledButton.icon(
-                    onPressed: state.submitting
-                        ? null
-                        : () => _confirmSubmit(context, state),
+                    onPressed: state is QuizInProgress
+                        ? () => _confirmSubmit(context, state)
+                        : null,
                     icon: const Icon(LucideIcons.send, size: 14),
                     label: const Text('Submit'),
                     style: FilledButton.styleFrom(
@@ -113,7 +123,7 @@ class _QuizAttemptView extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
                       shape: RoundedRectangleBorder(
-                          borderRadius: AppRadii.cardR),
+                          borderRadius: BorderRadius.circular(4)),
                     ),
                   ),
                 ],
@@ -175,7 +185,7 @@ class _QuizAttemptView extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 8),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: AppRadii.cardR),
+                                  borderRadius: BorderRadius.circular(4)),
                             ),
                             child: const Text('Show all'),
                           ),
@@ -188,8 +198,6 @@ class _QuizAttemptView extends StatelessWidget {
             ),
           ],
         );
-      },
-    );
   }
 
   Future<void> _confirmLeave(BuildContext context) async {
@@ -198,7 +206,7 @@ class _QuizAttemptView extends StatelessWidget {
       context: context,
       builder: (dctx) => AlertDialog(
         backgroundColor: c.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.cardR),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: Text('Leave quiz?', style: AppTypography.h4(c.textPrimary)),
         content: Text('Your progress is saved. You can resume later.',
             style: AppTypography.bodyMedium(c.textMuted)),
@@ -219,7 +227,7 @@ class _QuizAttemptView extends StatelessWidget {
   }
 
   Future<void> _confirmSubmit(
-      BuildContext context, QuizAttemptState state) async {
+      BuildContext context, QuizSessionLoaded state) async {
     final c = context.colors;
     final cubit = context.read<QuizAttemptCubit>();
     final unanswered = state.total - state.answeredCount;
@@ -227,13 +235,13 @@ class _QuizAttemptView extends StatelessWidget {
       context: context,
       builder: (dctx) => AlertDialog(
         backgroundColor: c.bgCard,
-        shape: RoundedRectangleBorder(borderRadius: AppRadii.cardR),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         title: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                  color: c.warningBg, borderRadius: AppRadii.cardR),
+                  color: c.warningBg, borderRadius: BorderRadius.circular(4)),
               child:
                   Icon(LucideIcons.triangleAlert, size: 18, color: c.warning),
             ),
@@ -253,7 +261,7 @@ class _QuizAttemptView extends StatelessWidget {
               decoration: BoxDecoration(
                 color: c.bgPrimary,
                 border: Border.all(color: c.border),
-                borderRadius: AppRadii.cardR,
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Column(
                 children: [
@@ -297,7 +305,7 @@ class _QuizAttemptView extends StatelessWidget {
   }
 
   void _showMobileNavigator(
-      BuildContext context, QuizAttemptCubit cubit, QuizAttemptState state) {
+      BuildContext context, QuizAttemptCubit cubit, QuizSessionLoaded state) {
     final c = context.colors;
     showModalBottomSheet<void>(
       context: context,
@@ -320,7 +328,7 @@ class _QuizAttemptView extends StatelessWidget {
 /// The central question card: header (number + marks + flag), text, options, nav.
 class _QuestionPanel extends StatelessWidget {
   const _QuestionPanel({required this.state, required this.cubit});
-  final QuizAttemptState state;
+  final QuizSessionLoaded state;
   final QuizAttemptCubit cubit;
 
   @override
@@ -338,7 +346,7 @@ class _QuestionPanel extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.bgCard,
               border: Border.all(color: c.border),
-              borderRadius: AppRadii.cardR,
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,7 +366,7 @@ class _QuestionPanel extends StatelessWidget {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: c.accentLight,
-                          borderRadius: AppRadii.cardR,
+                          borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text('${state.index + 1}',
                             style: AppTypography.mono(c.accent, size: 13)),
@@ -369,13 +377,13 @@ class _QuestionPanel extends StatelessWidget {
                       const Spacer(),
                       InkWell(
                         onTap: cubit.toggleFlag,
-                        borderRadius: AppRadii.cardR,
+                        borderRadius: BorderRadius.circular(4),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: isFlagged ? c.warningBg : Colors.transparent,
-                            borderRadius: AppRadii.cardR,
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -434,7 +442,7 @@ class _QuestionPanel extends StatelessWidget {
                           foregroundColor: c.textPrimary,
                           side: BorderSide(color: c.border),
                           shape: RoundedRectangleBorder(
-                              borderRadius: AppRadii.cardR),
+                              borderRadius: BorderRadius.circular(4)),
                         ),
                       ),
                       const Spacer(),
@@ -447,7 +455,7 @@ class _QuestionPanel extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 10),
                           shape: RoundedRectangleBorder(
-                              borderRadius: AppRadii.cardR),
+                              borderRadius: BorderRadius.circular(4)),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -490,13 +498,13 @@ class _AttemptOption extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: onTap,
-        borderRadius: AppRadii.cardR,
+        borderRadius: BorderRadius.circular(4),
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: selected ? c.accentLight : c.bgCard,
             border: Border.all(color: selected ? c.accent : c.border),
-            borderRadius: AppRadii.cardR,
+            borderRadius: BorderRadius.circular(4),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,7 +515,7 @@ class _AttemptOption extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: selected ? c.accent : c.bgPrimary,
-                  borderRadius: AppRadii.cardR,
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(letter,
                     style: AppTypography.mono(
@@ -540,7 +548,7 @@ class _QuestionNavigator extends StatelessWidget {
     this.onTapQuestion,
     this.showCounters = true,
   });
-  final QuizAttemptState state;
+  final QuizSessionLoaded state;
   final QuizAttemptCubit cubit;
   final VoidCallback? onTapQuestion;
   final bool showCounters;
@@ -548,7 +556,7 @@ class _QuestionNavigator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final questions = state.attempt?.questions ?? const [];
+    final questions = state.attempt.questions;
     final unanswered = state.total - state.answeredCount;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,7 +584,7 @@ class _QuestionNavigator extends StatelessWidget {
                 cubit.goTo(idx);
                 onTapQuestion?.call();
               },
-              borderRadius: AppRadii.cardR,
+              borderRadius: BorderRadius.circular(4),
               child: Opacity(
                 opacity: (!isAnswered && !isActive) ? 0.6 : 1.0,
                 child: Stack(
@@ -590,7 +598,7 @@ class _QuestionNavigator extends StatelessWidget {
                             : isAnswered
                                 ? c.accentLight
                                 : c.bgPrimary,
-                        borderRadius: AppRadii.cardR,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text('${idx + 1}',
                           style: AppTypography.mono(
@@ -648,7 +656,7 @@ class _QuestionNavigator extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.warningBg,
               border: Border.all(color: c.warning.withValues(alpha: 0.3)),
-              borderRadius: AppRadii.cardR,
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -669,7 +677,7 @@ class _QuestionNavigator extends StatelessWidget {
             decoration: BoxDecoration(
               color: c.bgPrimary,
               border: Border.all(color: c.border),
-              borderRadius: AppRadii.cardR,
+              borderRadius: BorderRadius.circular(4),
             ),
             child: Column(
               children: [
@@ -700,7 +708,7 @@ class _QuestionNavigator extends StatelessWidget {
           decoration: BoxDecoration(
             color: color,
             border: Border.all(color: c.border),
-            borderRadius: AppRadii.cardR,
+            borderRadius: BorderRadius.circular(4),
           ),
         ),
         const SizedBox(width: 8),
@@ -712,42 +720,13 @@ class _QuestionNavigator extends StatelessWidget {
 
 /// A count-DOWN timer (MM:SS) that flashes amber under 5 min, red under 1 min,
 /// and fires [onExpire] once when it reaches zero.
-class _CountdownTimer extends StatefulWidget {
+class _CountdownTimer extends StatelessWidget {
   const _CountdownTimer({required this.deadline, required this.onExpire});
   final DateTime deadline;
   final VoidCallback onExpire;
 
-  @override
-  State<_CountdownTimer> createState() => _CountdownTimerState();
-}
-
-class _CountdownTimerState extends State<_CountdownTimer> {
-  Timer? _ticker;
-  bool _flash = false;
-  bool _expired = false;
-
   int get _remaining =>
-      widget.deadline.difference(DateTime.now()).inSeconds.clamp(0, 1 << 31);
-
-  @override
-  void initState() {
-    super.initState();
-    _ticker = Timer.periodic(const Duration(milliseconds: 500), (_) {
-      if (!mounted) return;
-      final r = _remaining;
-      if (r <= 0 && !_expired) {
-        _expired = true;
-        widget.onExpire();
-      }
-      setState(() => _flash = !_flash);
-    });
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
+      deadline.difference(DateTime.now()).inSeconds.clamp(0, 1 << 31);
 
   String _fmt(int s) {
     final h = s ~/ 3600;
@@ -760,38 +739,45 @@ class _CountdownTimerState extends State<_CountdownTimer> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final r = _remaining;
-    Color fg;
-    Color bg;
-    Color border;
-    if (r <= 60) {
-      fg = c.danger;
-      bg = c.danger.withValues(alpha: 0.1);
-      border = c.danger;
-    } else if (r <= 300) {
-      fg = c.warning;
-      bg = c.warning.withValues(alpha: _flash ? 0.2 : 0.1);
-      border = c.warning;
-    } else {
-      fg = c.textMuted;
-      bg = c.bgCard;
-      border = c.border;
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: bg,
-        border: Border.all(color: border),
-        borderRadius: AppRadii.cardR,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(LucideIcons.clock, size: 13, color: fg),
-          const SizedBox(width: 6),
-          Text(_fmt(r), style: AppTypography.mono(fg, size: 12)),
-        ],
+    return BlocProvider<CountdownCubit>(
+      create: (_) => sl<CountdownCubit>(param1: deadline, param2: onExpire),
+      child: BlocBuilder<CountdownCubit, bool>(
+        builder: (context, flash) {
+          final c = context.colors;
+          final r = _remaining;
+          Color fg;
+          Color bg;
+          Color border;
+          if (r <= 60) {
+            fg = c.danger;
+            bg = c.danger.withValues(alpha: 0.1);
+            border = c.danger;
+          } else if (r <= 300) {
+            fg = c.warning;
+            bg = c.warning.withValues(alpha: flash ? 0.2 : 0.1);
+            border = c.warning;
+          } else {
+            fg = c.textMuted;
+            bg = c.bgCard;
+            border = c.border;
+          }
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: bg,
+              border: Border.all(color: border),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.clock, size: 13, color: fg),
+                const SizedBox(width: 6),
+                Text(_fmt(r), style: AppTypography.mono(fg, size: 12)),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
